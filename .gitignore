@@ -1,0 +1,11 @@
+# object files
+*.o
+
+# QT Creator files
+*.creator*
+*.config
+*.cflags
+*.cxxflags
+*.files
+*.includes
+
