@@ -12,14 +12,15 @@ enum MaxInteractionLength
 {
     NearestNeighbor,
     NextNearestNeighbor,
-    NbrInteractions /// change this to number of lengths available and use in other files
+    ThirdNearestNeighbor,
+    FourthNearestNeighbor,
+    NbrInteractions
 };
 
 inline std::istream& operator>>(std::istream &in, MaxInteractionLength& l)
 {
     std::string token;
     in >> token;
-    std::cout << "TOKEN: " << token << "\n";
     if (token == "NN")
     {
         l = MaxInteractionLength::NearestNeighbor;
@@ -28,11 +29,18 @@ inline std::istream& operator>>(std::istream &in, MaxInteractionLength& l)
     {
         l = MaxInteractionLength::NextNearestNeighbor;
     }
+    else if (token == "3NN")
+    {
+        l = MaxInteractionLength::ThirdNearestNeighbor;
+    }
+    else if (token == "4NN")
+    {
+        l = MaxInteractionLength::FourthNearestNeighbor;
+    }
     else
     {
         throw po::validation_error(po::validation_error::invalid_option_value, "max interaciton length");
     }
-
     return in;
 }
 
@@ -58,11 +66,19 @@ public:
 
     virtual int GetNextNearestNeighbor(int siteIndex, int nnnIndex) = 0;
 
+    virtual int GetThirdNearestNeighbor(int siteIndex, int nnnIndex) = 0;
+
+    virtual int GetFourthNearestNeighbor(int siteIndex, int nnnIndex) = 0;
+
     virtual unsigned int GetN() const = 0;
 
     virtual unsigned int GetNbrNN() const = 0;
 
     virtual unsigned int GetNbrNNN() const = 0;
+
+    virtual unsigned int GetNbrThirdNN() const = 0; /// third nearest-neighbor
+
+    virtual unsigned int GetNbrFourthNN() const = 0; /// fourth nearest-neighbor
 
     virtual unsigned int GetDim() const = 0;
 
@@ -70,7 +86,13 @@ public:
 
     virtual bool AreNNN(unsigned int index1, unsigned int index2) = 0;
 
+    virtual bool AreThirdNN(unsigned int index1, unsigned int index2) = 0;
+
+    virtual bool AreFourthNN(unsigned int index1, unsigned int index2) = 0;
+
     std::string GetName() const { return this->Name; }
+
+    MaxInteractionLength GetMaxInteractionLength() const { return this->Length; }
 
 };
 

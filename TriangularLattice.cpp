@@ -55,6 +55,18 @@ int TriangularLattice::GetNextNearestNeighbor(int siteIndex, int nnIndex)
     std::exit(1);
 }
 
+int TriangularLattice::GetThirdNearestNeighbor(int siteIndex, int nnIndex)
+{
+    std::cerr << "ERROR! GetThirdNearestNeighbor not implemented for the triangular lattice!\n";
+    std::exit(1);
+}
+
+int TriangularLattice::GetFourthNearestNeighbor(int siteIndex, int nnIndex)
+{
+    std::cerr << "ERROR! GetFourthNearestNeighbor not implemented for the triangular lattice!\n";
+    std::exit(1);
+}
+
 bool TriangularLattice::AreNN(unsigned int index1, unsigned int index2)
 {
     for (int i=1; i<=this->NbrNN; ++i)
@@ -66,5 +78,17 @@ bool TriangularLattice::AreNN(unsigned int index1, unsigned int index2)
 bool TriangularLattice::AreNNN(unsigned int index1, unsigned int index2)
 {
     std::cerr << "ERROR! AreNNN not implemented for the triangular lattice!\n";
+    std::exit(1);
+}
+
+bool TriangularLattice::AreThirdNN(unsigned int index1, unsigned int index2)
+{
+    std::cerr << "ERROR! AreThirdNN not implemented for the triangular lattice!\n";
+    std::exit(1);
+}
+
+bool TriangularLattice::AreFourthNN(unsigned int index1, unsigned int index2)
+{
+    std::cerr << "ERROR! AreFourthNN not implemented for the triangular lattice!\n";
     std::exit(1);
 }

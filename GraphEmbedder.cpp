@@ -10,8 +10,8 @@ namespace po = boost::program_options;
 /// argv: command line arguments
 GraphEmbedder::GraphEmbedder(int argc, char *argv[]) :
     Parameters(argc, argv),
-    GetNeighborFunctionPointerArray{&GraphEmbedder::GetNearestNeighbor,&GraphEmbedder::GetNextNearestNeighbor}, /// initialize list with largest "neighbor" level available
-    AreNeighborsFunctionPointerArray{&GraphEmbedder::AreNN,&GraphEmbedder::AreNNN}
+    GetNeighborFunctionPointerArray{&GraphEmbedder::GetNearestNeighbor,&GraphEmbedder::GetNextNearestNeighbor,&GraphEmbedder::GetThirdNearestNeighbor,&GraphEmbedder::GetFourthNearestNeighbor}, /// initialize lists with largest "neighbor" level available
+    AreNeighborsFunctionPointerArray{&GraphEmbedder::AreNN,&GraphEmbedder::AreNNN,&GraphEmbedder::AreThirdNN,&GraphEmbedder::AreFourthNN}
 {
     switch(this->ResolveLatticeType(this->Parameters.GetLatticeType()))
     {
@@ -43,7 +43,7 @@ GraphEmbedder::GraphEmbedder(int argc, char *argv[]) :
 
     this->MWords = SETWORDSNEEDED(this->N); /// set this
 
-    this->MaxDegreeNeighbor = this->Parameters.GetMaxInteractionLength()+1; /// set from parameters
+    this->MaxDegreeNeighbor = this->Parameters.GetMaxEmbeddingLength()+1; /// set from parameters
 
     /// store number of neighbors
     this->NbrNeighbors[0] = this->Lattice->GetNbrNN();
@@ -52,6 +52,7 @@ GraphEmbedder::GraphEmbedder(int argc, char *argv[]) :
     nauty_check(WORDSIZE, this->N, this->MWords, NAUTYVERSIONID); /// check if everything is ok
 
     this->fp = fopen(this->Parameters.GetInputFilename().c_str(), "r");
+
     if (this->fp!=NULL)
         std::cout << "GraphEmbedder: Successfully opened " << this->Parameters.GetInputFilename() << std::endl;
     else
@@ -91,8 +92,10 @@ void GraphEmbedder::CallDenseNauty(graph *g, int *lab, int *ptn, int *orbits, st
 /// public method to call for embedding
 /// reads in graphs from a file corresponding to a specific order N and computes the embedding number and size of the automorphism group
 /// outputFilename: where to output results (two columns: symmetry_factor embedding_number)
-void GraphEmbedder::Embed()
+void GraphEmbedder::Embed(bool debugJonas)
 {
+
+    this->DebugJonas = debugJonas; /// need this member variable set for other member routines
 
     DYNALLSTAT(graph, g, g_sz); /// declare graph
     DYNALLSTAT(int,lab,lab_sz); /// declare labels
@@ -112,7 +115,21 @@ void GraphEmbedder::Embed()
     else
         throw std::invalid_argument("GraphEmbedder::Embed: Error opening "+this->Parameters.GetOutputFilename());
 
-    /// just read first graph for now
+    if (this->Parameters.EmbedCorrelator()) /// if we are embedding the two-point function, precompute all lists of initial vertices
+    {
+        this->GetAllPossiblePairsForFixedVertices(); /// WRONG! FOR NOW EMBED WITH FIRST PAIR IF NOT USING JONAS' INPUT FILE FOR IDENTIFICATION OF ROOTED VERTICES
+        //throw std::invalid_argument("Embed: if we embed correlators we need to have debugJonas set!\n");
+    }
+
+    std::ifstream myFixedVerticesFile;
+    if (this->Parameters.EmbedCorrelator())
+    {
+        myFixedVerticesFile.open(this->Parameters.GetInputFilenameFixedVertices());
+        if (!myFixedVerticesFile.is_open())
+            throw std::invalid_argument("GraphEmbedder::Embed: Error opening "+this->Parameters.GetInputFilenameFixedVertices());
+    }
+
+    /// read graphs in file
     GraphContainer container(this->N, this->MWords);
     int count = 0;
     while (1)
@@ -126,13 +143,22 @@ void GraphEmbedder::Embed()
         writegroupsize(fpo,status.grpsize1,status.grpsize2); /// write group size (symmetry factor) to file
 
         //std::cout << "GraphsFromFile read config " << count << "!\n";
-        container.SetGraphFromNauty(g); /// setup container from nauty dense format
+        container.SetGraphFromDenseNauty(g); /// setup container from nauty dense format
 
-        /*if (this->Parameters.GetMaxInteractionLength()==MaxInteractionLength::NearestNeighbor)
+        if (this->Parameters.EmbedCorrelator() && this->DebugJonas) /// read fixed vertices from input file
         {
-            auto embeddingNumber = this->ComputeEmbeddingNumberNN(container); /// TODO: still need to debug this for square lattice (order three graphs)
-            fprintf(fpo, " %d\n", embeddingNumber);
-        }*/
+            int v1, v2;
+            std::string line;
+            if (!std::getline(myFixedVerticesFile, line))
+                throw std::invalid_argument("GraphEmbedder::Embed: Error reading "+this->Parameters.GetInputFilenameFixedVertices());
+            std::stringstream ss(line);
+            if (!(ss >> v1))
+                throw std::invalid_argument("GraphEmbedder::Embed: Error parsing first vertex in "+this->Parameters.GetInputFilenameFixedVertices());
+            if (!(ss >> v2))
+                throw std::invalid_argument("GraphEmbedder::Embed: Error parsing second vertex in "+this->Parameters.GetInputFilenameFixedVertices());
+            std::vector<int> tempFixed{v1,v2};
+            this->FixedVertexNumbers[0] = tempFixed;
+        }
 
         this->ComputeEmbeddingNumbers(container, fpo);
 
@@ -144,6 +170,7 @@ void GraphEmbedder::Embed()
     DYNFREE(orbits, orbits_sz); /// free orbits
 
     fclose(fpo); /// close the file
+    myFixedVerticesFile.close(); /// close the file
 
 }
 
@@ -185,7 +212,7 @@ void GraphEmbedder::EmbedSpecificGraphBondCombo(int graphNbr, const std::vector<
         writegroupsize(fpo,status.grpsize1,status.grpsize2); /// write group size (symmetry factor) to file
 
         std::cout << "GraphsFromFile read config " << count << "!\n";
-        container.SetGraphFromNauty(g); /// setup container from nauty dense format
+        container.SetGraphFromDenseNauty(g); /// setup container from nauty dense format
 
         /*if (this->Parameters.GetMaxInteractionLength()==MaxInteractionLength::NearestNeighbor)
         {
@@ -354,8 +381,16 @@ bool GraphEmbedder::AreBondCountsEqual(const VertexEmbedList& lhs, const VertexE
     return true;
 }
 
-
 bool GraphEmbedder::IsDuplicate(const std::vector<VertexEmbedList>& lists, const VertexEmbedList& toAdd, bool verbose)
+{
+    bool result = false;
+    for (int i=0; i<lists.size(); ++i)
+        if (lists[i]==toAdd)
+            result = true;
+    return result;
+}
+
+bool GraphEmbedder::IsDuplicateOld(const std::vector<VertexEmbedList>& lists, const VertexEmbedList& toAdd, bool verbose)
 {
     bool duplicate = false;
 
@@ -390,10 +425,12 @@ bool GraphEmbedder::IsDuplicate(const std::vector<VertexEmbedList>& lists, const
         }
     }
 #ifdef DEBUG
-    if (!duplicate)
+    /*if (!duplicate)
         std::cout << "List can be added! No duplicates!\n";
     else
-        std::cout << "List cannot be added! Duplicates!\n";
+        std::cout << "List cannot be added! Duplicates!\n";*/
+    if (duplicate != this->IsDuplicate(lists, toAdd, verbose))
+        std::cout << "IsDuplicateNew DOES NOT AGREE with IsDuplicate!\n";
 #endif
     return duplicate;
 }
@@ -507,15 +544,16 @@ void GraphEmbedder::ComputeEmbeddingNumbers(const GraphContainer& container, FIL
 #endif
         auto count = this->ComputeEmbeddingNumberCombo(container, this->BondCombinations[i]);
 
-        //std::cout << "COUNT: " << count << "\n";
-        fprintf(fpo, " %d ", count); /// print the count of graphs
+        for (int j=0; j<count.size(); ++j)
+            fprintf(fpo, " %d", count[j]); /// print the count of graphs
         for (int d=0; d<this->MaxDegreeNeighbor; ++d)
-            fprintf(fpo, "%d ", this->BondCombinations[i][d]); /// print bond count
+            fprintf(fpo, " %d", this->BondCombinations[i][d]); /// print bond count
     }
     fprintf(fpo, "\n");
 }
 
-int GraphEmbedder::ComputeEmbeddingNumberCombo(const GraphContainer& container, const std::vector<int> &bondCombo)
+/// compute embedding number for a graph (rooted or unrooted)
+std::vector<int> GraphEmbedder::ComputeEmbeddingNumberCombo(const GraphContainer& container, const std::vector<int> &bondCombo)
 {
     auto lists = CreateInitialVertexEmbedLists(container, bondCombo);
 
@@ -591,24 +629,43 @@ int GraphEmbedder::ComputeEmbeddingNumberCombo(const GraphContainer& container, 
 
     } /// while
 
-    int result = 0;
-    for (int i=0; i<lists.size(); ++i)
-        result += lists[i].GetNbrChoicesForFirstBond(); /// distinguishes whether the first bond (fixed) was of NN, NNN, etc
+    std::vector<int> result;
+    if (this->Parameters.EmbedCorrelator())
+    {
+        std::vector<int> temp(this->MaxDegreeNeighbor, 0);
+        for (int i=0; i<lists.size(); ++i)
+            temp[lists[i].GetCorrelatorDistanceAsIndex()]++;
+        result = temp;
+    }
+    else
+    {
+
+        int temp = 0;
+        for (int i=0; i<lists.size(); ++i)
+            temp += lists[i].GetNbrChoicesForFirstBond();
+        result.push_back(temp);
+    }
 
 #ifdef DEBUG
     std::cout << "FOUND " << lists.size() << " embeddings for graph!\n";
-    std::cout << "THIS GIVES AN EMBEDDING NUMBER OF: " << result << "\n";
+    std::cout << "THIS GIVES AN EMBEDDING NUMBER(S) OF:";
+    for (int i=0; i<result.size(); ++i)
+        std::cout << " " << result[0];
+    std::cout << "\n";
 
     for (int i=0; i<lists.size(); ++i)
     {
-        std::cout << "Embedded graph number " << i << "\n";
+        std::cout << "Embedded graph number " << i;
+        if (this->Parameters.EmbedCorrelator())
+            std::cout << " DISTANCE_OF_CORRELATOR " << lists[i].GetCorrelatorDistanceAsIndex();
+        std::cout << "\n";
         for (int j=0; j<lists[i].GetSize(); ++j)
         {
             std::vector<unsigned int> indices(this->Lattice->GetDim(), 0);
             this->Lattice->GetSiteCoordinates(lists[i].GetVertexEmbed(j).Index, indices);
-            std::cout << "Vertex " << lists[i].GetVertexEmbed(j) << " ";
+            std::cout << "Vertex " << lists[i].GetVertexEmbed(j);
             for (int k=0; k<this->Lattice->GetDim(); ++k)
-                std::cout << indices[k] << " ";
+                std::cout << " " << indices[k];
             std::cout << "\n";
         }
     }
@@ -691,20 +748,24 @@ std::vector<int> GraphEmbedder::GetAllowedBondDegreesOfList(const VertexEmbedLis
 }
 
 /// get the appropriate neighbor
-/// degree: level of neighbor (0=NN, 1=NNN; others not yet implemented!)
+/// degree: level of neighbor (0=NN, 1=NNN, 2=ThirdNN, 3=FourthNN)
 /// siteIndex: site index
 /// neighborIndex: index of neighbor
 int GraphEmbedder::GetNeighbor(int degree, int siteIndex, int neighborIndex)
 {
-    if (degree < 0 || degree >= this->MaxDegreeNeighbor)
-        throw std::invalid_argument("GetNeighbor requires 0 <= degree < MaxDegreeNeighbor!\n");
+    if (degree < 0 || degree >= NbrLevelsNeighbor)
+        throw std::invalid_argument("GetNeighbor requires 0 <= degree < NbrLevelsNeighbor!\n");
     return (this->*GetNeighborFunctionPointerArray[degree])(siteIndex, neighborIndex);
 }
 
+/// see if two lattice sites are neighbors
+/// degree: level of neighbor (0=NN, 1=NNN, 2=ThirdNN, 3=FourthNN)
+/// index1: site index for first site
+/// index2: site index for second site
 bool GraphEmbedder::AreNeighbors(int degree, int index1, int index2)
 {
-    if (degree < 0 || degree >= this->MaxDegreeNeighbor)
-        throw std::invalid_argument("AreNeighbors requires 0 <= degree < MaxDegreeNeighbor!\n");
+    if (degree < 0 || degree >= NbrLevelsNeighbor)
+        throw std::invalid_argument("AreNeighbors requires 0 <= degree < NbrLevelsNeighbor!\n");
     return (this->*AreNeighborsFunctionPointerArray[degree])(index1, index2);
 }
 
@@ -721,16 +782,49 @@ int GraphEmbedder::GetNbrNeighbors(int degree)
 /// nbrBonds: total number of bonds for a particular graph
 void GraphEmbedder::GetCombinationsOfBonds(int nbrBonds)
 {
-    std::vector<int> BondCounts(this->MaxDegreeNeighbor,-1);
+    std::vector<int> bondCounts(this->MaxDegreeNeighbor,-1);
     std::vector<int> List(nbrBonds+1);
     for (int i = 0; i<List.size(); ++i)
         List[i] = i;
 
     this->BondCombinations.clear(); /// clear list of bonds
 
-    this->GenerateCombinations(List, BondCounts, 0); /// generate combinations
+    this->GenerateCombinations(List, bondCounts, 0); /// generate combinations
 }
 
+/// got all pairs of vertices to be fixed for two-point function
+/// assumes we have N vertices as set in constructor
+void GraphEmbedder::GetAllPossiblePairsForFixedVertices()
+{
+    std::vector<int> tmp;
+    std::vector<int> vertices(this->N);
+    for (int i = 0; i<vertices.size(); ++i)
+        vertices[i] = i+1;
+    this->FixedVertexNumbers.clear(); /// clear list of fixed vertices (Note: only need if we call Embed() from main program more than once with different graph orders!)
+    this->GenerateUniqueCombinationsWithNoDuplicates(tmp, vertices, 0, 2);
+}
+
+/// get all unique combinations of vertices without any duplicate entries using depth first search
+void GraphEmbedder::GenerateUniqueCombinationsWithNoDuplicates(std::vector<int>& tmp, const std::vector<int>& vertices, int left, int k)
+{
+    if (k==0)
+    {
+        this->FixedVertexNumbers.push_back(tmp);
+        return;
+    }
+
+    for (int i=left; i<this->N; ++i)
+    {
+        if (std::find(tmp.begin(), tmp.end(), vertices[i])==tmp.end())
+        {
+            tmp.push_back(vertices[i]);
+            this->GenerateUniqueCombinationsWithNoDuplicates(tmp, vertices, i+1, k-1);
+            tmp.pop_back();
+        }
+    }
+}
+
+/// get all combinations of vertices using depth first search
 void GraphEmbedder::GenerateCombinations(const std::vector<int>& arr, std::vector<int>& data, int index)
 {
     if (index == data.size()) /// created a combo?
@@ -749,8 +843,116 @@ void GraphEmbedder::GenerateCombinations(const std::vector<int>& arr, std::vecto
     }
 }
 
-/// TODO: pass in the bond combination!
 std::vector<VertexEmbedList> GraphEmbedder::CreateInitialVertexEmbedLists(const GraphContainer& container, const std::vector<int> &bondCombo)
+{
+    if (this->Parameters.EmbedCorrelator())
+        return CreateInitialVertexEmbedListsRooted(container, bondCombo);
+    else
+        return CreateInitialVertexEmbedListsNonRooted(container, bondCombo);
+}
+
+/// @param filename: file with graph in g6 format
+void GraphEmbedder::TestInitialRootedGraphList(std::string filename)
+{
+    DYNALLSTAT(graph, g, g_sz);
+    DYNALLOC2(graph, g, g_sz, this->N, this->MWords, "malloc");
+
+    fclose(this->fp); /// close main input file
+    this->fp = fopen(filename.c_str(), "r"); /// open temp
+
+    if (this->fp!=NULL)
+        std::cout << "TestInitialRootedGraphList: Successfully opened " << filename << std::endl;
+    else
+        throw std::invalid_argument("TestInitialRootedGraphList: Error opening "+filename);
+
+    graph *gtemp = this->GetNextGraph(g);
+    if (gtemp == NULL)
+    {
+        std::cerr << "TestInitialRootedGraphList: Error reading test graph!\n";
+        std::exit(1);
+    }
+
+    GraphContainer container(this->N, this->MWords, g); /// set up container
+
+    //this->FixedVertexNumbers.push_back(std::vector<int>{v1,v2}); /// set up fixed vertices
+
+    this->GetCombinationsOfBonds(container.GetL()); /// get combos
+
+    int indexCombo = 3; /// hard-code
+    if (this->BondCombinations.size()==1)
+        indexCombo = 0;
+
+    auto result = this->CreateInitialVertexEmbedListsRooted(container, this->BondCombinations[indexCombo]);
+
+    /// print out result
+    /// TODO: each element of result print out
+
+    if (this->fp!=NULL)
+        std::cout << "TestInitialRootedGraphList: Successfully opened " << this->Parameters.GetInputFilename() << std::endl;
+    else
+        throw std::invalid_argument("TestInitialRootedGraphList: Error opening "+this->Parameters.GetInputFilename());
+
+    this->FixedVertexNumbers.pop_back(); /// CreateInitialVertexEmbedListsRooted has hardcoded as first element of FixedVertices
+
+}
+
+/// higher-level routine that calls CreateInitialVertexEmbedListsRootedFixed for all pairs of rooted vertices
+std::vector<VertexEmbedList> GraphEmbedder::CreateInitialVertexEmbedListsRooted(const GraphContainer& container, const std::vector<int> &bondCombo)
+{
+    /// NOTE: before we have a way to generate weighted graphs we will just take the first set of vertices to be the first ones
+    /// DEBUG: Jonas' rooted vertices will be in the FIRST element of FixedVertices
+    /// DEBUG: Should only include up to NNN in comparison with Jonas!
+    if (this->DebugJonas)
+        return this->CreateInitialVertexEmbedListsRootedFixed(container, bondCombo, this->FixedVertexNumbers[0]);
+
+    std::vector<VertexEmbedList> result;
+    for (int i=0; i<this->FixedVertexNumbers.size(); ++i) /// loop over vertex pairs
+    {
+        auto temp = this->CreateInitialVertexEmbedListsRootedFixed(container, bondCombo, this->FixedVertexNumbers[i]);
+        for (int j=0; j<temp.size(); ++j)
+            result.push_back(temp[j]);
+    }
+    return result;
+}
+
+/// create initial list for each correlator up to MaxDegreeNeighbor
+std::vector<VertexEmbedList> GraphEmbedder::CreateInitialVertexEmbedListsRootedFixed(const GraphContainer& container, const std::vector<int> &bondCombo, const std::vector<int>& fixedVertices)
+{
+    std::vector<VertexEmbedList> result;
+
+    std::vector<unsigned int> indices(this->Lattice->GetDim(), this->Lattice->GetN()/2); /// spatial indices for first vertex
+    auto tempIndex = this->Lattice->GetSiteIndex(indices); /// index for first vertex
+
+    auto v1 = fixedVertices[0]; /// first rooted vertex (color 1)
+    auto v2 = fixedVertices[1]; /// second rooted vertex (color 2)
+    auto rootedVerticesConnected = container.GetElementAdjacencyMatrix(v1, v2);
+
+    auto d = this->Parameters.GetCorrelatorLength(); /// distance of correlator
+
+    bool bondPossible = true; /// is a bond possible?
+    if (d>this->Parameters.GetMaxEmbeddingLength()) /// if correlator distance is greater than max embedding length, no bond is possible
+        bondPossible = false;
+    else
+    {
+        if (bondCombo[d]==0) /// if we do not have atleast one step that size in our bond combination, no bond is possible
+            bondPossible = false;
+    }
+
+    if ((rootedVerticesConnected && bondPossible) || !rootedVerticesConnected) /// we add to list if not vertices NOT connected or if they are connected and we can put a bond between them
+    {
+        VertexEmbedList tempList(this->Parameters.GetMaxEmbeddingLength(), static_cast<MaxInteractionLength>(d));
+        std::vector<VertexEmbed> tempFixed{VertexEmbed{v1,tempIndex}, VertexEmbed{v2,this->GetNeighbor(d,tempIndex,1)}};
+        tempList.AddFixedVerticesEmbed(tempFixed);
+        if (rootedVerticesConnected)
+            tempList.IncrementBondCount(d);
+        result.push_back(tempList);
+    }
+
+    return result;
+}
+
+/// TODO: pass in the bond combination!
+std::vector<VertexEmbedList> GraphEmbedder::CreateInitialVertexEmbedListsNonRooted(const GraphContainer& container, const std::vector<int> &bondCombo)
 {
     std::vector<VertexEmbedList> result;
 
@@ -767,7 +969,7 @@ std::vector<VertexEmbedList> GraphEmbedder::CreateInitialVertexEmbedLists(const 
             {
                 if (bondCombo[d]>0)
                 {
-                    VertexEmbedList tempList(this->Parameters.GetMaxInteractionLength());
+                    VertexEmbedList tempList(this->Parameters.GetMaxEmbeddingLength());
                     tempList.AddVertexEmbed(VertexEmbed{v1,tempIndex});
                     tempList.AddVertexEmbed(VertexEmbed{v2,this->GetNeighbor(d,tempIndex,1)});
                     tempList.IncrementBondCount(d);
@@ -791,8 +993,11 @@ bool GraphEmbedderParametersNauty::ProcessCommandLine(int argc, char *argv[])
                 (",n", po::value<unsigned int>(&this->N)->required(), "Maximum vertex order")
                 (",i", po::value<std::string>(&this->InputFilename)->required(), "Input filename")
                 (",o", po::value<std::string>(&this->OutputFilename)->required(), "Output filename")
-                (",l", po::value<std::string>(&this->LatticeType)->default_value("Cubic"), "Lattice type: Cubic or Square")
-                (",d", po::value<MaxInteractionLength>(&this->Length)->default_value(MaxInteractionLength::NearestNeighbor), "MaxInteractionLength: NN or NNN (longer distances not available yet)")
+                (",l", po::value<std::string>(&this->LatticeType)->default_value("Cubic"), "Lattice type: Cubic, Square, or Triangular")
+                (",d", po::value<MaxInteractionLength>(&this->MaxEmbeddingLength)->default_value(MaxInteractionLength::NearestNeighbor), "MaxEmbeddingLength: NN NNN 3N or 4N (longer distances not yet supported!)")
+                (",c", po::value<bool>(&this->Correlator)->default_value(false), "Embed correlators (two-point functions)?")
+                (",m", po::value<MaxInteractionLength>(&this->CorrelatorLength)->default_value(MaxInteractionLength::NearestNeighbor), "CorrelatorLength: NN NNN 3N or 4N (longer distances not yet supported!)")
+                (",f", po::value<std::string>(&this->InputFilenameFixedVertices), "input filename containing fixed vertices") /// for debugging with Jonas
                 ;
 
         po::variables_map vm;
@@ -827,10 +1032,46 @@ GraphEmbedderParametersNauty::GraphEmbedderParametersNauty(int argc, char *argv[
         std::exit(1);
 }
 
-/// constructor
-/// takes in what the max interaction length will be
-VertexEmbedList::VertexEmbedList(MaxInteractionLength maxLength)
+/// constructor for correlator embedding (rooted graph)
+/// takes in what the max embedding length will be and the correlator distance
+VertexEmbedList::VertexEmbedList(MaxInteractionLength maxEmbeddingLength, MaxInteractionLength correlatorDistance) :
+    NbrChoicesForFirstBond(1),
+    TwoPointFunction(true),
+    FixedVertices(2, VertexEmbed{-1,-1}),
+    CorrelatorDistance(correlatorDistance)
 {
+#ifdef DEBUG
+    std::cout << "Created an rooted graph for a correlator of size " << correlatorDistance << "!\n";
+#endif
+    switch (maxEmbeddingLength)
+    {
+    case MaxInteractionLength::NearestNeighbor:
+        this->BondCounts.resize(1);
+        break;
+    case MaxInteractionLength::NextNearestNeighbor:
+        this->BondCounts.resize(2);
+        break;
+    case MaxInteractionLength::ThirdNearestNeighbor:
+        this->BondCounts.resize(3);
+        break;
+    case MaxInteractionLength::FourthNearestNeighbor:
+        this->BondCounts.resize(4);
+        break;
+    default:
+        throw std::invalid_argument("Invalid interaction length given to constructor of VertexEmbedList!\n");
+        break;
+    }
+}
+
+/// constructor for unrooted graph
+/// takes in what the max interaction length will be
+VertexEmbedList::VertexEmbedList(MaxInteractionLength maxLength) :
+    TwoPointFunction(false),
+    FixedVertices(2, VertexEmbed{-1,-1})
+{
+#ifdef DEBUG
+    std::cout << "Created an unrooted graph!\n";
+#endif
     switch (maxLength)
     {
     case MaxInteractionLength::NearestNeighbor:
@@ -838,6 +1079,12 @@ VertexEmbedList::VertexEmbedList(MaxInteractionLength maxLength)
         break;
     case MaxInteractionLength::NextNearestNeighbor:
         this->BondCounts.resize(2);
+        break;
+    case MaxInteractionLength::ThirdNearestNeighbor:
+        this->BondCounts.resize(3);
+        break;
+    case MaxInteractionLength::FourthNearestNeighbor:
+        this->BondCounts.resize(4);
         break;
     default:
         throw std::invalid_argument("Invalid interaction length given to constructor of VertexEmbedList!\n");
@@ -855,6 +1102,19 @@ void VertexEmbedList::AddVertexEmbed(const VertexEmbed& v)
 void VertexEmbedList::AddVertexEmbed(int number, int index)
 {
     this->List.push_back(VertexEmbed{number,index});
+}
+
+void VertexEmbedList::AddFixedVerticesEmbed(const std::vector<VertexEmbed> &embed)
+{
+    if (embed.size() != 2)
+        throw std::invalid_argument("AddFixedVerticesEmbed requires a vector of size 2!\n");
+    if (this->FixedVertices[0].Index!=-1 || this->FixedVertices[1].Index!=-1)
+        std::cerr << "WARNING: AddFixedVerticesEmbed fixed vertices already set!\n";
+    if (!this->TwoPointFunction)
+        std::cerr << "WARNING: AddFixedVerticesEmbed called but TwoPointFunction flag set to false!\n";
+    this->FixedVertices = embed;
+    this->List.push_back(embed[0]);
+    this->List.push_back(embed[1]);
 }
 
 /// update the bond count
@@ -898,6 +1158,49 @@ bool VertexEmbedList::HasRepeatedSites()
         if (std::find(std::next(this->List.begin(), i+1), this->List.end(), this->List[i].Index) != this->List.end())
             return true;
     return false;
+}
+
+/// accessor for fixed vertices
+VertexEmbed VertexEmbedList::GetFixedVertex(int index) const
+{
+    if (!this->IsTwoPointFunction())
+        throw std::logic_error("GetFixedVertex called for unrooted graph!\n");
+    if (index !=0 || index != 1)
+        throw std::invalid_argument("GetFixedVertex requires index to be 0 or 1!\n");
+    return this->FixedVertices[index];
+}
+
+/// equality operator for VertexEmbedList
+bool operator==(const VertexEmbedList& lhs, const VertexEmbedList& rhs)
+{
+
+    if (lhs.IsTwoPointFunction()!=rhs.IsTwoPointFunction()) /// check if they are of the same type (rooted or unrooted)
+        return false;
+
+    if (lhs.GetSize()!=rhs.GetSize()) /// check that they are the same size
+        return false;
+
+    if (lhs.GetNbrBondTypes()!=rhs.GetNbrBondTypes()) /// check that they have the same number of bond types
+        return false;
+
+    for (int i=0; i<lhs.GetNbrBondTypes(); ++i) /// check bond counts
+        if (lhs.GetBondCount(i)!=rhs.GetBondCount(i))
+            return false;
+
+    if (lhs.IsTwoPointFunction()) /// compare fixed vertices if we have a two-point function (order matters!)
+        if ((lhs.GetFixedVertex(0) != rhs.GetFixedVertex(0)) || (lhs.GetFixedVertex(1) != rhs.GetFixedVertex(1)))
+            return false;
+
+    for (auto it = rhs.begin(); it!=rhs.end(); ++it) /// compare all of the vertices
+        if (std::find(lhs.begin(), lhs.end(), *it) == lhs.end())
+            return false;
+
+    return true;
+}
+
+bool operator!=(const VertexEmbedList& lhs, const VertexEmbedList& rhs)
+{
+    return !(lhs == rhs);
 }
 
 std::ostream& operator<<(std::ostream& os, const VertexEmbedList& list)

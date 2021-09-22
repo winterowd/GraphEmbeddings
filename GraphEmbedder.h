@@ -7,6 +7,8 @@
 #include <array>
 #include <numeric>
 #include <chrono>
+#include <fstream>
+#include <sstream>
 
 #include "GraphContainer.h"
 #include "AbstractLattice.h"
@@ -75,11 +77,20 @@ private:
 
     std::vector<int> BondCounts; /// only need to keep track of total counts and not which edges are connected by NN or NNN
 
-    int NbrChoicesForFirstBond; /// remember type of first bond
+    int NbrChoicesForFirstBond; /// remember number of choices for first bond for unrooted graphs or 1 for rooted graphs
+
+    bool TwoPointFunction; /// flag for two-point function (rooted graph)
+
+     /// NOTE: when making canonical form, first vertex corresponds to color 1 and second vertex to color 2 (equality operator will distinguish them)
+    std::vector<VertexEmbed> FixedVertices; /// for two-point functions (rooted graph)
+
+    MaxInteractionLength CorrelatorDistance; /// keep track of which type of correlator
 
 public:
 
-    VertexEmbedList(MaxInteractionLength maxLength);
+    VertexEmbedList(MaxInteractionLength maxLength); /// constructor for unrooted graph
+
+    VertexEmbedList(MaxInteractionLength maxLength, MaxInteractionLength correlatorDistance); /// constructor for correlator (rooted graph)
 
     VertexEmbedList(const VertexEmbedList& list) = default;
 
@@ -87,13 +98,23 @@ public:
 
     void AddVertexEmbed(int number, int index);
 
+    void AddFixedVerticesEmbed(const std::vector<VertexEmbed>& embed);
+
     void IncrementBondCount(int dIndex);
 
     int GetBondCount(int dIndex) const;
 
+    VertexEmbed GetFixedVertex(int index) const;
+
     int GetSize() const { return this->List.size(); }
 
     int GetNbrBondTypes() const { return this->BondCounts.size(); }
+
+    bool IsTwoPointFunction() const { return this->TwoPointFunction; }
+
+    MaxInteractionLength GetCorrelatorDistance() const { return this->CorrelatorDistance; }
+
+    int GetCorrelatorDistanceAsIndex() const { return static_cast<int>(this->CorrelatorDistance); }
 
     bool HasRepeatedVertices(); /// debugging routine
 
@@ -119,6 +140,9 @@ public:
 
 };
 
+bool operator==(const VertexEmbedList& lhs, const VertexEmbedList& rhs); /// comparison operator
+bool operator!=(const VertexEmbedList& lhs, const VertexEmbedList& rhs); /// comparison operator
+
 class GraphEmbedderParametersNauty /// graph embedder parameters (get from user using Boost program options)
 {
 private:
@@ -128,9 +152,15 @@ private:
 
     std::string OutputFilename; /// where to put embeddings and symmetry numbers?
 
+    std::string InputFilenameFixedVertices; /// DEBUG: for now input these in a separate file of equal length
+
     std::string LatticeType; /// which lattice for embeddings
 
-    MaxInteractionLength Length; /// length of longest bond for embedding
+    MaxInteractionLength MaxEmbeddingLength; /// length of longest bond for embedding
+
+    MaxInteractionLength CorrelatorLength; /// correlator length
+
+    bool Correlator; /// flag for embedding correlator
 
     bool ProcessCommandLine(int argc, char *argv[]);
 
@@ -142,11 +172,17 @@ public:
 
     std::string GetInputFilename() const { return this->InputFilename; }
 
+    std::string GetInputFilenameFixedVertices() const { return this->InputFilenameFixedVertices; }
+
     std::string GetOutputFilename() const { return this->OutputFilename; }
 
     std::string GetLatticeType() const { return this->LatticeType; }
 
-    MaxInteractionLength GetMaxInteractionLength() const { return this->Length; }
+    MaxInteractionLength GetMaxEmbeddingLength() const { return this->MaxEmbeddingLength; }
+
+    MaxInteractionLength GetCorrelatorLength() const { return this->CorrelatorLength; }
+
+    bool EmbedCorrelator() const { return this->Correlator; }
 
 };
 
@@ -176,7 +212,9 @@ private:
 
     std::unordered_set<int> VertexSet; /// precompute for embedding number
 
-    enum { NbrLevelsNeighbor = 2 }; //// DEBUG: this is for array of function pointers! Change is third nearest and further are added!
+    bool DebugJonas; /// debug flag
+
+    enum { NbrLevelsNeighbor = 4 }; //// DEBUG: this is for array of function pointers! Change as capability for third nearest and further are added!
 
     int (GraphEmbedder::*GetNeighborFunctionPointerArray[NbrLevelsNeighbor])(int, int);
 
@@ -185,6 +223,9 @@ private:
     std::array<int, NbrLevelsNeighbor> NbrNeighbors;
 
     std::vector<std::vector<int>> BondCombinations; /// for choosing combinations of links
+
+    std::vector<std::vector<int>> FixedVertexNumbers; /// for choosing fixed vertices if embedding for two-point function (WRONG: need rooted graphs and not just trying all random pairs of a simple graph)
+    /// NOTE: when making canonical form, first vertex corresponds to color 1 and second vertex to color 2
 
     /***** private methods *****/
 
@@ -196,7 +237,7 @@ private:
 
     void ComputeEmbeddingNumbers(const GraphContainer& container, FILE *fpo); /// loops over all valid combos of bond counts consistent with graph in container
 
-    int ComputeEmbeddingNumberCombo(const GraphContainer& container, const std::vector<int> &bondCombo); /// compute the embedding number of a graph for a given combo of bond counts
+    std::vector<int> ComputeEmbeddingNumberCombo(const GraphContainer& container, const std::vector<int> &bondCombo); /// compute the embedding number of a graph for a given combo of bond counts
 
     std::vector<int> GetAllowedBondDegreesOfList(const VertexEmbedList& list, const std::vector<int> &bondCombo); /// determine list of allowed neighbor degrees based on list and combination of bond counts
 
@@ -212,6 +253,12 @@ private:
 
     std::vector<VertexEmbedList> CreateInitialVertexEmbedLists(const GraphContainer& container, const std::vector<int> &bondCombo);
 
+    std::vector<VertexEmbedList> CreateInitialVertexEmbedListsRootedFixed(const GraphContainer& container, const std::vector<int> &bondCombo, const std::vector<int> &fixedVertices);
+
+    std::vector<VertexEmbedList> CreateInitialVertexEmbedListsRooted(const GraphContainer& container, const std::vector<int> &bondCombo);
+
+    std::vector<VertexEmbedList> CreateInitialVertexEmbedListsNonRooted(const GraphContainer& container, const std::vector<int> &bondCombo);
+
     std::unordered_set<int> GetRemainingVertices(const std::vector<VertexEmbed>& listUsedVertices);
 
     std::unordered_set<int> GetRemainingVertices(const VertexEmbedList& listUsedVertices);
@@ -220,15 +267,23 @@ private:
 
     void GenerateCombinations(const std::vector<int>& arr, std::vector<int>& data, int index); /// called by GetCombinationsOfBonds
 
+    void GetAllPossiblePairsForFixedVertices(); /// all choices of fixed vertices for two point function (ASSUMES: NN)
+
+    void GenerateUniqueCombinationsWithNoDuplicates(std::vector<int>& tmp, const std::vector<int>& vertices, int left, int k);
+
     bool IsDuplicate(const std::vector<std::vector<VertexEmbed>>& lists, const std::vector<VertexEmbed>& toAdd);
 
     bool AreBondCountsEqual(const VertexEmbedList& lhs, const VertexEmbedList& rhs);
 
-    bool IsDuplicate(const std::vector<VertexEmbedList>& lists, const VertexEmbedList& toAdd, bool verbose=false); /// will use in embedding routine
+    bool IsDuplicateOld(const std::vector<VertexEmbedList>& lists, const VertexEmbedList& toAdd, bool verbose=false); /// will use in embedding routine
+
+    bool IsDuplicate(const std::vector<VertexEmbedList>& lists, const VertexEmbedList& toAdd, bool verbose=false);
 
     void TestEraseWrongSizes(std::vector<VertexEmbedList>& lists, int vertexCount); /// debugging routine
 
     void CallDenseNauty(graph *g, int *lab, int *ptn, int *orbits, statsblk &stats);
+
+    std::vector<int> GetFixedVertexPair(int index) { if (index>=0 && index<=this->FixedVertexNumbers.size()) return this->FixedVertexNumbers[index]; return std::vector<int>{-1}; }
 
     /// wrapper for lattice accessor
     int GetNearestNeighbor(int siteIndex, int nnIndex) { return this->Lattice->GetNearestNeighbor(siteIndex, nnIndex); }
@@ -236,11 +291,23 @@ private:
     /// wrapper for lattice accessor
     int GetNextNearestNeighbor(int siteIndex, int nnIndex) { return this->Lattice->GetNextNearestNeighbor(siteIndex, nnIndex); }
 
-     /// wrapper for lattice accessor
+    /// wrapper for lattice accessor
+    int GetThirdNearestNeighbor(int siteIndex, int nnIndex) { return this->Lattice->GetThirdNearestNeighbor(siteIndex, nnIndex); }
+
+    /// wrapper for lattice accessor
+    int GetFourthNearestNeighbor(int siteIndex, int nnIndex) { return this->Lattice->GetFourthNearestNeighbor(siteIndex, nnIndex); }
+
+    /// wrapper for lattice accessor
     bool AreNN(int index1, int index2) { return this->Lattice->AreNN(index1, index2); }
 
     /// wrapper for lattice accessor
     bool AreNNN(int index1, int index2) { return this->Lattice->AreNNN(index1, index2); }
+
+    /// wrapper for lattice accessor
+    bool AreThirdNN(int index1, int index2) { return this->Lattice->AreThirdNN(index1, index2); }
+
+    /// wrapper for lattice accessor
+    bool AreFourthNN(int index1, int index2) { return this->Lattice->AreFourthNN(index1, index2); }
 
     int GetNeighbor(int degree, int siteIndex, int neighborIndex);
 
@@ -256,9 +323,11 @@ public:
 
     ~GraphEmbedder(); /// destructor
 
-    void Embed(); /// calculates embedding numbers for all graphs of a given order and outputs results 
+    void Embed(bool debugJonas=false); /// calculates embedding numbers for all graphs of a given order and outputs results
 
     void EmbedSpecificGraphBondCombo(int graphNbr, const std::vector<int>& bondCounts); /// debugging routine: graphNbr is the line in the file and bondCounts needs to be provided by the user
+
+    void TestInitialRootedGraphList(std::string filename); /// test routine that reads in a graph in g6 format in filename and fixes v1 and v2 as rooted
 
 };
 

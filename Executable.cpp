@@ -5,9 +5,10 @@
 #include <array>
 #include <unordered_set>
 #include <numeric>
+#include <stdio.h>
 
 extern "C" {
-#include "nausparse.h"
+#include "nauty.h"
 }
 
 #include "GenericConnectedGraph.h"
@@ -334,56 +335,467 @@ void TestSparseNauty(const std::vector<std::vector<bool>>& adj)
 
 }
 
-void TestDenseNauty()
+/**
+ * setColoredPartition sets up the nauty data structures lab & ptn according to a
+ * given vertex coloring. After the execution, lab & ptn will be ready to send to nauty.
+ *
+ * @param n the number of vertices.
+ * @param k the number of colors.
+ * @param c the colors as in outputEColoredCanonicalLabeling.
+ * @param lab an integer array of at least g->nv positions. WILL BE MODIFIED.
+ * @param ptn an integer array of at least g->nv positions. WILL BE MODIFIED.
+ */
+void setColoredPartition(int n, int k, int* c, int* lab, int* ptn)
 {
-    DYNALLSTAT(int, lab, lab_sz);
-    DYNALLSTAT(int, ptn, ptn_sz);
-    DYNALLSTAT(int, orbits, orbits_sz);
-    DYNALLSTAT(graph, g, g_sz); /// graph
-    DYNALLSTAT(graph, cg, cg_sz); /// canonical graph
-    statsblk stats;
+  /* loop over all colos to fill it */
+  int cur_index = 0;
+  int i,j;
+  for ( i = 0; i < k; i++ )
+  {
+    for ( j = 0; j < n; j++ )
+    {
+      if ( c[j] == i )
+      {
+    lab[cur_index] = j;
+    ptn[cur_index] = 1;
+    cur_index++;
+      }
+    }
 
-    static DEFAULTOPTIONS_GRAPH(options); /// options
+    if (cur_index > 0)
+    {
+      ptn[cur_index - 1] = 0;
+    }
+  }
+}
 
-    options.getcanon = TRUE; /// set optoins
+/**
+ * setColoredPartition sets up the nauty data structures lab & ptn according to a
+ * given vertex coloring. After the execution, lab & ptn will be ready to send to nauty.
+ *
+ * @param g the graph as a sparsegraph.
+ * @param k the number of colors.
+ * @param c the colors as in outputEColoredCanonicalLabeling.
+ * @param lab an integer array of at least g->nv positions. WILL BE MODIFIED.
+ * @param ptn an integer array of at least g->nv positions. WILL BE MODIFIED.
+ */
+void setColoredPartition(sparsegraph* g, int k, int* c, int* lab, int* ptn)
+{
+  /* loop over all colos to fill it */
+  int cur_index = 0;
+  int i,j;
+  for ( i = 0; i < k; i++ )
+  {
+    for ( j = 0; j < g->nv; j++ )
+    {
+      if ( c[j] == i )
+      {
+    lab[cur_index] = j;
+    ptn[cur_index] = 1;
+    cur_index++;
+      }
+    }
 
-    int n = 4;
-    int m = SETWORDSNEEDED(n); /// array of m setwords sufficients to hold n bits
+    if (cur_index > 0)
+    {
+      ptn[cur_index - 1] = 0;
+    }
+  }
+}
 
-    std::cout << "n: " << n << " m: " << m << std::endl;
+/**
+ * outputVColoredCanonicalLabeling takes a vertex-colored
+ * graph and writes the canonical string to standard out.
+ *
+ * @param g the graph as a sparsegraph.
+ * @param directed 0 if undirected, nonzero if directed.
+ * @param k the number of colors used (should be 0...k-1).
+ * @param c the colors. c[i] should store the color of the ith vertex.
+ */
+void outputVColoredCanonicalLabeling(sparsegraph* g, int directed, int k, int* c, std::string s6Filename, std::string g6Filename)
+{
+    int nv = g->nv;
+    int m = (nv + WORDSIZE - 1) / WORDSIZE;
+    nauty_check(WORDSIZE, m, nv, NAUTYVERSIONID);
 
-    nauty_check(WORDSIZE, n, m, NAUTYVERSIONID); /// check if everything is ok
+    /* initialize helpful arrays */
+    DYNALLSTAT(int, lab, lab_n);
+    DYNALLSTAT(int, ptn, ptn_n);
+    DYNALLSTAT(int, orbits, orbits_n);
+    DYNALLOC1(int, lab, lab_n, nv, "malloc");
+    DYNALLOC1(int, ptn, ptn_n, nv, "malloc");
+    DYNALLOC1(int, orbits, orbits_n, nv, "malloc");
 
-    DYNALLOC1(int, lab, lab_sz, n, "malloc");
-    DYNALLOC1(int, ptn, ptn_sz, n, "malloc");
-    DYNALLOC1(int, orbits, orbits_sz, n, "malloc");
+    /* Setup of lab and ptn is in another method */
+    setColoredPartition(g, k, c, lab, ptn); /* THIS IS CHANGED FROM outputCanonicalLabeling */
 
-    DYNALLOC2(graph, g, g_sz, n, m, "malloc"); /// graph
-    DYNALLOC2(graph, cg, cg_sz, n, m, "malloc"); /// canonical graph
+    /* set the options */
+    static DEFAULTOPTIONS_SPARSEGRAPH( options);
+    options.defaultptn = FALSE; /* WE NEED THE COLORS!  THIS IS ALSO CHANGED. */
+    options.getcanon = TRUE; /* gets labels */
 
-    EMPTYGRAPH(g, n, m); /// clear graph
+    if ( directed == 0 )
+    {
+      options.digraph = FALSE;
+    }
+    else
+    {
+      options.digraph = TRUE;
+    }
 
-    ADDONEEDGE(g, 0, 1, m);
-    ADDONEEDGE(g, 0, 2, m);
-    ADDONEEDGE(g, 0, 3, m);
-    ADDONEEDGE(g, 1, 2, m);
+    statsblk stats; /* we'll use this at the end */
 
-    densenauty(g, lab, ptn, orbits, &options, &stats, m, n, cg);
+    /* create the workspace for nauty to use */
+    DYNALLSTAT(setword, workspace, worksize);
+    DYNALLOC1(setword, workspace, worksize, 50 * m, "malloc");
 
-    set *gj, *cgj;
+    sparsegraph canon_g;
+    SG_INIT(canon_g);
+
+    nauty((graph*) g, lab, ptn, NULL, orbits, &options, &stats, workspace, 50 * m, m, nv, (graph*) &canon_g);
+
+    char* cg_g6 = sgtog6(&canon_g); //// convert to g6
+    std::ofstream g6File(g6Filename);
+    g6File << cg_g6;
+    g6File.close();
+
+    /* THIS IS VERY IMPORTANT FOR CANONICAL STRING */
+    sortlists_sg(&canon_g);
+
+    char* canon_str = (char*)sgtos6(&canon_g);
+    std::ofstream s6File(s6Filename);
+    s6File << canon_str;
+    s6File.close();
+
+    /* clean up */
+    DYNFREE(workspace, worksize);
+    DYNFREE(lab,lab_n);
+    DYNFREE(ptn,ptn_n);
+    DYNFREE(orbits,orbits_n);
+
+    SG_FREE(canon_g);
+}
+
+void OutputConnectivityFifthOrderTestG6(std::string inputFilename)
+{
+    int n = 5;
+    int m = SETWORDSNEEDED(n);
+
+    FILE *fp = fopen(inputFilename.c_str(), "r");
+
+    if (fp!=NULL)
+        std::cout << "OutputFifthOrderG6: Successfully opened " << inputFilename << std::endl;
+    else
+        throw std::invalid_argument("OutputFifthOrderG6: Error opening "+inputFilename);
+
+    DYNALLSTAT(graph, g, g_sz);
+    DYNALLOC2(graph, g, g_sz, n, m, "malloc");
+
+    graph *gtemp = readg(fp,g,m,&m,&n);
+
+    set *gj;
 
     for (int j = 1; j < n; ++j)
     {
         gj = GRAPHROW(g,j,m);
-        cgj = GRAPHROW(cg,j,m);
         for (int i = 0; i < j; ++i)
         {
             if (ISELEMENT(gj,i))
                 std::cout << "G: Vertex " << j << " adjacent to vertex " << i << "\n";
-            if (ISELEMENT(cgj,i))
-                std::cout << "CG: Vertex " << j << " adjacent to vertex " << i << "\n";
         }
     }
+
+    fclose(fp);
+    DYNFREE(g,g_sz);
+
+}
+
+/// displays connectivity of all g6 graphs written by previous two test routines
+void OutputGraphTestsNauty()
+{
+    std::cout << "ORIGINAL_DENSE:\n";
+    OutputConnectivityFifthOrderTestG6("test_fifth_order_dense_g6.dat");
+    //std::cout << "CANONICAL_DENSE:\n";
+    //OutputConnectivityFifthOrderTestG6("test_fifth_order_dense_cg_g6.dat");
+    std::cout << "CANONICAL_SPARSE:\n";
+    OutputConnectivityFifthOrderTestG6("test_fifth_order_sparse_cg_g6.dat");
+}
+
+/// read in s6 printed to file by TestDenseNautyColored() and get the canonical labeling and output result in s6 and g6
+void TestSparseNautyColored(bool verbose=false)
+{
+    std::ifstream s6File("test_fifth_order_dense_s6.dat");
+    std::string line;
+
+    std::getline(s6File, line);
+
+    char *tempS6 = new char[line.length()+1];
+    std::strcpy(tempS6, line.c_str());
+
+    sparsegraph* g = (sparsegraph*)malloc(sizeof(sparsegraph));
+    SG_INIT((*g));
+
+    int num_loops;
+    stringtosparsegraph(tempS6, g, &num_loops);
+
+    /// coloring (identical to TestDenseNautyColored())
+    int n = 5;
+    int *c = (int*)malloc(n * sizeof(int));
+    c[0] = 2;
+    c[1] = 0;
+    c[2] = 0;
+    c[3] = 0;
+    c[4] = 1;
+
+    outputVColoredCanonicalLabeling(g, 0, 3, c, "test_fifth_order_sparse_cg_s6.dat", "test_fifth_order_sparse_cg_g6.dat"); /// call utility for coloured graphs
+
+    delete[] tempS6;
+
+    free(c);
+
+    SG_FREE((*g));
+    free(g);
+
+}
+
+/// test densenauty for colored graphs
+/// set up fifth order graph x---o---o---o---|_| (vertex labels (l to r) 0 1 2 3 4)
+/// output s6 and g6 labels of original and canonical form
+void TestDenseNautyColored(bool verbose=false)
+{
+    DYNALLSTAT(int, lab, lab_sz);
+    DYNALLSTAT(int, lab_cg1, lab_cg1_sz);
+    DYNALLSTAT(int, lab_cg2, lab_cg2_sz);
+    DYNALLSTAT(int, ptn, ptn_sz);
+    DYNALLSTAT(int, orbits, orbits_sz);
+    DYNALLSTAT(graph, g1, g1_sz); /// graphs
+    DYNALLSTAT(graph, g2, g2_sz);
+    //DYNALLSTAT(graph, cg, cg_sz);
+    statsblk stats;
+
+    static DEFAULTOPTIONS_GRAPH(options); /// options
+    options.defaultptn = false; /// color the vertices
+    //options.getcanon = true;
+
+    int n = 5;
+    int m = SETWORDSNEEDED(n); /// array of m setwords sufficients to hold n bits
+
+    nauty_check(WORDSIZE, n, m, NAUTYVERSIONID); /// check if everything is ok
+
+    DYNALLOC2(int, lab, lab_sz, n, m, "malloc");
+    DYNALLOC2(int, lab_cg1, lab_cg1_sz, n, m, "malloc");
+    DYNALLOC2(int, lab_cg2, lab_cg2_sz, n, m, "malloc");
+    DYNALLOC2(int, ptn, ptn_sz, n, m, "malloc");
+    DYNALLOC2(int, orbits, orbits_sz, n, m, "malloc");
+
+    /// set lab and ptn using colors
+    int *c = (int*)malloc(n * sizeof(int));
+    c[0] = 2;
+    c[1] = 0;
+    c[2] = 0;
+    c[3] = 0;
+    c[4] = 1;
+    setColoredPartition(n, 3, c, lab_cg1, ptn); /// to be written over
+    setColoredPartition(n, 3, c, lab_cg2, ptn);
+    setColoredPartition(n, 3, c, lab, ptn); /// backup original color partition
+
+    if (verbose)
+    {
+        std::cout << "labs_before_nauty:\n";
+        for (int i=0; i<n; ++i)
+            std::cout << " " << lab[i] << " " << lab_cg1[i] << " " << lab_cg2[i] << "\n";
+    }
+
+    DYNALLOC2(graph, g1, g1_sz, n, m, "malloc"); /// graphs
+    DYNALLOC2(graph, g2, g2_sz, n, m, "malloc");
+    //DYNALLOC2(graph, cg, cg_sz, n, m, "malloc");
+
+    EMPTYGRAPH(g1, n, m); /// clear graphs
+    EMPTYGRAPH(g2, n, m);
+
+    /// set up graphs
+    ADDONEEDGE(g1, 0, 1, m);
+    ADDONEEDGE(g1, 1, 2, m);
+    ADDONEEDGE(g1, 2, 3, m);
+    ADDONEEDGE(g1, 3, 4, m);
+
+    ADDONEEDGE(g2, 0, 3, m);
+    ADDONEEDGE(g2, 3, 1, m);
+    ADDONEEDGE(g2, 1, 2, m);
+    ADDONEEDGE(g2, 2, 4, m);
+
+    //// output original to s6 and g6
+    char *s = ntos6(g1,m,n);
+    std::ofstream s6File("test_fifth_order_dense_s6.dat");
+    s6File << s;
+    s6File.close();
+    std::ofstream g6File("test_fifth_order_dense_g6.dat");
+    s = ntog6(g1,m,n);
+    g6File << s;
+    g6File.close();
+
+    set *gj, *cgj;
+
+    if (verbose)
+    {
+        for (int j = 1; j < n; ++j)
+        {
+            gj = GRAPHROW(g1,j,m);
+            for (int i = 0; i < j; ++i)
+            {
+                if (ISELEMENT(gj,i))
+                    std::cout << "G1: Vertex " << j << " adjacent to vertex " << i << "\n";
+            }
+        }
+        for (int j = 1; j < n; ++j)
+        {
+            gj = GRAPHROW(g2,j,m);
+            for (int i = 0; i < j; ++i)
+            {
+                if (ISELEMENT(gj,i))
+                    std::cout << "G2: Vertex " << j << " adjacent to vertex " << i << "\n";
+            }
+        }
+    }
+
+    densenauty(g1, lab_cg1, ptn, orbits, &options, &stats, m, n, /*cg*/ nullptr);
+    densenauty(g2, lab_cg2, ptn, orbits, &options, &stats, m, n, /*cg*/ nullptr);
+
+    if (verbose)
+    {
+        std::cout << "lab_after_nauty:\n";
+        for (int i=0; i<n; ++i)
+            std::cout << " " << lab[i] << " " << lab_cg1[i] << " " << lab_cg2[i] << "\n";
+    }
+
+    GraphContainer MyContainer1(n, m, g1);
+    MyContainer1.ColoredCanonicalRelabeling(lab, lab_cg1, 0, 4, true);
+    GraphContainer MyContainer2(n, m, g2);
+    MyContainer2.ColoredCanonicalRelabeling(lab, lab_cg2, 0, 4, true);
+
+    DYNFREE(lab,lab_sz);
+    DYNFREE(lab_cg1,lab_cg1_sz);
+    DYNFREE(lab_cg2,lab_cg2_sz);
+    DYNFREE(ptn,ptn_sz);
+    DYNFREE(orbits,orbits_sz);
+    DYNFREE(g1,g1_sz);
+    DYNFREE(g2,g2_sz);
+    //DYNFREE(cg,cg_sz);
+
+    free(c);
+
+}
+
+void TestDenseNautyColoredNew(bool verbose=false)
+{
+    DYNALLSTAT(int, lab, lab_sz);
+    DYNALLSTAT(int, lab_cg1, lab_cg1_sz);
+    DYNALLSTAT(int, lab_cg2, lab_cg2_sz);
+    DYNALLSTAT(int, ptn, ptn_sz);
+    DYNALLSTAT(int, orbits, orbits_sz);
+    DYNALLSTAT(graph, g1, g1_sz); /// graphs
+    DYNALLSTAT(graph, g2, g2_sz);
+    //DYNALLSTAT(graph, cg, cg_sz);
+    statsblk stats;
+
+    static DEFAULTOPTIONS_GRAPH(options); /// options
+    options.defaultptn = false; /// color the vertices
+    //options.getcanon = true;
+
+    int n = 4;
+    int m = SETWORDSNEEDED(n); /// array of m setwords sufficients to hold n bits
+
+    nauty_check(WORDSIZE, n, m, NAUTYVERSIONID); /// check if everything is ok
+
+    DYNALLOC2(int, lab, lab_sz, n, m, "malloc");
+    DYNALLOC2(int, lab_cg1, lab_cg1_sz, n, m, "malloc");
+    DYNALLOC2(int, lab_cg2, lab_cg2_sz, n, m, "malloc");
+    DYNALLOC2(int, ptn, ptn_sz, n, m, "malloc");
+    DYNALLOC2(int, orbits, orbits_sz, n, m, "malloc");
+
+    /// set lab and ptn using colors
+    int *c = (int*)malloc(n * sizeof(int));
+    c[0] = 0;
+    c[1] = 1;
+    c[2] = 2;
+    c[3] = 2;
+    setColoredPartition(n, 3, c, lab_cg1, ptn); /// to be written over
+    setColoredPartition(n, 3, c, lab_cg2, ptn);
+    setColoredPartition(n, 3, c, lab, ptn); /// backup original color partition
+
+    if (verbose)
+    {
+        std::cout << "labs_before_nauty:\n";
+        for (int i=0; i<n; ++i)
+            std::cout << " " << lab[i] << " " << lab_cg1[i] << " " << lab_cg2[i] << "\n";
+    }
+
+    DYNALLOC2(graph, g1, g1_sz, n, m, "malloc"); /// graphs
+    DYNALLOC2(graph, g2, g2_sz, n, m, "malloc");
+    //DYNALLOC2(graph, cg, cg_sz, n, m, "malloc");
+
+    EMPTYGRAPH(g1, n, m); /// clear graphs
+    EMPTYGRAPH(g2, n, m);
+
+    /// set up graphs (plaquettes)
+    ADDONEEDGE(g1, 0, 1, m);
+    ADDONEEDGE(g1, 1, 2, m);
+    ADDONEEDGE(g1, 2, 3, m);
+    ADDONEEDGE(g1, 0, 3, m);
+
+    ADDONEEDGE(g2, 0, 1, m);
+    ADDONEEDGE(g2, 0, 2, m);
+    ADDONEEDGE(g2, 2, 3, m);
+    ADDONEEDGE(g2, 1, 3, m);
+
+    set *gj, *cgj;
+
+    if (verbose)
+    {
+        for (int j = 1; j < n; ++j)
+        {
+            gj = GRAPHROW(g1,j,m);
+            for (int i = 0; i < j; ++i)
+            {
+                if (ISELEMENT(gj,i))
+                    std::cout << "G1: Vertex " << j << " adjacent to vertex " << i << "\n";
+            }
+        }
+        for (int j = 1; j < n; ++j)
+        {
+            gj = GRAPHROW(g2,j,m);
+            for (int i = 0; i < j; ++i)
+            {
+                if (ISELEMENT(gj,i))
+                    std::cout << "G2: Vertex " << j << " adjacent to vertex " << i << "\n";
+            }
+        }
+    }
+
+    densenauty(g1, lab_cg1, ptn, orbits, &options, &stats, m, n, /*cg*/ nullptr);
+    densenauty(g2, lab_cg2, ptn, orbits, &options, &stats, m, n, /*cg*/ nullptr);
+
+    if (verbose)
+    {
+        std::cout << "lab_after_nauty:\n";
+        for (int i=0; i<n; ++i)
+            std::cout << " " << lab[i] << " " << lab_cg1[i] << " " << lab_cg2[i] << "\n";
+    }
+
+    GraphContainer MyContainer1(n, m, g1);
+    MyContainer1.ColoredCanonicalRelabeling(lab, lab_cg1, 0, 1, true);
+    GraphContainer MyContainer2(n, m, g2);
+    MyContainer2.ColoredCanonicalRelabeling(lab, lab_cg2, 0, 1, true);
+
+    DYNFREE(lab,lab_sz);
+    DYNFREE(lab_cg1,lab_cg1_sz);
+    DYNFREE(lab_cg2,lab_cg2_sz);
+    DYNFREE(ptn,ptn_sz);
+    DYNFREE(orbits,orbits_sz);
+    DYNFREE(g1,g1_sz);
+    DYNFREE(g2,g2_sz);
+
+    free(c);
 
 }
 
@@ -660,8 +1072,8 @@ void TestVertexEmbedListFunctions()
     std::vector<VertexEmbedList> lists;
     lists.push_back(tempList);
 
-    if (GraphEmbedder::IsDuplicate(lists, tempList))
-        std::cout << "ERROR: GraphEmbedder found a duplicate!\n";
+    //if (GraphEmbedder::IsDuplicate(lists, tempList))
+        //std::cout << "ERROR: GraphEmbedder found a duplicate!\n";
 
     VertexEmbedList tempList2(MaxInteractionLength::NearestNeighbor);
     tempList2.AddVertexEmbed(VertexEmbed{1,24});
@@ -669,8 +1081,8 @@ void TestVertexEmbedListFunctions()
     tempList2.AddVertexEmbed(VertexEmbed{4,55});
     tempList2.AddVertexEmbed(VertexEmbed{3,45});
 
-    if (!GraphEmbedder::IsDuplicate(lists, tempList2))
-        std::cout << "ERROR: GraphEmbedder did not find a duplicate!\n";
+    //if (!GraphEmbedder::IsDuplicate(lists, tempList2))
+        //std::cout << "ERROR: GraphEmbedder did not find a duplicate!\n";
 
     lists.push_back(tempList2);
 
@@ -687,7 +1099,7 @@ void TestVertexEmbedListFunctions()
     std::cout << "BEFORE_ERASING: " << lists.size() << "\n";
     for (auto v: lists)
         std::cout << v << "\n";
-    GraphEmbedder::TestEraseWrongSizes(lists, 4);
+    //GraphEmbedder::TestEraseWrongSizes(lists, 4);
     std::cout << "AFTER_ERASING: " << lists.size() << "\n";
     for (auto v: lists)
         std::cout << v << "\n";
@@ -721,11 +1133,85 @@ void Combinations(const std::vector<int>& arr /* input array */, std::vector<int
     }
 }
 
+void TestSetVertexEmbed(const VertexEmbed& v)
+{
+    std::vector<VertexEmbed> list(2, VertexEmbed{-1,-1});
+    std::cout << "BEFORE: " << list[0] << "\n";
+    list[0] = v;
+    std::cout << "AFTER: " << list[0] << "\n";
+}
+
+void TestSetVector()
+{
+    std::vector<int> result;
+    std::vector<int> temp{11,22,33};
+    result = temp;
+    std::cout << "Result_Size: " << result.size() << "\n";
+    result[0] = 12;
+    std::cout << "RESULT CONTAINS: ";
+    for (auto v: result)
+        std::cout << v << " ";
+    std::cout << "\n";
+    std::cout << "TEMP CONTAINS: ";
+    for (auto v: temp)
+        std::cout << v << " ";
+    std::cout << "\n";
+}
+
+//void ComboUtil(std::vector<std::vector<int>>& ans, std::vector<int>& tmp, const std::vector<int>& set, int n, int left, int k);
+
+void ComboUtil(std::vector<std::vector<int>>& ans, std::vector<int>& tmp, const std::vector<int>& set, int n, int left, int k)
+{
+    if (k==0)
+    {
+        std::cout << "PUSHING BACK: ";
+        for (int i=0; i<tmp.size(); ++i)
+            std::cout << tmp[i] << " ";
+        std::cout << "\n";
+        ans.push_back(tmp);
+        return;
+    }
+
+    for (int i=0; i<n; ++i)
+    {
+        if (std::find(tmp.begin(), tmp.end(), set[i])==tmp.end())
+        {
+        tmp.push_back(set[i]);
+        ComboUtil(ans, tmp, set, n, i+1, k-1);
+
+        //std::cout << "POPPING WITH " << k << " and " << i << "\n";
+        tmp.pop_back();
+        }
+    }
+
+}
+
+void MakeCombos()
+{
+    std::vector<std::vector<int>> ans;
+    std::vector<int> tmp;
+    std::vector<int> set{1,2,3,4,5,6};
+    ComboUtil(ans, tmp, set, set.size(), 0, 3);
+    /// print out combos
+
+}
+
 int main(int argc, char *argv[])
 {
 
     //TestRepeats();
-    TestVertexEmbedListFunctions();
+    //TestVertexEmbedListFunctions();
+    //VertexEmbed v{3,35};
+    //TestSetVertexEmbed(v);
+    //MakeCombos();
+    //TestMakePairs();
+    //TestSetVector();
+    TestDenseNautyColoredNew(true);
+    return 0;
+    TestDenseNautyColored(true);
+    TestSparseNautyColored(true);
+    OutputGraphTestsNauty();
+    return 0;
     /*std::vector<int> arr{0,1,2,3,4,5};
     std::vector<int> data(3,-1);
     Combinations(arr, data, 0);

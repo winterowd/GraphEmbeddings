@@ -55,7 +55,13 @@ public:
 
    GraphContainer(int n, int m, graph *g);
 
-   void SetGraphFromNauty(graph *g); /// adjacency matrix, bond counts, and vertex order counts from dense nauty graph (assumes N and MWords set!)
+   void SetGraphFromDenseNauty(graph *g); /// adjacency matrix, bond counts, and vertex order counts from dense nauty graph (assumes N and MWords set!)
+
+   void GetDenseNautyFromGraph(graph *g); /// adjacency matrix to dense nauty graph
+
+   void ColoredCanonicalRelabeling(int *labOld, int *labNew, int v1, int v2, bool verbose=false);
+
+   void RelabelVertices(const std::vector<int>& newLabels);
 
    bool GetElementAdjacencyMatrix(unsigned int v1, unsigned v2) const;
 
@@ -74,5 +80,8 @@ public:
    int GetColM(int index) const { return this->ColM[index]; } /// TODO: add checks
 
 };
+
+bool operator==(const GraphContainer& lhs, const GraphContainer& rhs); /// comparison operator (TO BE IMPLEMENTED: COMPARES THE ADJACENCY MATRICES IF N AND L ARE EQUAL)
+bool operator!=(const GraphContainer& lhs, const GraphContainer& rhs);
 
 #endif // GRAPHCONTAINER_H
