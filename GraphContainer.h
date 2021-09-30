@@ -19,6 +19,12 @@ private:
 
     int L; // number of bonds
 
+    bool StoreRooted; /// flag to store rooted vertices
+
+    int NbrRooted; /// number of rooted vertices
+
+    std::vector<int> RootedVertices; /// container for storing labels of rooted vertices
+
     int NTimesNMinusOneDiv2; /// precompute N(N-1)2
 
     std::vector<int> VertexOrder; /// vector of vertex orders
@@ -51,15 +57,15 @@ public: /// later make this private?
 
 public:
 
-   GraphContainer(int n, int m); /// constructor with no graph (need a further call to set graph)
+   GraphContainer(int n, int m, bool storeRooted=false, int nbrRooted=1); /// constructor with no graph (need a further call to set graph)
 
-   GraphContainer(int n, int m, graph *g);
+   GraphContainer(int n, int m, graph *g, bool storeRooted=false, int nbrRooted=1);
 
    void SetGraphFromDenseNauty(graph *g); /// adjacency matrix, bond counts, and vertex order counts from dense nauty graph (assumes N and MWords set!)
 
    void GetDenseNautyFromGraph(graph *g); /// adjacency matrix to dense nauty graph
 
-   void ColoredCanonicalRelabeling(int *labOld, int *labNew, int v1, int v2, bool verbose=false);
+   void ColoredCanonicalRelabeling(int *labCanon, int v1, int v2=-1, bool verbose=false);
 
    void RelabelVertices(const std::vector<int>& newLabels);
 
@@ -67,7 +73,17 @@ public:
 
    bool GetElementAdjacencyMatrix(unsigned index) const;
 
+   int ComputeCurrentKey() const;
+
+   bool StoringRooted() const { return this->StoreRooted; }
+
+   int GetNbrRooted() const;
+
    int GetVertexOrder(unsigned int v) const; /// get the order of a given vertex v
+
+   void SetRootedVertex(int index, int label);
+
+   int GetRootedVertex(int index) const;
 
    int GetN() const { return this->N; }
 
@@ -81,7 +97,8 @@ public:
 
 };
 
-bool operator==(const GraphContainer& lhs, const GraphContainer& rhs); /// comparison operator (TO BE IMPLEMENTED: COMPARES THE ADJACENCY MATRICES IF N AND L ARE EQUAL)
+bool operator==(const GraphContainer& lhs, const GraphContainer& rhs); /// comparison operator
 bool operator!=(const GraphContainer& lhs, const GraphContainer& rhs);
+bool operator<(const GraphContainer& lhs, const GraphContainer& rhs);
 
 #endif // GRAPHCONTAINER_H

@@ -558,6 +558,168 @@ void TestSparseNautyColored(bool verbose=false)
 
 }
 
+/// test routine for dense nauty canonicalization
+void TestDenseNautyColoredCanon(bool verbose=false)
+{
+    DYNALLSTAT(graph, g, g_sz);
+    DYNALLSTAT(graph, cg1, cg1_sz);
+    DYNALLSTAT(graph, cg2, cg2_sz);
+    DYNALLSTAT(graph, cg3, cg3_sz);
+    DYNALLSTAT(graph, cg4, cg4_sz);
+    DYNALLSTAT(int, lab1, lab1_sz);
+    DYNALLSTAT(int, lab2, lab2_sz);
+    DYNALLSTAT(int, lab3, lab3_sz);
+    DYNALLSTAT(int, lab4, lab4_sz);
+    DYNALLSTAT(int, ptn, ptn_sz);
+    DYNALLSTAT(int, orbits, orbits_sz);
+    statsblk stats;
+
+    static DEFAULTOPTIONS_GRAPH(options); /// options
+    options.defaultptn = false; /// color the vertices
+    options.getcanon = true; /// get canonical
+
+    int n = 5;
+    int m = SETWORDSNEEDED(n); /// array of m setwords sufficients to hold n bits
+
+    nauty_check(WORDSIZE, n, m, NAUTYVERSIONID); /// check if everything is ok
+
+    DYNALLOC2(graph, g, g_sz, n, m, "malloc");
+    DYNALLOC2(graph, cg1, cg1_sz, n, m, "malloc");
+    DYNALLOC2(graph, cg2, cg2_sz, n, m, "malloc");
+    DYNALLOC2(graph, cg3, cg3_sz, n, m, "malloc");
+    DYNALLOC2(graph, cg4, cg4_sz, n, m, "malloc");
+    DYNALLOC2(int, lab1, lab1_sz, n, m, "malloc");
+    DYNALLOC2(int, lab2, lab2_sz, n, m, "malloc");
+    DYNALLOC2(int, lab3, lab3_sz, n, m, "malloc");
+    DYNALLOC2(int, lab4, lab4_sz, n, m, "malloc");
+    DYNALLOC2(int, ptn, ptn_sz, n, m, "malloc");
+    DYNALLOC2(int, orbits, orbits_sz, n, m, "malloc");
+
+    ptn[0] = 0; /// color 0
+    ptn[1] = 0; /// color 1
+    ptn[2] = 1; /// color 2
+    ptn[3] = 1;
+    ptn[4] = 0;
+
+    lab1[0] = 1; /// vertex 1 is given color 0
+    lab1[1] = 4; /// vertex 4 is given color 1
+    lab1[2] = 2; /// all other vertices given color 2
+    lab1[3] = 3;
+    lab1[4] = 0;
+
+    lab2[0] = 4; /// vertex 4 is given color 0
+    lab2[1] = 1; /// vertex 1 is given color 1
+    lab2[2] = 2; /// all other vertices given color 2
+    lab2[3] = 3;
+    lab2[4] = 0;
+
+    lab3[0] = 2; /// vertex 2 is given color 0
+    lab3[1] = 0; /// vertex 0 is given color 1
+    lab3[2] = 1; /// all other vertices given color 2
+    lab3[3] = 3;
+    lab3[4] = 4;
+
+    lab4[0] = 2; /// vertex 4 is given color 0
+    lab4[1] = 3; /// vertex 1 is given color 1
+    lab4[2] = 0; /// all other vertices given color 2
+    lab4[3] = 1;
+    lab4[4] = 4;
+
+    EMPTYGRAPH(g, n, m); /// clear graph
+
+    /// set up graph
+    ADDONEEDGE(g, 0, 1, m);
+    ADDONEEDGE(g, 0, 2, m);
+    ADDONEEDGE(g, 2, 3, m);
+    ADDONEEDGE(g, 3, 1, m);
+    ADDONEEDGE(g, 1, 4, m);
+
+    set *gj;
+
+    if (verbose)
+    {
+        for (int j = 1; j < n; ++j)
+        {
+            gj = GRAPHROW(g,j,m);
+            for (int i = 0; i < j; ++i)
+            {
+                if (ISELEMENT(gj,i))
+                    std::cout << "G: Vertex " << j << " connected to vertex " << i << "\n";
+            }
+        }
+    }
+
+    densenauty(g, lab1, ptn, orbits, &options, &stats, m, n, cg1);
+    densenauty(g, lab2, ptn, orbits, &options, &stats, m, n, cg2);
+    densenauty(g, lab3, ptn, orbits, &options, &stats, m, n, cg3);
+    densenauty(g, lab4, ptn, orbits, &options, &stats, m, n, cg4);
+
+    for (int i=0; i<n; ++i)
+        std::cout << "lab1: vertex " << lab1[i] << " maps to vertex " << i << "\n";
+
+    for (int i=0; i<n; ++i)
+        std::cout << "lab2: vertex " << lab2[i] << " maps to vertex " << i << "\n";
+
+    for (int i=0; i<n; ++i)
+        std::cout << "lab3: vertex " << lab3[i] << " maps to vertex " << i << "\n";
+
+    for (int i=0; i<n; ++i)
+        std::cout << "lab4: vertex " << lab4[i] << " maps to vertex " << i << "\n";
+
+    if (verbose)
+    {
+        for (int j = 1; j < n; ++j)
+        {
+            gj = GRAPHROW(cg1,j,m);
+            for (int i = 0; i < j; ++i)
+            {
+                if (ISELEMENT(gj,i))
+                    std::cout << "CG1: Vertex " << j << " connected to vertex " << i << "\n";
+            }
+        }
+        for (int j = 1; j < n; ++j)
+        {
+            gj = GRAPHROW(cg2,j,m);
+            for (int i = 0; i < j; ++i)
+            {
+                if (ISELEMENT(gj,i))
+                    std::cout << "CG2: Vertex " << j << " connected to vertex " << i << "\n";
+            }
+        }
+        for (int j = 1; j < n; ++j)
+        {
+            gj = GRAPHROW(cg3,j,m);
+            for (int i = 0; i < j; ++i)
+            {
+                if (ISELEMENT(gj,i))
+                    std::cout << "CG3: Vertex " << j << " connected to vertex " << i << "\n";
+            }
+        }
+        for (int j = 1; j < n; ++j)
+        {
+            gj = GRAPHROW(cg4,j,m);
+            for (int i = 0; i < j; ++i)
+            {
+                if (ISELEMENT(gj,i))
+                    std::cout << "CG4: Vertex " << j << " connected to vertex " << i << "\n";
+            }
+        }
+    }
+
+    DYNFREE(lab1,lab1_sz);
+    DYNFREE(lab2,lab2_sz);
+    DYNFREE(lab3,lab3_sz);
+    DYNFREE(lab4,lab4_sz);
+    DYNFREE(ptn,ptn_sz);
+    DYNFREE(orbits,orbits_sz);
+    DYNFREE(g,g_sz);
+    DYNFREE(cg1,cg1_sz);
+    DYNFREE(cg2,cg2_sz);
+    DYNFREE(cg3,cg3_sz);
+    DYNFREE(cg4,cg4_sz);
+
+}
+
 /// test densenauty for colored graphs
 /// set up fifth order graph x---o---o---o---|_| (vertex labels (l to r) 0 1 2 3 4)
 /// output s6 and g6 labels of original and canonical form
@@ -570,12 +732,13 @@ void TestDenseNautyColored(bool verbose=false)
     DYNALLSTAT(int, orbits, orbits_sz);
     DYNALLSTAT(graph, g1, g1_sz); /// graphs
     DYNALLSTAT(graph, g2, g2_sz);
-    //DYNALLSTAT(graph, cg, cg_sz);
+    DYNALLSTAT(graph, cg1, cg1_sz);
+    DYNALLSTAT(graph, cg2, cg2_sz);
     statsblk stats;
 
     static DEFAULTOPTIONS_GRAPH(options); /// options
     options.defaultptn = false; /// color the vertices
-    //options.getcanon = true;
+    options.getcanon = true;
 
     int n = 5;
     int m = SETWORDSNEEDED(n); /// array of m setwords sufficients to hold n bits
@@ -590,10 +753,10 @@ void TestDenseNautyColored(bool verbose=false)
 
     /// set lab and ptn using colors
     int *c = (int*)malloc(n * sizeof(int));
-    c[0] = 2;
-    c[1] = 0;
-    c[2] = 0;
-    c[3] = 0;
+    c[0] = 0;
+    c[1] = 2;
+    c[2] = 2;
+    c[3] = 2;
     c[4] = 1;
     setColoredPartition(n, 3, c, lab_cg1, ptn); /// to be written over
     setColoredPartition(n, 3, c, lab_cg2, ptn);
@@ -603,12 +766,13 @@ void TestDenseNautyColored(bool verbose=false)
     {
         std::cout << "labs_before_nauty:\n";
         for (int i=0; i<n; ++i)
-            std::cout << " " << lab[i] << " " << lab_cg1[i] << " " << lab_cg2[i] << "\n";
+            std::cout << lab[i] << " " << lab_cg1[i] << " " << lab_cg2[i] << "\n";
     }
 
     DYNALLOC2(graph, g1, g1_sz, n, m, "malloc"); /// graphs
     DYNALLOC2(graph, g2, g2_sz, n, m, "malloc");
-    //DYNALLOC2(graph, cg, cg_sz, n, m, "malloc");
+    DYNALLOC2(graph, cg1, cg1_sz, n, m, "malloc");
+    DYNALLOC2(graph, cg2, cg2_sz, n, m, "malloc");
 
     EMPTYGRAPH(g1, n, m); /// clear graphs
     EMPTYGRAPH(g2, n, m);
@@ -658,20 +822,37 @@ void TestDenseNautyColored(bool verbose=false)
         }
     }
 
-    densenauty(g1, lab_cg1, ptn, orbits, &options, &stats, m, n, /*cg*/ nullptr);
-    densenauty(g2, lab_cg2, ptn, orbits, &options, &stats, m, n, /*cg*/ nullptr);
+    densenauty(g1, lab_cg1, ptn, orbits, &options, &stats, m, n, cg1);
+    densenauty(g2, lab_cg2, ptn, orbits, &options, &stats, m, n, cg2);
 
     if (verbose)
     {
         std::cout << "lab_after_nauty:\n";
         for (int i=0; i<n; ++i)
-            std::cout << " " << lab[i] << " " << lab_cg1[i] << " " << lab_cg2[i] << "\n";
+            std::cout << lab[i] << " " << lab_cg1[i] << " " << lab_cg2[i] << "\n";
     }
 
-    GraphContainer MyContainer1(n, m, g1);
-    MyContainer1.ColoredCanonicalRelabeling(lab, lab_cg1, 0, 4, true);
-    GraphContainer MyContainer2(n, m, g2);
-    MyContainer2.ColoredCanonicalRelabeling(lab, lab_cg2, 0, 4, true);
+    if (verbose)
+    {
+        for (int j = 1; j < n; ++j)
+        {
+            gj = GRAPHROW(cg1,j,m);
+            for (int i = 0; i < j; ++i)
+            {
+                if (ISELEMENT(gj,i))
+                    std::cout << "CG1: Vertex " << j << " adjacent to vertex " << i << "\n";
+            }
+        }
+        for (int j = 1; j < n; ++j)
+        {
+            gj = GRAPHROW(cg2,j,m);
+            for (int i = 0; i < j; ++i)
+            {
+                if (ISELEMENT(gj,i))
+                    std::cout << "CG2: Vertex " << j << " adjacent to vertex " << i << "\n";
+            }
+        }
+    }
 
     DYNFREE(lab,lab_sz);
     DYNFREE(lab_cg1,lab_cg1_sz);
@@ -680,7 +861,8 @@ void TestDenseNautyColored(bool verbose=false)
     DYNFREE(orbits,orbits_sz);
     DYNFREE(g1,g1_sz);
     DYNFREE(g2,g2_sz);
-    //DYNFREE(cg,cg_sz);
+    DYNFREE(cg1,cg1_sz);
+    DYNFREE(cg2,cg2_sz);
 
     free(c);
 
@@ -781,11 +963,6 @@ void TestDenseNautyColoredNew(bool verbose=false)
         for (int i=0; i<n; ++i)
             std::cout << " " << lab[i] << " " << lab_cg1[i] << " " << lab_cg2[i] << "\n";
     }
-
-    GraphContainer MyContainer1(n, m, g1);
-    MyContainer1.ColoredCanonicalRelabeling(lab, lab_cg1, 0, 1, true);
-    GraphContainer MyContainer2(n, m, g2);
-    MyContainer2.ColoredCanonicalRelabeling(lab, lab_cg2, 0, 1, true);
 
     DYNFREE(lab,lab_sz);
     DYNFREE(lab_cg1,lab_cg1_sz);
@@ -1206,11 +1383,8 @@ int main(int argc, char *argv[])
     //MakeCombos();
     //TestMakePairs();
     //TestSetVector();
-    TestDenseNautyColoredNew(true);
-    return 0;
-    TestDenseNautyColored(true);
-    TestSparseNautyColored(true);
-    OutputGraphTestsNauty();
+
+    TestDenseNautyColoredCanon(true);
     return 0;
     /*std::vector<int> arr{0,1,2,3,4,5};
     std::vector<int> data(3,-1);

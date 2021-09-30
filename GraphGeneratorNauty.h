@@ -4,6 +4,9 @@
 #include <iostream>
 #include <string>
 #include <fstream>
+#include <stdio.h>
+#include <chrono>
+#include <algorithm>
 
 //#include "gtools.h"
 #include "nauty.h"
@@ -58,11 +61,17 @@ private:
 
     void GenerateUniqueCombinationsWithNoDuplicates(std::vector<int>& tmp, const std::vector<int>& vertices, int k, bool verbose=false); /// generate combinations of integers contained in vertices with no repeats
 
-    void GenerateTwoRootedFixedOrder(int n, std::string inputFilename, bool verbose=false); /// generate rooted graphs from unrooted graphs of a given order
+    void GenerateTwoRootedFixedOrder(int n, std::string inputFilename, bool verbose=false, bool outputSorted=false); /// generate rooted graphs from unrooted graphs of a given order
+
+    void GenerateTwoRootedFixedOrderIterative(int n, std::string inputFilename, bool verbose=false, bool outputSorted=false); /// more efficient algorithm which produces (hopefully) the same output as previous routine
 
     void ProduceNewLabelingGivenRootedVertices(const std::vector<int>& rooted, std::vector<int>& newLabeling, bool verbose=false); /// relabel vertices such that vertices of colors 0 and 1 are given labels 0 and 1, respectively
 
     void SetColoredPartition(int* c, int* lab, int* ptn); /// set up color parition of vertices
+
+    void SetVertexColors(int *c, const std::vector<int>& rootedVertices, bool verbose=false); /// set the vertex colors for a given set of rooted vertices
+
+    /// debugging routine to compare to lists
 
 public:
     GraphGeneratorNauty(int argc, char *argv[]); /// constructor
