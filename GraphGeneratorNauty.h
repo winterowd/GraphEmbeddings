@@ -15,9 +15,9 @@
 class GraphGeneratorParametersNauty /// graph generator parameters (get from user using Boost program options)
 {
 private:
-    unsigned int N; /// max order of vertices
+    unsigned int N; /// order of graph
 
-    bool Disconnected; /// do we allow disconnected diagrams
+    unsigned int L; /// number of bonds (FIXED)
 
     bool TwoRooted; /// do we generate two-rooted graphs from each connected graph?
 
@@ -32,7 +32,7 @@ public:
     /***** accessors *****/
     unsigned int GetN() const { return this->N; }
 
-    bool AllowDisconnected() const { return this->Disconnected; }
+    unsigned int GetL() const { return this->L; }
 
     bool GenerateTwoRooted() const { return this->TwoRooted; }
 
@@ -48,7 +48,9 @@ private:
 
     FILE* fp; /// file pointer for calling nauty routine readg
 
-    int N; /// current order (for reading graph)
+    int N; /// graph order
+
+    int L; /// number of bonds (this is fixed)
 
     int MWords; /// nauty result from SETWORDSNEEDED(n)
 
@@ -61,9 +63,9 @@ private:
 
     void GenerateUniqueCombinationsWithNoDuplicates(std::vector<int>& tmp, const std::vector<int>& vertices, int k, bool verbose=false); /// generate combinations of integers contained in vertices with no repeats
 
-    void GenerateTwoRootedFixedOrder(int n, std::string inputFilename, bool verbose=false, bool outputSorted=false); /// generate rooted graphs from unrooted graphs of a given order
+    void GenerateTwoRootedFixedOrder(std::string inputFilename, bool verbose=false, bool outputSorted=false); /// generate rooted graphs from unrooted graphs of a given order
 
-    void GenerateTwoRootedFixedOrderIterative(int n, std::string inputFilename, bool verbose=false, bool outputSorted=false); /// more efficient algorithm which produces (hopefully) the same output as previous routine
+    void GenerateTwoRootedFixedOrderIterative(std::string inputFilename, bool verbose=false, bool outputSorted=false); /// more efficient algorithm which produces (hopefully) the same output as previous routine
 
     void ProduceNewLabelingGivenRootedVertices(const std::vector<int>& rooted, std::vector<int>& newLabeling, bool verbose=false); /// relabel vertices such that vertices of colors 0 and 1 are given labels 0 and 1, respectively
 
@@ -71,12 +73,14 @@ private:
 
     void SetVertexColors(int *c, const std::vector<int>& rootedVertices, bool verbose=false); /// set the vertex colors for a given set of rooted vertices
 
+    bool AreGraphParametersOK();
+
     /// debugging routine to compare to lists
 
 public:
     GraphGeneratorNauty(int argc, char *argv[]); /// constructor
 
-    void Generate(); /// TODO: have this call geng if we can unrooted graphs and have it call another generate if we want rooted graphs
+    void Generate(bool useIterativeRooted=true); /// interface for generating graphs
 
     void TestRelabeling(int n, std::string inputFilename); /// debugging routine
 };

@@ -95,15 +95,7 @@ void GraphEmbedder::Embed()
 {
 
     DYNALLSTAT(graph, g, g_sz); /// declare graph
-    DYNALLSTAT(int,lab,lab_sz); /// declare labels
-    DYNALLSTAT(int,ptn,ptn_sz); /// declare pattern
-    DYNALLSTAT(int,orbits,orbits_sz); /// declare orbits
-    statsblk status; /// status
-
     DYNALLOC2(graph, g, g_sz, this->N, this->MWords, "malloc"); /// allocate graph
-    DYNALLOC2(int, lab, lab_sz, this->N, this->MWords, "malloc"); /// allocate labels
-    DYNALLOC2(int, ptn, ptn_sz, this->N, this->MWords, "malloc"); /// allocate pattern
-    DYNALLOC2(int, orbits, orbits_sz, this->N, this->MWords, "malloc"); /// allocate orbits
 
     /// output file for writing
     FILE *fpo = fopen(this->Parameters.GetOutputFilename().c_str(), "w");
@@ -117,25 +109,41 @@ void GraphEmbedder::Embed()
     int count = 0;
     while (1)
     {
-        graph *gtemp = this->GetNextGraph(g);
-        if (gtemp == NULL)
-            break;
+        int symmFactor; /// for rooted graphs
+        if (this->Parameters.EmbedCorrelator()) /// correlator?
+        {
+            char g6temp[MAX_G6_LENGTH];
+            int res = fscanf(this->fp, "%s %d\n", g6temp, &symmFactor); /// file format: g6string symm_factor
+
+            if (res == EOF) /// reached the end of file?
+                break;
+            if (res!=2) /// each line of file should be the same
+                throw std::invalid_argument("GraphEmbedder encountered line with wrong format!\n");
+
+            stringtograph(g6temp, g, this->MWords); /// convert string to dense nauty format
+        }
+        else /// unrooted graph
+        {
+            graph *gtemp = this->GetNextGraph(g);
+            if (gtemp == NULL)
+                break;
+        }
         count++;
-
-        this->CallDenseNauty(g, lab, ptn, orbits, status); /// call densenauty
-        writegroupsize(fpo,status.grpsize1,status.grpsize2); /// write group size (symmetry factor) to file
-
-        //std::cout << "GraphsFromFile read config " << count << "!\n";
+#ifdef DEBUG
+        std::cout << "Embed: Read config " << count << "!\n";
+#endif
         container.SetGraphFromDenseNauty(g); /// setup container from nauty dense format
+        if (this->N != container.GetN()) /// check order!
+            std::invalid_argument("Embed found that graph "+std::to_string(count)+" is not of order "+std::to_string(this->N)+"!\n");
 
-        this->ComputeEmbeddingNumbers(container, fpo);
+        if(this->Parameters.EmbedCorrelator())
+            this->ComputeEmbeddingNumbers(container, g, fpo, symmFactor); /// call with symmetry factor passed from file (colored canonicalization)
+        else
+            this->ComputeEmbeddingNumbers(container, g, fpo); /// compute symmetry factor in routine (uncolored canonicalization)
 
     }
 
     DYNFREE(g, g_sz); /// free graph
-    DYNFREE(lab, lab_sz); /// free labels
-    DYNFREE(ptn, ptn_sz); /// free pattern
-    DYNFREE(orbits, orbits_sz); /// free orbits
 
     fclose(fpo); /// close the file
 
@@ -499,9 +507,33 @@ void GraphEmbedder::TestEraseWrongSizes(std::vector<VertexEmbedList>& lists, int
 }
 
 /// compute embedding numbers over all combination of bonds \sum_i N^i_B = NB, where N^i_B is the number of bonds of type i (NN, NNN, 3N 4N) and NB is the total number of bonds
-void GraphEmbedder::ComputeEmbeddingNumbers(const GraphContainer& container, FILE *fpo)
+void GraphEmbedder::ComputeEmbeddingNumbers(const GraphContainer& container, graph *g, FILE *fpo, int symmFactor)
 {
+    if (symmFactor==-1 && this->Parameters.EmbedCorrelator())
+        throw std::invalid_argument("ComputeEmbeddingNumbers requires the symmetry factor which is read in from file when embedding correlators (rooted graphs)!\n");
+
     this->GetCombinationsOfBonds(container.GetL()); /// generate combos of bonds for the given graph
+
+    container.GetDenseNautyFromGraph(g); /// get dense nauty rep of graph
+    char *s = ntog6(g,this->MWords,this->N); /// convert to g6
+
+    statsblk status; /// status
+    if (!this->Parameters.EmbedCorrelator())
+    {
+        DYNALLSTAT(int,lab,lab_sz); /// declare labels
+        DYNALLSTAT(int,ptn,ptn_sz); /// declare pattern
+        DYNALLSTAT(int,orbits,orbits_sz); /// declare orbits
+
+        DYNALLOC2(int, lab, lab_sz, this->N, this->MWords, "malloc"); /// allocate labels
+        DYNALLOC2(int, ptn, ptn_sz, this->N, this->MWords, "malloc"); /// allocate pattern
+        DYNALLOC2(int, orbits, orbits_sz, this->N, this->MWords, "malloc"); /// allocate orbits
+
+        this->CallDenseNauty(g, lab, ptn, orbits, status); /// call densenauty
+
+        DYNFREE(lab, lab_sz); /// free labels
+        DYNFREE(ptn, ptn_sz); /// free pattern
+        DYNFREE(orbits, orbits_sz); /// free orbits
+    }
 
     for (int i=0; i<this->BondCombinations.size(); ++i)
     {
@@ -513,22 +545,31 @@ void GraphEmbedder::ComputeEmbeddingNumbers(const GraphContainer& container, FIL
 #endif
         auto count = this->ComputeEmbeddingNumberCombo(container, this->BondCombinations[i]);
 
-        for (int j=0; j<count.size(); ++j)
-            fprintf(fpo, " %d", count[j]); /// print the count of graphs
+        fprintf(fpo, "%.*s ", static_cast<int>(strlen(s)-1), s);
         for (int d=0; d<this->MaxDegreeNeighbor; ++d)
-            fprintf(fpo, " %d", this->BondCombinations[i][d]); /// print bond count
+            fprintf(fpo, "%d ", this->BondCombinations[i][d]);
+        fprintf(fpo, "%d ", count);
+        if (!this->Parameters.EmbedCorrelator())
+            writegroupsize(fpo,status.grpsize1,status.grpsize2); /// write group size (symmetry factor) to file
+        else
+            fprintf(fpo, "%d", symmFactor);
+        fprintf(fpo, "\n");
     }
-    fprintf(fpo, "\n");
+
 }
 
 /// compute embedding number for a graph (rooted or unrooted)
-std::vector<int> GraphEmbedder::ComputeEmbeddingNumberCombo(const GraphContainer& container, const std::vector<int> &bondCombo)
+int GraphEmbedder::ComputeEmbeddingNumberCombo(const GraphContainer& container, const std::vector<int> &bondCombo)
 {
+
     auto lists = CreateInitialVertexEmbedLists(container, bondCombo);
 
     if (this->Parameters.EmbedCorrelator() && lists.size()==0) /// empty list for correlator i.e. rooted vertices
     {
+#ifdef DEBUG
         std::cout << "COULD NOT EMBED ROOTED GRAPH! (ROOTED VERTICES CONNECTED BY A BOND BUT BOND NOT POSSIBLE)\n";
+#endif
+        return 0; /// return 0 (no point in entering loop as no embedding is possible)
     }
 
     int vertexCount = 2;
@@ -579,7 +620,15 @@ std::vector<int> GraphEmbedder::ComputeEmbeddingNumberCombo(const GraphContainer
 
                                         /// check if graph already in lists!
                                         if (!this->IsDuplicate(lists, temp))
+                                        {
                                             lists.push_back(temp);  /// add new list to END of lists
+#ifdef DEBUG
+                                            /// TODO: get coordinates of site corresponding to nnIndex
+                                            //std::vector<unsigned int> indices(this->Lattice->GetDim(), 0);
+                                            //this->Lattice->GetSiteCoordinates(nnIndex, indices);
+                                            //std::cout << "ADDED vertex " << *v << " adjacent to vertex " << lists[i].GetVertexEmbed(j).Number << " at site ";
+#endif
+                                        }
 
                                     } /// if consistent
                                 } /// if site free
@@ -598,33 +647,29 @@ std::vector<int> GraphEmbedder::ComputeEmbeddingNumberCombo(const GraphContainer
         /// check that all lists have appropriate number of elements
         lists.erase(std::remove_if(lists.begin(), lists.end(), [&vertexCount](const VertexEmbedList& v) { return v.GetSize()!=vertexCount; }), lists.end());
 
+        //std::cout << "ComputeEmbeddingNumberCombo: VertexLists contains " <<  lists.size() << " graphs of size " << vertexCount << "\n";
+
         if (lists.size()==0) /// check if anything left?
             break;
 
     } /// while
 
-    std::vector<int> result;
+    int result; /// TODO: why do we return a vector? Shouldn't we return scalar? Do not understand!!!!!!!
     if (this->Parameters.EmbedCorrelator())
     {
-        std::vector<int> temp(this->MaxDegreeNeighbor, 0);
-        for (int i=0; i<lists.size(); ++i)
-            temp[lists[i].GetCorrelatorDistanceAsIndex()]++;
-        result = temp;
+        result = lists.size();
     }
     else
     {
         int temp = 0;
         for (int i=0; i<lists.size(); ++i)
             temp += lists[i].GetNbrChoicesForFirstBond();
-        result.push_back(temp);
+        result = temp;
     }
 
 #ifdef DEBUG
     std::cout << "FOUND " << lists.size() << " embeddings for graph!\n";
-    std::cout << "THIS GIVES AN EMBEDDING NUMBER(S) OF:";
-    for (int i=0; i<result.size(); ++i)
-        std::cout << " " << result[0];
-    std::cout << "\n";
+    std::cout << "THIS GIVES AN EMBEDDING NUMBER OF: " << result << "\n";
 
     for (int i=0; i<lists.size(); ++i)
     {
@@ -644,7 +689,7 @@ std::vector<int> GraphEmbedder::ComputeEmbeddingNumberCombo(const GraphContainer
     }
 #endif
 
-    return result;
+   return result;
 }
 
 void GraphEmbedder::UpdateBondCounts(VertexEmbedList &List, const std::vector<int>& countsToBeAdded)
@@ -838,10 +883,10 @@ void GraphEmbedder::TestInitialRootedGraphList(std::string filename)
 }
 
 /// creates initial list of embedded vertices for rooted graphs
-/// NOTE: embedded vertices ALWAYS taken to be labeled 0 and 1! Convention specified in GraphGeneratorNauty
+/// NOTE: embedded vertices ALWAYS taken to be labeled 1 and 2 (0 and 1 in NAUTY convention)! Convention specified in GraphGeneratorNauty
 std::vector<VertexEmbedList> GraphEmbedder::CreateInitialVertexEmbedListsRooted(const GraphContainer& container, const std::vector<int> &bondCombo)
 {
-    std::vector<int> rootedVertices{0,1}; /// CONVENTION!
+    std::vector<int> rootedVertices{1,2}; /// CONVENTION!
     return this->CreateInitialVertexEmbedListsRootedFixed(container, bondCombo, rootedVertices);
 }
 
@@ -934,7 +979,6 @@ bool GraphEmbedderParametersNauty::ProcessCommandLine(int argc, char *argv[])
                 (",d", po::value<MaxInteractionLength>(&this->MaxEmbeddingLength)->default_value(MaxInteractionLength::NearestNeighbor), "MaxEmbeddingLength: NN NNN 3N or 4N (longer distances not yet supported!)")
                 (",c", po::value<bool>(&this->Correlator)->default_value(false), "Embed correlators (two-point functions)?")
                 (",m", po::value<MaxInteractionLength>(&this->CorrelatorLength)->default_value(MaxInteractionLength::NearestNeighbor), "CorrelatorLength: NN NNN 3N or 4N (longer distances not yet supported!)")
-                (",f", po::value<std::string>(&this->InputFilenameFixedVertices), "input filename containing fixed vertices") /// for debugging with Jonas
                 ;
 
         po::variables_map vm;

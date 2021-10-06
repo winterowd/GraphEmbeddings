@@ -14,56 +14,58 @@ namespace po = boost::program_options;
 GraphGeneratorNauty::GraphGeneratorNauty(int argc, char *argv[]) :
     Parameters(argc, argv),
     fp(NULL)
-{}
+{
+    this->N = this->Parameters.GetN();
+    this->L = this->Parameters.GetL();
+    if (this->N<=0 || this->L<=0)
+        throw std::invalid_argument("GraphGeneratorNauty requires N and L to be positive!\n");
+}
+
+bool GraphGeneratorNauty::AreGraphParametersOK()
+{
+    int maxOrderForNGivenL = this->L+1;
+    int minOrderForNGiveL = std::ceil(0.5*(1.+std::sqrt(1.+8*this->L)));
+
+    if (this->N < minOrderForNGiveL || this->N > maxOrderForNGivenL)
+        return false;
+    return true;
+}
 
 /// Set up geng argument list.  The 0-th argument is the command name. There must be a NULL at the end.
-void GraphGeneratorNauty::Generate()
+void GraphGeneratorNauty::Generate(bool useIterativeRooted)
 {
+
+    if (!this->AreGraphParametersOK()) /// check N and L
+    {
+        std::cout << "Generate no graphs for given number of vertices and bonds!\n";
+        return;
+    }
 
     std::vector<std::string> arguments;
 
     arguments.push_back("geng");
-    if (!this->Parameters.AllowDisconnected())
-        arguments.push_back("-c");
+    arguments.push_back("-c"); /// only connected graphs allowed
+    arguments.push_back(std::to_string(this->N)); /// order of graph
+    arguments.push_back(std::to_string(this->L)+":"+std::to_string(this->L)); /// number of bonds
 
-    for (int i=2; i<=this->Parameters.GetN(); ++i)
+    std::string filename = "graphs_g6_connected_N_"+std::to_string(this->N)+"_L_"+std::to_string(this->L)+".dat";
+    arguments.push_back(filename); /// output file
+
+    std::vector<char*> argv;
+    for (const auto& arg: arguments)
+        argv.push_back((char*)arg.data());
+    argv.push_back(nullptr);
+
+    /// call routine which reads in graphs in filename and then generates rooted graphs
+    if (this->Parameters.GenerateTwoRooted())
     {
-        arguments.push_back(std::to_string(i));
-
-        std::string filename = "graphs_g6_";
-        if (!this->Parameters.AllowDisconnected())
-            filename += "connected_";
-        filename += "order_"+std::to_string(i)+".dat";
-
-        arguments.push_back(filename);
-
-        std::vector<char*> argv;
-        for (const auto& arg: arguments)
-            argv.push_back((char*)arg.data());
-        argv.push_back(nullptr);
-
-        /// call routine which reads in graphs in filename and then generates rooted graphs
-        if (this->Parameters.GenerateTwoRooted())
-        {
-            /// compare speeds of routines to generate rooted graphs (debugging)
-            auto start = std::chrono::high_resolution_clock::now();
-            this->GenerateTwoRootedFixedOrder(i, filename, this->Parameters.IsVerbose(), true);
-            auto end = std::chrono::high_resolution_clock::now();
-            std::chrono::duration<double> s_int = end-start;
-            std::cout << "FIXED_ORDER: " << i << " " << s_int.count() << "s\n";
-            start = std::chrono::high_resolution_clock::now();
-            this->GenerateTwoRootedFixedOrderIterative(i, filename, this->Parameters.IsVerbose(), true);
-            end = std::chrono::high_resolution_clock::now();
-            s_int = end-start;
-            std::cout << "FIXED_ORDER_ITERATIVE: " << i << " " << s_int.count() << "s\n";
-        }
-        else /// otherwise generate connected graphs
-            GENG_MAIN(argv.size()-1,argv.data());
-
-        arguments.pop_back();
-        arguments.pop_back();
-
+        //if (useIterativeRooted)
+            this->GenerateTwoRootedFixedOrderIterative(filename, this->Parameters.IsVerbose(), true);
+        //else
+            this->GenerateTwoRootedFixedOrder(filename, this->Parameters.IsVerbose(), true);
     }
+    else /// otherwise generate connected graphs
+        GENG_MAIN(argv.size()-1,argv.data());
 
 }
 
@@ -134,6 +136,7 @@ void GraphGeneratorNauty::SetVertexColors(int *c, const std::vector<int>& rooted
 /// c: C-style array of N integers specifying the color of each vertex i.e. c_j gives the color of vertex labeled j (should be 0, 1, or 2)
 /// lab: C-style array of N integers specifying vertex labels
 /// ptn: C-style array of N integers specifying and partition of the vertex labels into colors
+/// TODO: add parameter for number of colors
 void GraphGeneratorNauty::SetColoredPartition(int* c, int* lab, int* ptn)
 {
     /* loop over all colors to fill it */
@@ -167,12 +170,11 @@ void GraphGeneratorNauty::SetColoredPartition(int* c, int* lab, int* ptn)
 /// inputFilename: name of the file containing the graphs in g6 format
 /// verbose: flag for verbosity
 /// outputSorted: sort output for comparison
-void GraphGeneratorNauty::GenerateTwoRootedFixedOrderIterative(int n, std::string inputFilename, bool verbose, bool outputSorted)
+void GraphGeneratorNauty::GenerateTwoRootedFixedOrderIterative(std::string inputFilename, bool verbose, bool outputSorted)
 {
     int countComparison = 0; /// for debugging number of comparisons
 
     /// set up auxiliary variables for NAUTY
-    this->N = n; /// set graph size
     this->MWords = SETWORDSNEEDED(this->N); /// set number of words
 
     static DEFAULTOPTIONS_GRAPH(options); /// options
@@ -188,19 +190,13 @@ void GraphGeneratorNauty::GenerateTwoRootedFixedOrderIterative(int n, std::strin
         throw std::invalid_argument("GenerateTwoRootedFixedOrder: Error opening "+inputFilename);
 
     //// output file stream for rooted graphs
-    std::string outputFilename = "test_iterative_graphs_g6_rooted_";
-    if (!this->Parameters.AllowDisconnected())
-        outputFilename += "connected_";
-    outputFilename += "order_"+std::to_string(this->N)+".dat";
+    std::string outputFilename = "test_iterative_graphs_g6_rooted_connected_N_"+std::to_string(this->N)+"_L_"+std::to_string(this->L)+".dat";
     FILE *fpg6 = fopen(outputFilename.c_str(), "w");
 
     FILE *fpg6sorted;
     if (outputSorted)
     {
-        std::string outputSortedFilename = "sorted_test_iterative_graphs_g6_rooted_";
-        if (!this->Parameters.AllowDisconnected())
-            outputSortedFilename += "connected_";
-        outputSortedFilename += "order_"+std::to_string(this->N)+".dat";
+        std::string outputSortedFilename = "sorted_test_iterative_graphs_g6_rooted_connected_N_"+std::to_string(this->N)+"_L_"+std::to_string(this->L)+".dat";
         fpg6sorted = fopen(outputSortedFilename.c_str(), "w");
     }
 
@@ -231,10 +227,20 @@ void GraphGeneratorNauty::GenerateTwoRootedFixedOrderIterative(int n, std::strin
         if (g1 == NULL)
             break;
         count++; /// increment counter
-
+#ifdef DEBUG
+        std::cout << "GenerateTwoRootedFixedOrderIterative: Read config " << count << "!\n";
+#endif
         std::vector<GraphContainer> rootedGraphList; /// holds the list of rooted graphs produced from a single connected graph (one line of file produced by geng)
 
         refContainer.SetGraphFromDenseNauty(g); /// setup container from nauty dense format
+
+        /// check bonds and order!
+        if (this->N != refContainer.GetN())
+            throw std::invalid_argument("GenerateTwoRootedFixedOrderIterative found graph "+std::to_string(count)+" from file "+inputFilename+" to have invalid N!\n");
+
+        if (this->L != refContainer.GetL())
+            throw std::invalid_argument("GenerateTwoRootedFixedOrderIterative found graph "+std::to_string(count)+" from file "+inputFilename+" to have invalid L!\n");
+
         int countComparisonIndividual = 0; /// number of comparisons to create all two-rooted graphs for each connected, simple graph produced by geng
         for (int i=0; i<this->N; ++i) /// loop over first vertex
         {
@@ -322,8 +328,7 @@ void GraphGeneratorNauty::GenerateTwoRootedFixedOrderIterative(int n, std::strin
                     /// output cg to file
                     char *s = ntog6(cg2,this->MWords,this->N);
                     fprintf(fpg6, "%.*s ", static_cast<int>(strlen(s)-1), s); /// g6 string to file without newline character
-                    if (!outputSorted)
-                        writegroupsize(fpg6,stats.grpsize1,stats.grpsize2); /// write group size (symmetry factor) to file
+                    writegroupsize(fpg6,stats.grpsize1,stats.grpsize2); /// write group size (symmetry factor) to file
                     fprintf(fpg6,"\n");
                 }
                 else
@@ -386,12 +391,11 @@ void GraphGeneratorNauty::GenerateTwoRootedFixedOrderIterative(int n, std::strin
 /// inputFilename: name of the file containing the graphs in g6 format
 /// verbose: flag for verbosity
 /// outputSorted: sort output for comparison
-void GraphGeneratorNauty::GenerateTwoRootedFixedOrder(int n, std::string inputFilename, bool verbose, bool outputSorted)
+void GraphGeneratorNauty::GenerateTwoRootedFixedOrder(std::string inputFilename, bool verbose, bool outputSorted)
 {
     int countComparison = 0; /// for debugging number of comparisons
 
     /// set up auxiliary variables for NAUTY
-    this->N = n; /// set graph size
     this->MWords = SETWORDSNEEDED(this->N); /// set number of words
 
     static DEFAULTOPTIONS_GRAPH(options); /// options
@@ -407,19 +411,13 @@ void GraphGeneratorNauty::GenerateTwoRootedFixedOrder(int n, std::string inputFi
         throw std::invalid_argument("GenerateTwoRootedFixedOrder: Error opening "+inputFilename);
 
     //// output file stream for rooted graphs
-    std::string outputFilename = "graphs_g6_rooted_";
-    if (!this->Parameters.AllowDisconnected())
-        outputFilename += "connected_";
-    outputFilename += "order_"+std::to_string(this->N)+".dat";
+    std::string outputFilename = "graphs_g6_rooted_connected_N_"+std::to_string(this->N)+"_L_"+std::to_string(this->L)+".dat";
     FILE *fpg6 = fopen(outputFilename.c_str(), "w");
 
     FILE *fpg6sorted;
     if (outputSorted)
     {
-        std::string outputSortedFilename = "sorted_graphs_g6_rooted_";
-        if (!this->Parameters.AllowDisconnected())
-            outputSortedFilename += "connected_";
-        outputSortedFilename += "order_"+std::to_string(this->N)+".dat";
+        std::string outputSortedFilename = "sorted_graphs_g6_rooted_connected_N_"+std::to_string(this->N)+"_L_"+std::to_string(this->L)+".dat";
         fpg6sorted = fopen(outputSortedFilename.c_str(), "w");
     }
 
@@ -451,10 +449,20 @@ void GraphGeneratorNauty::GenerateTwoRootedFixedOrder(int n, std::string inputFi
         if (g1 == NULL)
             break;
         count++; /// increment counter
-
+#ifdef DEBUG
+        std::cout << "GenerateTwoRootedFixedOrder: Read config " << count << "!\n";
+#endif
         std::vector<GraphContainer> rootedGraphList; /// holds the list of rooted graphs produced from a single connected graph (one line of file produced by geng)
 
         refContainer.SetGraphFromDenseNauty(g); /// setup container from nauty dense format
+
+        /// check bonds and order!
+        if (this->N != refContainer.GetN())
+            throw std::invalid_argument("GenerateTwoRootedFixedOrder found graph "+std::to_string(count)+" from file "+inputFilename+" to have invalid N!\n");
+
+        if (this->L != refContainer.GetL())
+            throw std::invalid_argument("GenerateTwoRootedFixedOrder found graph "+std::to_string(count)+" from file "+inputFilename+" to have invalid L!\n");
+
         int countComparisonIndividual = 0; /// number of comparisons to create all two-rooted graphs for each connected, simple graph produced by geng
         for (int i=0; i<this->RootedVertexNumbers.size(); ++i) /// loop over pairs of rooted vertices
         {
@@ -484,12 +492,12 @@ void GraphGeneratorNauty::GenerateTwoRootedFixedOrder(int n, std::string inputFi
                     countComparison += rootedGraphList.size();
                     countComparisonIndividual += rootedGraphList.size();
                     std::cout << "ADDING ROOTED GRAPH TO LIST!\n";
+                    tempGraph.PrintM(); /// DEBUG: want to see which graphs produced from plaquette (remove later)
                 }
                 /// output cg to file
                 char *s = ntog6(cg,this->MWords,this->N);
                 fprintf(fpg6, "%.*s ", static_cast<int>(strlen(s)-1), s); /// g6 string to file without newline character
-                if (!outputSorted)
-                    writegroupsize(fpg6,stats.grpsize1,stats.grpsize2); /// write group size (symmetry factor) to file
+                writegroupsize(fpg6,stats.grpsize1,stats.grpsize2); /// write group size (symmetry factor) to file
                 fprintf(fpg6,"\n");
             }
             else
@@ -638,8 +646,8 @@ bool GraphGeneratorParametersNauty::ProcessCommandLine(int argc, char *argv[])
         po::options_description desc("Allowed options");
         desc.add_options()
                 ("help,h", "Produce help message")
-                (",n", po::value<unsigned int>(&this->N)->required(), "Maximum vertex order")
-                (",d", po::value<bool>(&this->Disconnected)->default_value(false), "Allow disconnected graphs?")
+                (",n", po::value<unsigned int>(&this->N)->required(), "vertex order")
+                (",l", po::value<unsigned int>(&this->L)->required(), "number of bonds")
                 (",r", po::value<bool>(&this->TwoRooted)->default_value(false), "Generate two-rooted graphs?")
                 (",v", po::value<bool>(&this->Verbose)->default_value(false), "Verbose?")
                 ;

@@ -23,6 +23,8 @@
 #include "gtools.h"
 #include "nauty.h"
 
+#define MAX_G6_LENGTH 50
+
 template<class Type> struct S; /// incomplete struct template for determiningn type of auto!
 
 /// compute embedding number for simple connected undirected graphs on a given lattice
@@ -35,8 +37,6 @@ private:
     std::string InputFilename; /// output of NAUTY geng for given order
 
     std::string OutputFilename; /// where to put embeddings and symmetry numbers?
-
-    std::string InputFilenameFixedVertices; /// DEBUG: for now input these in a separate file of equal length
 
     std::string LatticeType; /// which lattice for embeddings
 
@@ -55,8 +55,6 @@ public:
     unsigned int GetN() const { return this->N; }
 
     std::string GetInputFilename() const { return this->InputFilename; }
-
-    std::string GetInputFilenameFixedVertices() const { return this->InputFilenameFixedVertices; }
 
     std::string GetOutputFilename() const { return this->OutputFilename; }
 
@@ -118,9 +116,9 @@ private:
 
     int ComputeEmbeddingNumberNN(const GraphContainer& container); /// compute the embedding number of a graph where links are PURELY NN!
 
-    void ComputeEmbeddingNumbers(const GraphContainer& container, FILE *fpo); /// loops over all valid combos of bond counts consistent with graph in container
+    void ComputeEmbeddingNumbers(const GraphContainer& container, graph *g, FILE *fpo, int symmFactor=-1); /// loops over all valid combos of bond counts consistent with graph in container
 
-    std::vector<int> ComputeEmbeddingNumberCombo(const GraphContainer& container, const std::vector<int> &bondCombo); /// compute the embedding number of a graph for a given combo of bond counts
+    int ComputeEmbeddingNumberCombo(const GraphContainer& container, const std::vector<int> &bondCombo); /// compute the embedding number of a graph for a given combo of bond counts
 
     std::vector<int> GetAllowedBondDegreesOfList(const VertexEmbedList& list, const std::vector<int> &bondCombo); /// determine list of allowed neighbor degrees based on list and combination of bond counts
 

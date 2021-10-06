@@ -63,7 +63,7 @@ public:
 
    void SetGraphFromDenseNauty(graph *g); /// adjacency matrix, bond counts, and vertex order counts from dense nauty graph (assumes N and MWords set!)
 
-   void GetDenseNautyFromGraph(graph *g); /// adjacency matrix to dense nauty graph
+   void GetDenseNautyFromGraph(graph *g) const; /// adjacency matrix to dense nauty graph
 
    void ColoredCanonicalRelabeling(int *labCanon, int v1, int v2=-1, bool verbose=false);
 

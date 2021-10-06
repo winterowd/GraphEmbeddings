@@ -40,7 +40,7 @@ void GraphContainer::SetRowAndColMapping()
 
 /// convert graph to dense NAUTY structure
 /// g: pointer to dense nauty data structure (memory assumed to be allocated elsewhere!)
-void GraphContainer::GetDenseNautyFromGraph(graph *g)
+void GraphContainer::GetDenseNautyFromGraph(graph *g) const
 {
     if (g==NULL)
         throw std::invalid_argument("SetDenseNautyFromGraph expects g to be point to memory that is already allocated!\n");

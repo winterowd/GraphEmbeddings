@@ -9,7 +9,7 @@ VertexEmbedList::VertexEmbedList(MaxInteractionLength maxEmbeddingLength, MaxInt
     CorrelatorDistance(correlatorDistance)
 {
 #ifdef DEBUG
-    std::cout << "Created an rooted graph for a correlator of size " << correlatorDistance << "!\n";
+    std::cout << "Created a rooted graph for a correlator of size " << correlatorDistance << "!\n";
 #endif
     switch (maxEmbeddingLength)
     {
@@ -133,7 +133,7 @@ VertexEmbed VertexEmbedList::GetFixedVertex(int index) const
 {
     if (!this->IsTwoPointFunction())
         throw std::logic_error("GetFixedVertex called for unrooted graph!\n");
-    if (index !=0 || index != 1)
+    if (index !=0 && index != 1)
         throw std::invalid_argument("GetFixedVertex requires index to be 0 or 1!\n");
     return this->FixedVertices[index];
 }
