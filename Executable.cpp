@@ -1373,6 +1373,139 @@ void MakeCombos()
 
 }
 
+void TestSortedVertexEmbedList()
+{
+    /***** create a "star" on the square lattice *****/
+    SquareLattice lattice(100); /// lattice object
+    VertexEmbedList myUnsortedVertexList(MaxInteractionLength::NearestNeighbor);
+
+    std::vector<unsigned int> initialSiteIndices(lattice.GetDim(), lattice.GetN()/2);
+    auto initialIndex = lattice.GetSiteIndex(initialSiteIndices);
+    myUnsortedVertexList.AddVertexEmbed(VertexEmbed{2,initialIndex});
+
+    auto tempIndex = lattice.GetNextNearestNeighbor(initialIndex, 1);
+    myUnsortedVertexList.AddVertexEmbed(VertexEmbed{4,tempIndex});
+
+    tempIndex = lattice.GetNextNearestNeighbor(initialIndex, 2);
+    myUnsortedVertexList.AddVertexEmbed(VertexEmbed{1,tempIndex});
+
+    tempIndex = lattice.GetNextNearestNeighbor(initialIndex, 3);
+    myUnsortedVertexList.AddVertexEmbed(VertexEmbed{5,tempIndex});
+
+    tempIndex = lattice.GetNextNearestNeighbor(initialIndex, 4);
+    myUnsortedVertexList.AddVertexEmbed(VertexEmbed{3,tempIndex});
+
+    tempIndex = lattice.GetNextNearestNeighbor(initialIndex, 4);
+    myUnsortedVertexList.AddVertexEmbed(VertexEmbed{3,tempIndex-29}); /// duplicate vertex 3 at weird site
+
+    //std::cout << "Hi1!\n";
+    myUnsortedVertexList.PrintList();
+    //std::cout << "Hi2!\n";
+    std::cout << "SORTED_VERTEX_EMBED_LIST: " << myUnsortedVertexList.GetSize() << "\n";
+    for (auto it=myUnsortedVertexList.begin(); it!=myUnsortedVertexList.end(); ++it)
+        std::cout << *it << "\n";
+
+}
+
+void TestSetofVertexEmbedLists()
+{
+    std::set<VertexEmbedList> setOfVertexEmbedLists;
+
+    /***** create a "star" on the square lattice *****/
+    SquareLattice lattice(100); /// lattice object
+    VertexEmbedList firstVertexList(MaxInteractionLength::NearestNeighbor); /// first VertexEmbedList
+
+    std::vector<unsigned int> initialSiteIndices(lattice.GetDim(), lattice.GetN()/2);
+    auto initialIndex = lattice.GetSiteIndex(initialSiteIndices);
+    firstVertexList.AddVertexEmbed(VertexEmbed{2,initialIndex});
+
+    auto tempIndex = lattice.GetNextNearestNeighbor(initialIndex, 1);
+    firstVertexList.AddVertexEmbed(VertexEmbed{4,tempIndex});
+
+    tempIndex = lattice.GetNextNearestNeighbor(initialIndex, 2);
+    firstVertexList.AddVertexEmbed(VertexEmbed{1,tempIndex});
+
+    tempIndex = lattice.GetNextNearestNeighbor(initialIndex, 3);
+    firstVertexList.AddVertexEmbed(VertexEmbed{5,tempIndex});
+
+    tempIndex = lattice.GetNextNearestNeighbor(initialIndex, 4);
+    firstVertexList.AddVertexEmbed(VertexEmbed{3,tempIndex});
+
+    setOfVertexEmbedLists.insert(firstVertexList);
+
+    VertexEmbedList secondVertexList(MaxInteractionLength::NearestNeighbor); /// second VertexEmbedList
+
+    initialIndex = lattice.GetSiteIndex(initialSiteIndices);
+    secondVertexList.AddVertexEmbed(VertexEmbed{2,initialIndex});
+
+    tempIndex = lattice.GetNextNearestNeighbor(initialIndex, 1);
+    secondVertexList.AddVertexEmbed(VertexEmbed{4,tempIndex-22}); /// smaller site index than in first list (lexigraphical order should sort this!)
+
+    tempIndex = lattice.GetNextNearestNeighbor(initialIndex, 2);
+    secondVertexList.AddVertexEmbed(VertexEmbed{1,tempIndex});
+
+    tempIndex = lattice.GetNextNearestNeighbor(initialIndex, 3);
+    secondVertexList.AddVertexEmbed(VertexEmbed{5,tempIndex});
+
+    tempIndex = lattice.GetNextNearestNeighbor(initialIndex, 4);
+    secondVertexList.AddVertexEmbed(VertexEmbed{3,tempIndex});
+
+    setOfVertexEmbedLists.insert(secondVertexList);
+
+    VertexEmbedList thirdVertexList(MaxInteractionLength::NearestNeighbor); /// third VertexEmbedList (3 vertices)
+
+    initialIndex = lattice.GetSiteIndex(initialSiteIndices);
+    thirdVertexList.AddVertexEmbed(VertexEmbed{2,initialIndex});
+
+    tempIndex = lattice.GetNextNearestNeighbor(initialIndex, 1);
+    thirdVertexList.AddVertexEmbed(VertexEmbed{4,tempIndex-22});
+
+    tempIndex = lattice.GetNextNearestNeighbor(initialIndex, 2);
+    thirdVertexList.AddVertexEmbed(VertexEmbed{1,tempIndex});
+
+    setOfVertexEmbedLists.insert(thirdVertexList);
+
+    VertexEmbedList fourthVertexList(MaxInteractionLength::NearestNeighbor); /// fourth VertexEmbedList
+
+    initialIndex = lattice.GetSiteIndex(initialSiteIndices);
+    fourthVertexList.AddVertexEmbed(VertexEmbed{2,initialIndex});
+
+    tempIndex = lattice.GetNextNearestNeighbor(initialIndex, 1);
+    fourthVertexList.AddVertexEmbed(VertexEmbed{4,tempIndex-22}); /// smaller site index than in first list (lexigraphical order should sort this!)
+
+    tempIndex = lattice.GetNextNearestNeighbor(initialIndex, 4);
+    fourthVertexList.AddVertexEmbed(VertexEmbed{3,tempIndex});
+
+    tempIndex = lattice.GetNextNearestNeighbor(initialIndex, 3);
+    fourthVertexList.AddVertexEmbed(VertexEmbed{5,tempIndex});
+
+    tempIndex = lattice.GetNextNearestNeighbor(initialIndex, 2);
+    fourthVertexList.AddVertexEmbed(VertexEmbed{1,tempIndex});
+
+    setOfVertexEmbedLists.insert(fourthVertexList);
+
+    std::cout << "VERTEX_EMBED_LIST has size: " << setOfVertexEmbedLists.size() << "\n";
+    std::cout << "TestSetofVertexEmbedLists initial...\n";
+    for (auto it=setOfVertexEmbedLists.begin(); it!=setOfVertexEmbedLists.end(); ++it)
+        std::cout << " " << *it << "\n";
+
+    int vertexCount = 5; /// get rid of VertexEmbedList objects that do not have 5 elements...
+    //setOfVertexEmbedLists.erase(std::remove_if(setOfVertexEmbedLists.begin(), setOfVertexEmbedLists.end(), [&vertexCount](const VertexEmbedList& v) { return v.GetSize()!=vertexCount; }), setOfVertexEmbedLists.end());
+    auto it = setOfVertexEmbedLists.begin();
+    while (it!=setOfVertexEmbedLists.end())
+    {
+        if (it->GetSize()!=vertexCount)
+            it = setOfVertexEmbedLists.erase(it);
+        else
+            ++it;
+    }
+
+    std::cout << "TestSetofVertexEmbedLists after erasing...\n";
+    for (auto it=setOfVertexEmbedLists.begin(); it!=setOfVertexEmbedLists.end(); ++it)
+        std::cout << " " << *it << "\n";
+
+}
+
 int main(int argc, char *argv[])
 {
 
@@ -1383,8 +1516,9 @@ int main(int argc, char *argv[])
     //MakeCombos();
     //TestMakePairs();
     //TestSetVector();
-
-    TestDenseNautyColoredCanon(true);
+    //TestSortedVertexEmbedList();
+    //TestDenseNautyColoredCanon(true);
+    TestSetofVertexEmbedLists();
     return 0;
     /*std::vector<int> arr{0,1,2,3,4,5};
     std::vector<int> data(3,-1);

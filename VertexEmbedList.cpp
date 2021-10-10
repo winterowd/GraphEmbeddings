@@ -63,13 +63,24 @@ VertexEmbedList::VertexEmbedList(MaxInteractionLength maxLength) :
 /// add a vertex to the list
 void VertexEmbedList::AddVertexEmbed(const VertexEmbed& v)
 {
-    this->List.push_back(v);
+#ifdef DEBUG
+    for (auto it=this->List.begin(); it!=this->List.end(); ++it)
+        if ((v.Number==it->Number) !=  (v.Index==it->Index))
+            std::cout << "WARNING: AddVertexEmbed attempting to add VertexEmbed object with previously occupied site or previously used vertex label!\n";
+#endif
+    this->List.insert(v);
 }
 
 /// add a vertex to the list
 void VertexEmbedList::AddVertexEmbed(int number, int index)
 {
-    this->List.push_back(VertexEmbed{number,index});
+    VertexEmbed v{number,index};
+#ifdef DEBUG
+    for (auto it=this->List.begin(); it!=this->List.end(); ++it)
+        if ((v.Number==it->Number) !=  (v.Index==it->Index))
+            std::cout << "WARNING: AddVertexEmbed attempting to add VertexEmbed object with previously occupied site or previously used vertex label!\n";
+#endif
+    this->List.insert(v);
 }
 
 void VertexEmbedList::AddFixedVerticesEmbed(const std::vector<VertexEmbed> &embed)
@@ -81,8 +92,8 @@ void VertexEmbedList::AddFixedVerticesEmbed(const std::vector<VertexEmbed> &embe
     if (!this->TwoPointFunction)
         std::cerr << "WARNING: AddFixedVerticesEmbed called but TwoPointFunction flag set to false!\n";
     this->FixedVertices = embed;
-    this->List.push_back(embed[0]);
-    this->List.push_back(embed[1]);
+    this->List.insert(embed[0]);
+    this->List.insert(embed[1]);
 }
 
 /// update the bond count
@@ -102,19 +113,11 @@ int VertexEmbedList::GetBondCount(int dIndex) const
     return this->BondCounts[dIndex];
 }
 
-/// return a vertex in list by reference
-VertexEmbed VertexEmbedList::GetVertexEmbed(int index) const
-{
-    if (index < 0 || index >= this->List.size())
-        throw std::invalid_argument("GetVertexEmbed requires 0 <= index < List.size()!\n");
-    return this->List[index];
-}
-
 /// check if list has repeated vertices
 bool VertexEmbedList::HasRepeatedVertices()
 {
-    for (int i=0; i<(this->List.size()-1); ++i)
-        if (std::find_if(std::next(this->List.begin(), i+1), this->List.end(), [this, i](const VertexEmbed& v) { return (this->List[i].Number == v.Number); } ) != this->List.end())
+    for (auto it=this->List.begin(); it!=std::prev(this->List.end(),2); ++it)
+        if (std::find_if(std::next(it), this->List.end(), [it](const VertexEmbed& v) { return (it->Number == v.Number); } ) != this->List.end())
             return true;
     return false;
 }
@@ -122,8 +125,8 @@ bool VertexEmbedList::HasRepeatedVertices()
 /// check if list has repeated sites
 bool VertexEmbedList::HasRepeatedSites()
 {
-    for (int i=0; i<(this->List.size()-1); ++i)
-        if (std::find(std::next(this->List.begin(), i+1), this->List.end(), this->List[i].Index) != this->List.end())
+    for (auto it=this->List.begin(); it!=std::prev(this->List.end(),2); ++it)
+        if (std::find_if(std::next(it), this->List.end(), [it](const VertexEmbed& v) { return (it->Index == v.Index); } ) != this->List.end())
             return true;
     return false;
 }
@@ -136,6 +139,11 @@ VertexEmbed VertexEmbedList::GetFixedVertex(int index) const
     if (index !=0 && index != 1)
         throw std::invalid_argument("GetFixedVertex requires index to be 0 or 1!\n");
     return this->FixedVertices[index];
+}
+
+std::vector<VertexEmbed> VertexEmbedList::GetSortedList() const
+{
+    return std::vector<VertexEmbed>(this->List.begin(), this->List.end());
 }
 
 /// equality operator for VertexEmbedList
@@ -160,8 +168,10 @@ bool operator==(const VertexEmbedList& lhs, const VertexEmbedList& rhs)
             return false;
 
     for (auto it = rhs.begin(); it!=rhs.end(); ++it) /// compare all of the vertices
+    {
         if (std::find(lhs.begin(), lhs.end(), *it) == lhs.end())
             return false;
+    }
 
     return true;
 }
@@ -172,13 +182,24 @@ bool operator!=(const VertexEmbedList& lhs, const VertexEmbedList& rhs)
     return !(lhs == rhs);
 }
 
+/// less than operator which will be needed for std::set<VertexEmbedList>
+/// lists with the smaller size come first
+/// comparison is then made on this->List (lexigraphical order for vectors)
+/// no reference is made to rooted or unrooted
+bool operator<(const VertexEmbedList& lhs, const VertexEmbedList& rhs)
+{
+    if (lhs.GetSize()!=rhs.GetSize())
+        return (lhs.GetSize()<rhs.GetSize());
+    return (lhs.List < rhs.List);
+}
+
 /// output VertexEmbedList
 std::ostream& operator<<(std::ostream& os, const VertexEmbedList& list)
 {
     os << "********VertexEmbedList********\n";
     for (int i=0; i<list.GetNbrBondTypes(); ++i)
         os << "BondDegree " << i << " with count " << list.GetBondCount(i) << "\n";
-    for (int i=0; i<list.GetSize(); ++i)
-        os << "Vertex " << list.GetVertexEmbed(i) << "\n";
+    for (auto it=list.begin(); it!=list.end(); ++it)
+            os << "Vertex " << *it << "\n";
     return os;
 }

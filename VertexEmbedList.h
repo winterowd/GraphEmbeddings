@@ -42,6 +42,7 @@ inline bool operator!=(const VertexEmbed& lhs, const int& rhs)
     return !(lhs == rhs);
 }
 
+/// and repeat for the Index appearing on the left hand side...
 inline bool operator==(const int& lhs,  const VertexEmbed& rhs)
 {
     return (lhs == rhs.Index);
@@ -52,13 +53,24 @@ inline bool operator!=(const int& lhs, const VertexEmbed& rhs)
     return !(lhs == rhs);
 }
 
+/// used for sorting VertexEmbed objects!
+/// compare vertex numbers, if equal then compare indices
+inline bool operator<(const VertexEmbed& lhs,  const VertexEmbed& rhs)
+{
+    if (lhs.Number != rhs.Number)
+        return (lhs.Number < rhs.Number);
+    else
+        return (lhs.Index < rhs.Index);
+}
+
+/// TODO: think about some sort of sorting for std::vector<VertexEmbed> List for comparisons...
 /// class to hold lists for embedding
 /// when including next nearest neighbors and so on need to keep track of number of number of types of links used
 /// getters and setters mostly. What other types of routines? any other data fields?
 class VertexEmbedList
 {
 private:
-    std::vector<VertexEmbed> List; /// data for embedded graphs!
+    std::set<VertexEmbed> List; /// data for embedded graphs!
 
     std::vector<int> BondCounts; /// only need to keep track of total counts and not which edges are connected by NN or NNN
 
@@ -106,15 +118,17 @@ public:
 
     bool HasRepeatedSites(); /// debugging routine
 
-    VertexEmbed GetVertexEmbed(int index) const;
-
     void SetNbrChoicesForFirstBond(int nbr) { this->NbrChoicesForFirstBond = nbr; }
 
     int GetNbrChoicesForFirstBond() const { return this->NbrChoicesForFirstBond; }
 
+    std::vector<VertexEmbed> GetSortedList() const; /// return sorted list for comparisons
+
+    void PrintList() const { std::cout << "VertexEmbedList::PrintList():\n"; for (auto it=this->List.begin(); it!=this->List.end(); ++it) std::cout << *it << "\n"; }
+
     /// define iterator types
-    using iterator = std::vector<VertexEmbed>::iterator;
-    using const_iterator = std::vector<VertexEmbed>::const_iterator;
+    using iterator = std::set<VertexEmbed>::iterator;
+    using const_iterator = std::set<VertexEmbed>::const_iterator;
 
     /// begin and end functions
     iterator begin() { return this->List.begin(); }
@@ -123,6 +137,7 @@ public:
     const_iterator end() const { return this->List.end(); }
 
     friend std::ostream& operator<<(std::ostream& os, const VertexEmbedList& list); /// output for debugging reasons
+    friend bool operator<(const VertexEmbedList& lhs, const VertexEmbedList& rhs);
 
 };
 

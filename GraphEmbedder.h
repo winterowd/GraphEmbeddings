@@ -124,21 +124,28 @@ private:
 
     bool IsProposedNNSiteFree(const std::vector<VertexEmbed>& list, int elem, int nn, int &newIndex);
 
-    bool IsProposedNeighborSiteFree(const VertexEmbedList& list, int elem, int degree, int nn, int &newIndex);
+    //bool IsProposedNeighborSiteFree(const VertexEmbedList& list, int elem, int degree, int nn, int &newIndex);
+
+    bool IsProposedNeighborSiteFree(const VertexEmbedList& list, VertexEmbed elem, int degree, int nn, int &newIndex);
 
     bool IsProposedSiteConsistentWithPreviousVerticesNN(const std::vector<VertexEmbed> &list, const GraphContainer &container, int elem, int newIndex, int newVertexNumber);
 
-    bool IsProposedSiteConsistentWithPreviousVerticesAndBondCounts(const VertexEmbedList& list, const GraphContainer &container, const std::vector<int> &bondCombo, int elem, int newIndex, int newVertexNumber, std::vector<int> &bondCountsToBeAdded);
+    //bool IsProposedSiteConsistentWithPreviousVerticesAndBondCounts(const VertexEmbedList& list, const GraphContainer &container, const std::vector<int> &bondCombo, int elem, int newIndex, int newVertexNumber, std::vector<int> &bondCountsToBeAdded);
+    bool IsProposedSiteConsistentWithPreviousVerticesAndBondCounts(const VertexEmbedList& list, const GraphContainer &container, const std::vector<int> &bondCombo, VertexEmbed elem, int newIndex, int newVertexNumber, std::vector<int> &bondCountsToBeAdded);
 
     std::vector<VertexEmbed> SelectFirstLinkToEmbedNN(const GraphContainer& container);
 
-    std::vector<VertexEmbedList> CreateInitialVertexEmbedLists(const GraphContainer& container, const std::vector<int> &bondCombo);
+    //std::vector<VertexEmbedList> CreateInitialVertexEmbedLists(const GraphContainer& container, const std::vector<int> &bondCombo);
+    std::set<VertexEmbedList> CreateInitialVertexEmbedLists(const GraphContainer& container, const std::vector<int> &bondCombo);
 
-    std::vector<VertexEmbedList> CreateInitialVertexEmbedListsRootedFixed(const GraphContainer& container, const std::vector<int> &bondCombo, const std::vector<int> &rootedVertices);
+    //std::vector<VertexEmbedList> CreateInitialVertexEmbedListsRootedFixed(const GraphContainer& container, const std::vector<int> &bondCombo, const std::vector<int> &rootedVertices);
+    std::set<VertexEmbedList> CreateInitialVertexEmbedListsRootedFixed(const GraphContainer& container, const std::vector<int> &bondCombo, const std::vector<int> &rootedVertices);
 
-    std::vector<VertexEmbedList> CreateInitialVertexEmbedListsRooted(const GraphContainer& container, const std::vector<int> &bondCombo);
+    //std::vector<VertexEmbedList> CreateInitialVertexEmbedListsRooted(const GraphContainer& container, const std::vector<int> &bondCombo);
+    std::set<VertexEmbedList> CreateInitialVertexEmbedListsRooted(const GraphContainer& container, const std::vector<int> &bondCombo);
 
-    std::vector<VertexEmbedList> CreateInitialVertexEmbedListsNonRooted(const GraphContainer& container, const std::vector<int> &bondCombo);
+    //std::vector<VertexEmbedList> CreateInitialVertexEmbedListsNonRooted(const GraphContainer& container, const std::vector<int> &bondCombo);
+    std::set<VertexEmbedList> CreateInitialVertexEmbedListsNonRooted(const GraphContainer& container, const std::vector<int> &bondCombo);
 
     std::unordered_set<int> GetRemainingVertices(const std::vector<VertexEmbed>& listUsedVertices);
 
@@ -154,7 +161,9 @@ private:
 
     bool IsDuplicateOld(const std::vector<VertexEmbedList>& lists, const VertexEmbedList& toAdd, bool verbose=false); /// will use in embedding routine
 
-    bool IsDuplicate(const std::vector<VertexEmbedList>& lists, const VertexEmbedList& toAdd, bool verbose=false);
+    bool IsDuplicate(const std::vector<VertexEmbedList>& lists, const VertexEmbedList& toAdd);
+
+    bool IsDuplicate(const std::set<VertexEmbedList>& lists, const VertexEmbedList& toAdd);
 
     void TestEraseWrongSizes(std::vector<VertexEmbedList>& lists, int vertexCount); /// debugging routine
 
