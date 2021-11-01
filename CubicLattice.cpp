@@ -110,11 +110,11 @@ int CubicLattice::GetNextNearestNeighbor(int siteIndex, int nnIndex)
 
 
 /// all points with Euclidean distance 2 from siteIndex
-int CubicLattice::GetThirdNearestNeighbor(int siteIndex, int nnIndex)
+int CubicLattice::GetThirdNearestNeighbor(int siteIndex, int n3Index)
 {
     std::vector<unsigned int> temp(3);
     this->GetSiteCoordinates(siteIndex, temp);
-    switch (nnIndex) {
+    switch (n3Index) {
     case 1:
         temp[0] = (temp[0]+2)%this->N;
         break;
@@ -140,11 +140,11 @@ int CubicLattice::GetThirdNearestNeighbor(int siteIndex, int nnIndex)
 }
 
 /// all points with Euclidean distance \sqrt{3} from siteIndex
-int CubicLattice::GetFourthNearestNeighbor(int siteIndex, int nnIndex)
+int CubicLattice::GetFourthNearestNeighbor(int siteIndex, int n4Index)
 {
     std::vector<unsigned int> temp(3);
     this->GetSiteCoordinates(siteIndex, temp);
-    switch (nnIndex) {
+    switch (n4Index) {
     case 1:
         temp[0] = (temp[0]+1)%this->N;
         temp[1] = (temp[1]+1)%this->N;
@@ -201,7 +201,7 @@ bool CubicLattice::AreNN(unsigned int index1, unsigned int index2)
 
 bool CubicLattice::AreNNN(unsigned int index1, unsigned int index2)
 {
-    for (int i=1; i<=this->NbrNN; ++i)
+    for (int i=1; i<=this->NbrNNN; ++i)
         if (this->GetNextNearestNeighbor(index1, i) == index2)
             return true;
     return false;
@@ -209,7 +209,7 @@ bool CubicLattice::AreNNN(unsigned int index1, unsigned int index2)
 
 bool CubicLattice::AreThirdNN(unsigned int index1, unsigned int index2)
 {
-    for (int i=1; i<=this->NbrNN; ++i)
+    for (int i=1; i<=this->NbrThirdNN; ++i)
         if (this->GetThirdNearestNeighbor(index1, i) == index2)
             return true;
     return false;
@@ -217,12 +217,31 @@ bool CubicLattice::AreThirdNN(unsigned int index1, unsigned int index2)
 
 bool CubicLattice::AreFourthNN(unsigned int index1, unsigned int index2)
 {
-    for (int i=1; i<=this->NbrNN; ++i)
+    for (int i=1; i<=this->NbrFourthNN; ++i)
         if (this->GetFourthNearestNeighbor(index1, i) == index2)
             return true;
     return false;
 }
 
-
-
+int CubicLattice::GetManhattanDistance(int neighborDepth)
+{
+    int result;
+    switch (neighborDepth) {
+    case 1: /// nearest neighbor
+        result=1;
+        break;
+    case 2: /// next nearest neighbor
+        result=2;
+        break;
+    case 3: /// third nearest neighbor
+        result=2;
+        break;
+    case 4: /// fourth nearest neighbor
+        result=3;
+        break;
+    default:
+        throw std::invalid_argument("Invalid neighborDepth for CubicLattice::GetManhattanDistance!");
+    }
+    return result;
+}
 

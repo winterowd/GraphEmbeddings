@@ -92,3 +92,9 @@ bool TriangularLattice::AreFourthNN(unsigned int index1, unsigned int index2)
     std::cerr << "ERROR! AreFourthNN not implemented for the triangular lattice!\n";
     std::exit(1);
 }
+
+int TriangularLattice::GetManhattanDistance(int neighborDepth)
+{
+    std::cerr << "WARNGING! TriangularLattice::GetManhattanDistance not yet implemented!\n";
+    return 1;
+}

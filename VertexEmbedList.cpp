@@ -167,9 +167,9 @@ bool operator==(const VertexEmbedList& lhs, const VertexEmbedList& rhs)
         if ((lhs.GetFixedVertex(0) != rhs.GetFixedVertex(0)) || (lhs.GetFixedVertex(1) != rhs.GetFixedVertex(1)))
             return false;
 
-    for (auto it = rhs.begin(); it!=rhs.end(); ++it) /// compare all of the vertices
+    for (auto it1 = lhs.begin(), it2 = rhs.begin(); it1!=lhs.end() && it2!=rhs.end(); ++it1, ++it2) /// compare all of the embedded vertices (ordered)
     {
-        if (std::find(lhs.begin(), lhs.end(), *it) == lhs.end())
+        if (*it1 != *it2)
             return false;
     }
 

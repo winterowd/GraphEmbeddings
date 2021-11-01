@@ -23,9 +23,9 @@ public:
 
     int GetNextNearestNeighbor(int siteIndex, int nnIndex) override;
 
-    int GetThirdNearestNeighbor(int siteIndex, int nnIndex) override;
+    int GetThirdNearestNeighbor(int siteIndex, int n3Index) override;
 
-    int GetFourthNearestNeighbor(int siteIndex, int nnIndex) override;
+    int GetFourthNearestNeighbor(int siteIndex, int n4Index) override;
 
     unsigned int GetN() const override { return this->N; }
 
@@ -46,6 +46,8 @@ public:
     bool AreThirdNN(unsigned int index1, unsigned int index2) override;
 
     bool AreFourthNN(unsigned int index1, unsigned int index2) override;
+
+    int GetManhattanDistance(int neighborDepth) override;
 
     static const unsigned int Dim = 3;
 

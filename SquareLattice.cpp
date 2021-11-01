@@ -147,7 +147,7 @@ bool SquareLattice::AreNN(unsigned int index1, unsigned int index2)
 
 bool SquareLattice::AreNNN(unsigned int index1, unsigned int index2)
 {
-    for (int i=1; i<=this->NbrNN; ++i)
+    for (int i=1; i<=this->NbrNNN; ++i)
         if (this->GetNextNearestNeighbor(index1, i) == index2)
             return true;
     return false;
@@ -155,7 +155,7 @@ bool SquareLattice::AreNNN(unsigned int index1, unsigned int index2)
 
 bool SquareLattice::AreThirdNN(unsigned int index1, unsigned int index2)
 {
-    for (int i=1; i<=this->NbrNN; ++i)
+    for (int i=1; i<=this->NbrThirdNN; ++i)
         if (this->GetThirdNearestNeighbor(index1, i) == index2)
             return true;
     return false;
@@ -163,8 +163,30 @@ bool SquareLattice::AreThirdNN(unsigned int index1, unsigned int index2)
 
 bool SquareLattice::AreFourthNN(unsigned int index1, unsigned int index2)
 {
-    for (int i=1; i<=this->NbrNN; ++i)
+    for (int i=1; i<=this->NbrFourthNN; ++i)
         if (this->GetFourthNearestNeighbor(index1, i) == index2)
             return true;
     return false;
+}
+
+int SquareLattice::GetManhattanDistance(int neighborDepth)
+{
+    int result;
+    switch (neighborDepth) {
+    case 1: /// nearest neighbor
+        result=1;
+        break;
+    case 2: /// next nearest neighbor
+        result=2;
+        break;
+    case 3: /// third nearest neighbor
+        result=2;
+        break;
+    case 4: /// fourth nearest neighbor
+        result=3;
+        break;
+    default:
+        throw std::invalid_argument("Invalid neighborDepth for SquareLattice::GetManhattanDistance!");
+    }
+    return result;
 }

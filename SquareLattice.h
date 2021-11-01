@@ -47,6 +47,8 @@ public:
 
     bool AreFourthNN(unsigned int index1, unsigned int index2) override;
 
+    int GetManhattanDistance(int neighborDepth) override;
+
     static const unsigned int Dim = 2;
 
     static const unsigned int NbrNN = 4;  /// vectors labeled by 1,2,...,NbrNN

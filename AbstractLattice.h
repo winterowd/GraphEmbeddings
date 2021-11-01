@@ -66,9 +66,9 @@ public:
 
     virtual int GetNextNearestNeighbor(int siteIndex, int nnnIndex) = 0;
 
-    virtual int GetThirdNearestNeighbor(int siteIndex, int nnnIndex) = 0;
+    virtual int GetThirdNearestNeighbor(int siteIndex, int n3Index) = 0;
 
-    virtual int GetFourthNearestNeighbor(int siteIndex, int nnnIndex) = 0;
+    virtual int GetFourthNearestNeighbor(int siteIndex, int n4Index) = 0;
 
     virtual unsigned int GetN() const = 0;
 
@@ -89,6 +89,8 @@ public:
     virtual bool AreThirdNN(unsigned int index1, unsigned int index2) = 0;
 
     virtual bool AreFourthNN(unsigned int index1, unsigned int index2) = 0;
+
+    virtual int GetManhattanDistance(int neighborDepth) = 0;
 
     std::string GetName() const { return this->Name; }
 
