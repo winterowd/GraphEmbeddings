@@ -91,9 +91,9 @@ public:
 
    int GetNTimesNMinusOneDiv2() const { return this->NTimesNMinusOneDiv2; }
 
-   int GetRowM(int index) const { return this->RowM[index]; } /// TODO: add checks
+   int GetRowM(int index) const;
 
-   int GetColM(int index) const { return this->ColM[index]; } /// TODO: add checks
+   int GetColM(int index) const;
 
 };
 

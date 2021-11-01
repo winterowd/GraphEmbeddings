@@ -191,12 +191,6 @@ void GraphEmbedder::EmbedSpecificGraphBondCombo(int graphNbr, const std::vector<
         std::cout << "GraphsFromFile read config " << count << "!\n";
         container.SetGraphFromDenseNauty(g); /// setup container from nauty dense format
 
-        /*if (this->Parameters.GetMaxInteractionLength()==MaxInteractionLength::NearestNeighbor)
-        {
-            auto embeddingNumber = this->ComputeEmbeddingNumberNN(container); /// TODO: still need to debug this for square lattice (order three graphs)
-            fprintf(fpo, " %d\n", embeddingNumber);
-        }*/
-
         if (count == graphNbr)
             this->ComputeEmbeddingNumberCombo(container, bondCounts);
 
@@ -223,15 +217,12 @@ bool GraphEmbedder::IsProposedNNSiteFree(const std::vector<VertexEmbed> &list, i
     return true;
 }
 
-/// same as above but with added "degree" of neighbor to check for different lengths (NN, NNN, 3N, 4N)
-/*bool GraphEmbedder::IsProposedNeighborSiteFree(const VertexEmbedList& list, int elem, int degree, int nn, int &newIndex)
-{
-    newIndex = this->GetNeighbor(degree, list.GetVertexEmbed(elem).Index, nn);
-    if (std::find(list.begin(), list.end(), newIndex) != list.end())
-        return false;
-    return true;
-}*/
-
+/// do the VertexEmbed objects in list contain the index (site) which is the nearest neighbor of some degree of a given vertex
+/// @param list: list of vertices which have been embedded
+/// @param elem: vertex whose neighboring site we are looking to use to embed a new vertex
+/// @param degree: degree of the neighbor (NN, NNN, etc)
+/// @param nn: nearest neighbor number
+/// @param newIndex (ouput): index of the site at which we will embed the new vertex
 bool GraphEmbedder::IsProposedNeighborSiteFree(const VertexEmbedList& list, VertexEmbed elem, int degree, int nn, int &newIndex)
 {
     newIndex = this->GetNeighbor(degree, elem.Index, nn);
@@ -240,7 +231,7 @@ bool GraphEmbedder::IsProposedNeighborSiteFree(const VertexEmbedList& list, Vert
     return true;
 }
 
-/// check if the proposed site (which we assume to not be occupied) is consistent with vertices already placed on the lattice
+/// check if the proposed NN site (which we assume to not be occupied) is consistent with vertices already placed on the lattice
 /// @param list: list of vertices already placed on the lattice
 /// @param container: GraphContainer object containing the adjacency matrix
 /// @param elem: index in list corresponding to already placed vertex that is already assumed consistent with proposed site
@@ -263,7 +254,13 @@ bool GraphEmbedder::IsProposedSiteConsistentWithPreviousVerticesNN(const std::ve
 }
 
 /// generalization of previous function where bonds can be over any distance allowed by MaxDegreeNeighbor and the given set of bond counts (bondCombo)
-//bool GraphEmbedder::IsProposedSiteConsistentWithPreviousVerticesAndBondCounts(const VertexEmbedList& list, const GraphContainer &container, const std::vector<int> &bondCombo, int elem, int newIndex, int newVertexNumber, std::vector<int>&  BondCountsToBeAdded)
+/// @param list: vertices already placed on the lattice
+/// @param container: GraphContainer object containing the adjacency matrix
+/// @param bondCombo: vector containing the number of each type of bond (NN, NNN, etc)
+/// @param elem: vertex in list corresponding to already placed vertex that is already assumed consistent with proposed site
+/// @param newIndex: lattice index of proposed site
+/// @param newVertexNumber: vertex number that we are placing on the lattice
+/// @param BondCountsToBeAdded (output): the new bonds to be counted after placing the vertex on the lattice
 bool GraphEmbedder::IsProposedSiteConsistentWithPreviousVerticesAndBondCounts(const VertexEmbedList& list, const GraphContainer &container, const std::vector<int> &bondCombo, VertexEmbed elem, int newIndex, int newVertexNumber, std::vector<int>&  BondCountsToBeAdded)
 {
 #ifdef DEBUG
@@ -281,21 +278,21 @@ bool GraphEmbedder::IsProposedSiteConsistentWithPreviousVerticesAndBondCounts(co
         throw std::invalid_argument("IsProposedSiteConsistentWithPreviousVerticesAndBondCounts requires BondCountsToBeAdded to have all zeros except one entry which is 1!\n");
 #endif
 
-    //for (int i=0; i<list.GetSize(); ++i) /// loop over vertices in set
-    for (auto it=list.begin(); it!=list.end(); ++it)
+    std::vector<unsigned int> indicesOrigin(this->Lattice->GetDim(), 0);
+    auto firstElement = list.begin();
+    this->Lattice->GetSiteCoordinates(firstElement->Index, indicesOrigin);
+
+    for (auto it=list.begin(); it!=list.end(); ++it) /// loop over vertices in set
     {
-        //if (i != elem) /// assumes we are trying a NN of this vertex (consistent)
-        if (*it != elem)
+        if (*it != elem) /// assumes we are trying a NN of this vertex (consistent)
         {
-            //auto tempVertexEmbed = list.GetVertexEmbed(i);
-            //if (container.GetElementAdjacencyMatrix(tempVertexEmbed.Number, newVertexNumber)) /// see if vertex we are trying to place is adjacent to ith vertex in list
-            if (container.GetElementAdjacencyMatrix(it->Number, newVertexNumber))
+            if (container.GetElementAdjacencyMatrix(it->Number, newVertexNumber)) /// see if vertex we are trying to place is adjacent to ith vertex in list
             {
                 auto allowedBondExists = false; /// two vertices are adjacent but is there an allowed bond on the lattice given the chosen sites?
+
                 for (int d=0; d<this->MaxDegreeNeighbor; ++d) /// loop over "degrees" of neighbors (NN, NNN, etc.)
                 {
-                    //if (this->AreNeighbors(d, tempVertexEmbed.Index, newIndex) && ((list.GetBondCount(d)+BondCountsToBeAdded[d]) < bondCombo[d])) /// are they neighbors of degree d and are there any remaining bonds of length d?
-                    if (this->AreNeighbors(d, it->Index, newIndex) && ((list.GetBondCount(d)+BondCountsToBeAdded[d]) < bondCombo[d]))
+                    if (this->AreNeighbors(d, it->Index, newIndex) && ((list.GetBondCount(d)+BondCountsToBeAdded[d]) < bondCombo[d])) /// are they neighbors of degree d and are there any remaining bonds of length d?
                     {
                         BondCountsToBeAdded[d]++;
                         allowedBondExists = true;
@@ -357,6 +354,10 @@ bool GraphEmbedder::IsDuplicate(const std::vector<std::vector<VertexEmbed>>& lis
     return duplicate;
 }
 
+/// routine which checks if two lists have equal bond counts
+/// @param lhs: one list
+/// @param rhs: other list
+/// @return true if counts are equal, false otherwise
 bool GraphEmbedder::AreBondCountsEqual(const VertexEmbedList& lhs, const VertexEmbedList& rhs)
 {
     if (lhs.GetNbrBondTypes() != rhs.GetNbrBondTypes())
@@ -376,7 +377,7 @@ bool GraphEmbedder::IsDuplicate(const std::set<VertexEmbedList>& lists, const Ve
     return (lists.find(toAdd)!=lists.end());
 }
 
-/// TODO: order vector or change to std::set? length of lists can get VERY long!
+/// old std::vector version
 bool GraphEmbedder::IsDuplicate(const std::vector<VertexEmbedList>& lists, const VertexEmbedList& toAdd)
 {
     bool result = false;
@@ -386,13 +387,13 @@ bool GraphEmbedder::IsDuplicate(const std::vector<VertexEmbedList>& lists, const
     return result;
 }
 
+/// oldest version before one could compare VertexEmbedList objects
 bool GraphEmbedder::IsDuplicateOld(const std::vector<VertexEmbedList>& lists, const VertexEmbedList& toAdd, bool verbose)
 {
     bool duplicate = false;
 
     for (int i=0; i<lists.size(); ++i)
     {
-        /// TODO: also compare bond counts!
         if ((lists[i].GetSize() == toAdd.GetSize()) && this->AreBondCountsEqual(lists[i], toAdd)) /// only subgraphs with the same number of vertices
         {
             auto ve = toAdd.begin(); /// iterator
@@ -431,8 +432,48 @@ bool GraphEmbedder::IsDuplicateOld(const std::vector<VertexEmbedList>& lists, co
     return duplicate;
 }
 
-/// computes the embedding number of a graph on a given lattice (pointed to by member variable Lattice)
-/// container: graph to be embedded
+/// given a graph G, a list of already embedded vertices and a set of remaining vertices, determine which vertex to embed next and which of embedded vertices it is adjacent to
+/// @param container: graph which we are embedding
+/// @param embedded: list of embedded vertices
+/// @param remainingVertices: set of vertices still to be embedded
+/// @return pair consisting of the next vertex to embed and the VertexEmbed object corresponding to its neighbor among the list embedded vertices
+std::pair<int, VertexEmbed> GraphEmbedder::DetermineNextVertexToEmbed(const GraphContainer& container, const VertexEmbedList& embedded, const std::unordered_set<int>& remainingVertices)
+{
+    if (embedded.GetSize()<2)
+        throw std::invalid_argument("DetermineNextVertexToEmbed needs argument embedded to be of size greater or equal to 2!\n");
+    if (embedded.GetSize()>=container.GetN())
+        throw std::invalid_argument("DetermineNextVertexToEmbed needs argument embedded to be of size less than container.GetN()!\n");
+    if ((embedded.GetSize()+remainingVertices.size())!=container.GetN())
+        throw std::invalid_argument("DetermineNextVertexToEmbed requires container size to equal the sum of the size of embedded and remainingVertices!\n");
+
+    int vNext = -1; /// next vertex to embed
+    VertexEmbed vAdjacentNext {-1,-1}; /// already embedded vertex which is adjacent to vNext
+
+    for (auto itRemaining=remainingVertices.begin(); itRemaining!=remainingVertices.end(); ++itRemaining) /// loop over remaining vertices
+    {
+        for (auto itEmbedded=embedded.begin(); itEmbedded!=embedded.end(); ++itEmbedded)
+        {
+            if (container.GetElementAdjacencyMatrix(*itRemaining,itEmbedded->Number)) /// found a bond between one of the remaining vertices and one of the already embedded vertices!
+            {
+                vNext = *itRemaining;
+                vAdjacentNext = *itEmbedded;
+                goto endOfLoop; /// break out of nested for loop
+            }
+        }
+    }
+    endOfLoop:
+    if (vNext == -1)
+        throw std::invalid_argument("GraphEmbedder::DetermineNextVertexToEmbed did not find a remaining vertex which is connected to previous vertices!\n");
+#ifdef DEBUG
+    std::cout << "Inside DetermineNextVertexToEmbed\n";
+    this->PrintVertexEmbedList(embedded);
+    std::cout << "Going to embed vertex " << vNext << " what is adjacent to already embedded vertex " << vAdjacentNext.Number << "!\n";
+#endif
+    return std::pair<int,VertexEmbed>(vNext, vAdjacentNext);
+}
+
+/// old version which computes the embedding number of a graph on a given lattice (NN only)
+/// @param container: graph to be embedded
 int GraphEmbedder::ComputeEmbeddingNumberNN(const GraphContainer& container)
 {
     std::vector<std::vector<VertexEmbed>> lists;
@@ -532,7 +573,8 @@ void GraphEmbedder::ComputeEmbeddingNumbers(const GraphContainer& container, gra
     if (symmFactor==-1 && this->Parameters.EmbedCorrelator())
         throw std::invalid_argument("ComputeEmbeddingNumbers requires the symmetry factor which is read in from file when embedding correlators (rooted graphs)!\n");
 
-    this->GetCombinationsOfBonds(container.GetL()); /// generate combos of bonds for the given graph
+    this->GetCombinationsOfBondsFixedNumberOfBonds(container.GetL()); /// generate combos of bonds for fixed bond number
+    /// TODO: how to incorporate the constraint with Manhattan distance? think about this...
 
     container.GetDenseNautyFromGraph(g); /// get dense nauty rep of graph
     char *s = ntog6(g,this->MWords,this->N); /// convert to g6
@@ -565,21 +607,36 @@ void GraphEmbedder::ComputeEmbeddingNumbers(const GraphContainer& container, gra
 #endif
         auto count = this->ComputeEmbeddingNumberCombo(container, this->BondCombinations[i]);
 
-        fprintf(fpo, "%.*s ", static_cast<int>(strlen(s)-1), s);
-        for (int d=0; d<this->MaxDegreeNeighbor; ++d)
-            fprintf(fpo, "%d ", this->BondCombinations[i][d]);
-        fprintf(fpo, "%d ", count);
-        if (!this->Parameters.EmbedCorrelator())
-            writegroupsize(fpo,status.grpsize1,status.grpsize2); /// write group size (symmetry factor) to file
-        else
-            fprintf(fpo, "%d", symmFactor);
+        if (this->Parameters.UseJonasFormat()) /// Jonas' format: g6 E(p_1) E(p_2) ... E(p_N,) where E(p_i) is the ith partition of the number of bonds based on the allowed bond lengths
+        {
+            if (i==0)
+                fprintf(fpo, "%.*s", static_cast<int>(strlen(s)-1), s);
+            fprintf(fpo, " %d", count);
+        }
+        else /// default format
+        {
+            fprintf(fpo, "%.*s ", static_cast<int>(strlen(s)-1), s); /// write g6 string
+            for (int d=0; d<this->MaxDegreeNeighbor; ++d) /// write bomb combination i.e. parition of total number of bonds
+                fprintf(fpo, "%d ", this->BondCombinations[i][d]);
+            fprintf(fpo, "%d ", count);
+            if (!this->Parameters.EmbedCorrelator())
+                writegroupsize(fpo,status.grpsize1,status.grpsize2); /// write group size (symmetry factor) to file
+            else
+                fprintf(fpo, "%d", symmFactor);
+            fprintf(fpo, "\n");
+            fflush(fpo);
+        }
+    }
+    if (this->Parameters.UseJonasFormat())
+    {
         fprintf(fpo, "\n");
         fflush(fpo);
     }
-
 }
 
-/// compute embedding number for a graph (rooted or unrooted)
+/// compute embedding number for a graph (rooted or unrooted); differs from old routine in that at every step, each list produces lists of higher order embedding new vertex connected with only ONE of previously embedded vertices
+/// @param container: graph to embed
+/// @param bondCombo: partition of N_{bonds} = \sum_i \tilde{N}_i, i=1,...,N_{deg}
 int GraphEmbedder::ComputeEmbeddingNumberCombo(const GraphContainer& container, const std::vector<int> &bondCombo)
 {
 
@@ -590,7 +647,7 @@ int GraphEmbedder::ComputeEmbeddingNumberCombo(const GraphContainer& container, 
 #ifdef DEBUG
         std::cout << "COULD NOT EMBED ROOTED GRAPH! (ROOTED VERTICES CONNECTED BY A BOND BUT BOND NOT POSSIBLE)\n";
 #endif
-        return 0; /// return 0 (no point in entering loop as no embedding is possible)
+        return 0; /// no embedding is possible
     }
 
     int vertexCount = 2; /// two vertices already embedded in initialization...
@@ -607,6 +664,136 @@ int GraphEmbedder::ComputeEmbeddingNumberCombo(const GraphContainer& container, 
             }
 #endif
             auto dAllowedList = this->GetAllowedBondDegreesOfList(*itLists, bondCombo); /// list of allowed degrees based on bond combo and current VertexEmbedList object
+
+            auto resultNextVertexToEmbed = this->DetermineNextVertexToEmbed(container, *itLists, remainingVertices); /// get vertex to embed next and vertex it is connected to among embedded vertices
+
+            /// loop over allowed degrees of bonds
+            for (int d=0; d<dAllowedList.size(); ++d)
+            {
+                for (int nn=1; nn<=this->GetNbrNeighbors(dAllowedList[d]); ++nn) /// try placing at dth-degree neighbor index nn of jth element of ith list
+                {
+#ifdef DEBUG
+                    int tempIndexEnd = this->GetNeighbor(dAllowedList[d], resultNextVertexToEmbed.second.Index, nn);
+                    std::vector<unsigned int> tempIndicesEnd(this->Lattice->GetDim(), 0);
+                    this->Lattice->GetSiteCoordinates(tempIndexEnd, tempIndicesEnd);
+
+                    std::vector<unsigned int> tempIndicesStart(this->Lattice->GetDim(), 0);
+                    this->Lattice->GetSiteCoordinates(resultNextVertexToEmbed.second.Index, tempIndicesStart);
+#endif
+                    int nnIndex;
+                    if (this->IsProposedNeighborSiteFree(*itLists, resultNextVertexToEmbed.second, dAllowedList[d], nn, nnIndex))
+                    {
+                        /// adding atleast one bond of degree d (will find out how many others)
+                        std::vector<int> bondCountsToBeAdded(this->MaxDegreeNeighbor,0);
+                        bondCountsToBeAdded[dAllowedList[d]] = 1;
+                        if (this->IsProposedSiteConsistentWithPreviousVerticesAndBondCounts(*itLists, container, bondCombo, resultNextVertexToEmbed.second, nnIndex, resultNextVertexToEmbed.first, bondCountsToBeAdded))
+                        {
+                            /// create new list and add to lists
+                            VertexEmbedList temp(*itLists);
+                            temp.AddVertexEmbed(VertexEmbed{resultNextVertexToEmbed.first,nnIndex}); /// add on new vertex to list
+
+                            /// update bond counts
+                            this->UpdateBondCounts(temp, bondCountsToBeAdded);
+
+                            lists.insert(temp); /// automatically ordered
+
+                        } /// if consistent
+
+                    } /// if site free
+
+                } /// for nn
+            } /// for d
+
+        } /// for itLists
+
+        vertexCount++; /// increment vertex count
+
+        /// check that all lists have appropriate number of elements and erase those that don't
+        auto tempIt = lists.begin();
+        while (tempIt!=lists.end())
+        {
+            if (tempIt->GetSize()!=vertexCount)
+                tempIt = lists.erase(tempIt);
+            else
+                ++tempIt;
+        }
+
+        if (lists.size()==0) /// check if anything left?
+            break;
+
+    } /// while
+
+    int result;
+    if (this->Parameters.EmbedCorrelator())
+    {
+        result = lists.size(); /// no choices for placement of rooted vertices!
+    }
+    else
+    {
+        int temp = 0;
+        for (auto it=lists.begin(); it!=lists.end(); ++it)
+            temp += it->GetNbrChoicesForFirstBond();
+        result = temp;
+    }
+
+#ifdef DEBUG
+    std::cout << "FOUND " << lists.size() << " embeddings for graph!\n";
+    std::cout << "THIS GIVES AN EMBEDDING NUMBER OF: " << result << "\n";
+
+    int count = 0;
+    for (auto itLists=lists.begin(); itLists!=lists.end(); ++itLists)
+    {
+        std::cout << "Embedded graph number " << count;
+        if (this->Parameters.EmbedCorrelator())
+        {
+            std::cout << " DISTANCE_OF_CORRELATOR " << itLists->GetCorrelatorDistanceAsIndex();
+        }
+        std::cout << "\n";
+        for (auto itVertex=itLists->begin(); itVertex!=itLists->end(); ++itVertex)
+        {
+            std::vector<unsigned int> indices(this->Lattice->GetDim(), 0);
+            this->Lattice->GetSiteCoordinates(itVertex->Index, indices);
+            std::cout << "Vertex " << *itVertex;
+            for (int k=0; k<this->Lattice->GetDim(); ++k)
+                std::cout << " " << indices[k];
+            std::cout << "\n";
+        }
+        count++;
+    }
+#endif
+
+   return result;
+}
+
+/// compute embedding number for a graph (rooted or unrooted)
+int GraphEmbedder::ComputeEmbeddingNumberComboOldWorking(const GraphContainer& container, const std::vector<int> &bondCombo)
+{
+
+    auto lists = CreateInitialVertexEmbedLists(container, bondCombo);
+
+    if (this->Parameters.EmbedCorrelator() && lists.size()==0) /// empty list for correlator i.e. rooted vertices
+    {
+#ifdef DEBUG
+        std::cout << "COULD NOT EMBED ROOTED GRAPH! (ROOTED VERTICES CONNECTED BY A BOND BUT BOND NOT POSSIBLE)\n";
+#endif
+        return 0; /// no embedding is possible
+    }
+
+    int vertexCount = 2; /// two vertices already embedded in initialization...
+    while (vertexCount < container.GetN())
+    {
+        for (auto itLists=lists.begin(); itLists->GetSize()==vertexCount; ++itLists) /// ordered by number of number of vertices so can stop when we get to newly inserted VertexEmbedList objects
+        {
+            auto remainingVertices = this->GetRemainingVertices(*itLists); /// remaining vertices that have not been embedded
+#ifdef DEBUG
+            if (remainingVertices.size()!=(container.GetN()-vertexCount))
+            {
+                std::cerr << "Discrepancy with count and number of remaining vertices! " << remainingVertices.size() << " vs " << (container.GetN()-vertexCount) << "\n";
+                std::exit(1);
+            }
+#endif
+            auto dAllowedList = this->GetAllowedBondDegreesOfList(*itLists, bondCombo); /// list of allowed degrees based on bond combo and current VertexEmbedList object
+
             for (auto v=remainingVertices.begin(); v!=remainingVertices.end(); ++v) /// loop over vertices to be placed
             {
                 for (auto itVertexEmbed=itLists->begin(); itVertexEmbed!=itLists->end(); ++itVertexEmbed)
@@ -706,6 +893,9 @@ int GraphEmbedder::ComputeEmbeddingNumberCombo(const GraphContainer& container, 
    return result;
 }
 
+/// update the counts of each type of bonds for a list of embedded vertices (called each time we embed a new vertex)
+/// @param list: list of embedded vertices
+/// @param countsToBeAdded: vector giving the counts for each type of bond (NN, NNN, etc.)
 void GraphEmbedder::UpdateBondCounts(VertexEmbedList &List, const std::vector<int>& countsToBeAdded)
 {
     if (countsToBeAdded.size()!=this->MaxDegreeNeighbor)
@@ -715,8 +905,26 @@ void GraphEmbedder::UpdateBondCounts(VertexEmbedList &List, const std::vector<in
             List.IncrementBondCount(b);
 }
 
+void GraphEmbedder::PrintVertexEmbedList(const VertexEmbedList& list)
+{
+    std::vector<unsigned int> tempIndices(this->Lattice->GetDim(), 0);
+    std::vector<unsigned int> indicesOrigin(this->Lattice->GetDim(), 0);
+    auto firstElement = list.begin();
+    this->Lattice->GetSiteCoordinates(firstElement->Index, indicesOrigin);
+
+    std::cout << "********VertexEmbedList********\n";
+    for (auto it=list.begin(); it!=list.end(); ++it)
+    {
+        std::cout << "Vertex " << it->Number << " at site: ";
+        this->Lattice->GetSiteCoordinates(it->Index, tempIndices);
+        for (auto i=0; i<tempIndices.size(); ++i)
+            std::cout << " " << int(tempIndices[i]-indicesOrigin[i]);
+        std::cout << "\n";
+    }
+}
+
+
 /// find first nonzero element in the adjacency matrix (search from the "back") and then place vertices at first NN
-/// TODO: this would change if we had anything beyond nearest neighbors: would return a vector of vectors of VertexEmbed objects
 std::vector<VertexEmbed> GraphEmbedder::SelectFirstLinkToEmbedNN(const GraphContainer& container)
 {
     std::vector<VertexEmbed> result(2); /// return a vector of VertexEmbed objects of length 2
@@ -810,26 +1018,60 @@ int GraphEmbedder::GetNbrNeighbors(int degree)
     return this->NbrNeighbors[degree];
 }
 
+void GraphEmbedder::GetCombinationsOfBondsFixedManhattanDistance(int nbrBonds, int manhattanDistance)
+{
+    if (manhattanDistance<=0)
+        throw std::invalid_argument("GetCombinationsOfBondsFixedManhattanDistance requires a positive value for argument manhattanDistance!\n");
+
+    std::vector<int> bondCounts(this->MaxDegreeNeighbor,-1);
+    std::vector<int> List(nbrBonds+1);
+    for (int i = 0; i<List.size(); ++i)
+        List[i] = i;
+
+    std::vector<int> bondWeightsManhattan(this->MaxDegreeNeighbor,-1);
+    for (int i=0; i<bondWeightsManhattan.size(); ++i)
+        bondWeightsManhattan[i] = this->Lattice->GetManhattanDistance(i+1);
+
+    auto correctManhattan = [bondWeightsManhattan,manhattanDistance](const std::vector<int>& partition) /// lambda function
+    {
+        if (bondWeightsManhattan.size()!=partition.size())
+            throw std::invalid_argument("Bond weights in capture should be the same size as partition!\n");
+        return (std::inner_product(bondWeightsManhattan.begin(),bondWeightsManhattan.end(),partition.begin(),0.0)==manhattanDistance);
+    };
+
+    this->BondCombinations.clear(); /// clear list of bonds
+
+    this->GenerateCombinations(List, bondCounts, 0, correctManhattan); /// generate combinations
+
+}
+
 /// get all combinations of counts for bond types {N_i, i=0(NN),1(NNN),etc. } where \sum_i N_i = nbrBonds
 /// nbrBonds: total number of bonds for a particular graph
-void GraphEmbedder::GetCombinationsOfBonds(int nbrBonds)
+void GraphEmbedder::GetCombinationsOfBondsFixedNumberOfBonds(int nbrBonds)
 {
     std::vector<int> bondCounts(this->MaxDegreeNeighbor,-1);
     std::vector<int> List(nbrBonds+1);
     for (int i = 0; i<List.size(); ++i)
         List[i] = i;
 
+    auto partitionEqualsBonds = [nbrBonds](const std::vector<int>& partition)
+    {
+        return (std::accumulate(partition.begin(), partition.end(), 0)==nbrBonds);
+    };
+
     this->BondCombinations.clear(); /// clear list of bonds
 
-    this->GenerateCombinations(List, bondCounts, 0); /// generate combinations
+    this->GenerateCombinations(List, bondCounts, 0, partitionEqualsBonds); /// generate combinations
+
 }
 
 /// get all combinations of vertices using depth first search
-void GraphEmbedder::GenerateCombinations(const std::vector<int>& arr, std::vector<int>& data, int index)
+void GraphEmbedder::GenerateCombinations(const std::vector<int>& arr, std::vector<int>& data, int index, std::function<bool(const std::vector<int>&)> isValid)
 {
+
     if (index == data.size()) /// created a combo?
     {
-        if (std::accumulate(data.begin(), data.end(), 0)==arr.back()) /// combo satisfies \sum_i data_i = arr.back()?
+        if (isValid(data))
         {
             this->BondCombinations.push_back(data);
         }
@@ -839,13 +1081,14 @@ void GraphEmbedder::GenerateCombinations(const std::vector<int>& arr, std::vecto
     for (int i=0; i<arr.size(); ++i)
     {
         data[index] = arr[i];
-        this->GenerateCombinations(arr, data, index+1);
+        this->GenerateCombinations(arr, data, index+1, isValid);
     }
+
 }
 
-/// TODO: create std::set and not store in std::vector!
 /// calls the appropriate routine for the initial embedded vertices
-//std::vector<VertexEmbedList> GraphEmbedder::CreateInitialVertexEmbedLists(const GraphContainer& container, const std::vector<int> &bondCombo)
+/// @param container: graph to be embedded
+/// @param bondCombo: partition of N_{bonds} to embed
 std::set<VertexEmbedList> GraphEmbedder::CreateInitialVertexEmbedLists(const GraphContainer& container, const std::vector<int> &bondCombo)
 {
     if (this->Parameters.EmbedCorrelator())
@@ -878,16 +1121,13 @@ void GraphEmbedder::TestInitialRootedGraphList(std::string filename)
 
     GraphContainer container(this->N, this->MWords, g); /// set up container
 
-    this->GetCombinationsOfBonds(container.GetL()); /// get combos
+    this->GetCombinationsOfBondsFixedNumberOfBonds(container.GetL()); /// get combos for a fixed number of bonds
 
     int indexCombo = 3; /// hard-code
     if (this->BondCombinations.size()==1)
         indexCombo = 0;
 
     auto result = this->CreateInitialVertexEmbedListsRooted(container, this->BondCombinations[indexCombo]);
-
-    /// print out result
-    /// TODO: each element of result print out
 
     if (this->fp!=NULL)
         std::cout << "TestInitialRootedGraphList: Successfully opened " << this->Parameters.GetInputFilename() << std::endl;
@@ -945,9 +1185,9 @@ std::set<VertexEmbedList> GraphEmbedder::CreateInitialVertexEmbedListsRootedFixe
         result.insert(tempList);
     }
 #ifdef DEBUG
-    std::cout << "INITIAL_LIST:\n";
-    for (auto it=result.begin(); it!=result.end(); ++it)
-        std::cout << " " << *it << "\n";
+    //std::cout << "INITIAL_LIST:\n";
+    //for (auto it=result.begin(); it!=result.end(); ++it)
+        //std::cout << " " << *it << "\n";
 #endif
     return result;
 }
@@ -1004,6 +1244,7 @@ bool GraphEmbedderParametersNauty::ProcessCommandLine(int argc, char *argv[])
                 (",l", po::value<std::string>(&this->LatticeType)->default_value("Cubic"), "Lattice type: Cubic, Square, or Triangular")
                 (",d", po::value<MaxInteractionLength>(&this->MaxEmbeddingLength)->default_value(MaxInteractionLength::NearestNeighbor), "MaxEmbeddingLength: NN NNN 3N or 4N (longer distances not yet supported!)")
                 (",c", po::value<bool>(&this->Correlator)->default_value(false), "Embed correlators (two-point functions)?")
+                (",j", po::value<bool>(&this->JonasFormat)->default_value(false), "Output using Jonas' format?")
                 (",m", po::value<MaxInteractionLength>(&this->CorrelatorLength)->default_value(MaxInteractionLength::NearestNeighbor), "CorrelatorLength: NN NNN 3N or 4N (longer distances not yet supported!)")
                 ;
 

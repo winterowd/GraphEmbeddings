@@ -46,6 +46,8 @@ private:
 
     bool Correlator; /// flag for embedding correlator
 
+    bool JonasFormat; /// output embeddings in Jonas' format
+
     bool ProcessCommandLine(int argc, char *argv[]);
 
 public:
@@ -65,6 +67,8 @@ public:
     MaxInteractionLength GetCorrelatorLength() const { return this->CorrelatorLength; }
 
     bool EmbedCorrelator() const { return this->Correlator; }
+
+    bool UseJonasFormat() const { return this->JonasFormat; }
 
 };
 
@@ -118,42 +122,39 @@ private:
 
     void ComputeEmbeddingNumbers(const GraphContainer& container, graph *g, FILE *fpo, int symmFactor=-1); /// loops over all valid combos of bond counts consistent with graph in container
 
+    int ComputeEmbeddingNumberComboOldWorking(const GraphContainer& container, const std::vector<int> &bondCombo); /// compute the embedding number of a graph for a given combo of bond counts
+
     int ComputeEmbeddingNumberCombo(const GraphContainer& container, const std::vector<int> &bondCombo); /// compute the embedding number of a graph for a given combo of bond counts
 
     std::vector<int> GetAllowedBondDegreesOfList(const VertexEmbedList& list, const std::vector<int> &bondCombo); /// determine list of allowed neighbor degrees based on list and combination of bond counts
 
     bool IsProposedNNSiteFree(const std::vector<VertexEmbed>& list, int elem, int nn, int &newIndex);
 
-    //bool IsProposedNeighborSiteFree(const VertexEmbedList& list, int elem, int degree, int nn, int &newIndex);
-
     bool IsProposedNeighborSiteFree(const VertexEmbedList& list, VertexEmbed elem, int degree, int nn, int &newIndex);
 
     bool IsProposedSiteConsistentWithPreviousVerticesNN(const std::vector<VertexEmbed> &list, const GraphContainer &container, int elem, int newIndex, int newVertexNumber);
 
-    //bool IsProposedSiteConsistentWithPreviousVerticesAndBondCounts(const VertexEmbedList& list, const GraphContainer &container, const std::vector<int> &bondCombo, int elem, int newIndex, int newVertexNumber, std::vector<int> &bondCountsToBeAdded);
     bool IsProposedSiteConsistentWithPreviousVerticesAndBondCounts(const VertexEmbedList& list, const GraphContainer &container, const std::vector<int> &bondCombo, VertexEmbed elem, int newIndex, int newVertexNumber, std::vector<int> &bondCountsToBeAdded);
 
     std::vector<VertexEmbed> SelectFirstLinkToEmbedNN(const GraphContainer& container);
 
-    //std::vector<VertexEmbedList> CreateInitialVertexEmbedLists(const GraphContainer& container, const std::vector<int> &bondCombo);
     std::set<VertexEmbedList> CreateInitialVertexEmbedLists(const GraphContainer& container, const std::vector<int> &bondCombo);
 
-    //std::vector<VertexEmbedList> CreateInitialVertexEmbedListsRootedFixed(const GraphContainer& container, const std::vector<int> &bondCombo, const std::vector<int> &rootedVertices);
     std::set<VertexEmbedList> CreateInitialVertexEmbedListsRootedFixed(const GraphContainer& container, const std::vector<int> &bondCombo, const std::vector<int> &rootedVertices);
 
-    //std::vector<VertexEmbedList> CreateInitialVertexEmbedListsRooted(const GraphContainer& container, const std::vector<int> &bondCombo);
     std::set<VertexEmbedList> CreateInitialVertexEmbedListsRooted(const GraphContainer& container, const std::vector<int> &bondCombo);
 
-    //std::vector<VertexEmbedList> CreateInitialVertexEmbedListsNonRooted(const GraphContainer& container, const std::vector<int> &bondCombo);
     std::set<VertexEmbedList> CreateInitialVertexEmbedListsNonRooted(const GraphContainer& container, const std::vector<int> &bondCombo);
 
     std::unordered_set<int> GetRemainingVertices(const std::vector<VertexEmbed>& listUsedVertices);
 
     std::unordered_set<int> GetRemainingVertices(const VertexEmbedList& listUsedVertices);
 
-    void GetCombinationsOfBonds(int nbrBonds); /// compute numbers of each type of bonds given the total number of bonds for a graph which is to be embedded
+    void GetCombinationsOfBondsFixedManhattanDistance(int nbrBonds, int manhattanDistance); /// compute numbers of each type of bonds with a constraint for a given "Manhattan Distance"
 
-    void GenerateCombinations(const std::vector<int>& arr, std::vector<int>& data, int index); /// called by GetCombinationsOfBonds
+    void GetCombinationsOfBondsFixedNumberOfBonds(int nbrBonds); /// compute numbers of each type of bonds given the total number of bonds for a graph which is to be embedded
+
+    void GenerateCombinations(const std::vector<int>& arr, std::vector<int>& data, int index, std::function<bool(const std::vector<int>&)> isValid);
 
     bool IsDuplicate(const std::vector<std::vector<VertexEmbed>>& lists, const std::vector<VertexEmbed>& toAdd);
 
@@ -166,7 +167,9 @@ private:
     bool IsDuplicate(const std::set<VertexEmbedList>& lists, const VertexEmbedList& toAdd);
 
     void TestEraseWrongSizes(std::vector<VertexEmbedList>& lists, int vertexCount); /// debugging routine
-
+public:
+    std::pair<int, VertexEmbed> DetermineNextVertexToEmbed(const GraphContainer& container, const VertexEmbedList& embedded, const std::unordered_set<int>& remainingVertices);
+private:
     void CallDenseNauty(graph *g, int *lab, int *ptn, int *orbits, statsblk &stats);
 
     /// wrapper for lattice accessor
@@ -200,6 +203,8 @@ private:
     bool AreNeighbors(int degree, int index1, int index2);
 
     void UpdateBondCounts(VertexEmbedList &List, const std::vector<int>& countsToBeAdded);
+
+    void PrintVertexEmbedList(const VertexEmbedList& list);
 
 public:
 

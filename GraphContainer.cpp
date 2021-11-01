@@ -208,6 +208,23 @@ void GraphContainer::PrintM() const
         std::cout << "M: " << i << " " << RowM[i] << " " << ColM[i] << " " << this->GetElementAdjacencyMatrix(RowM[i], ColM[i]) << "\n";
 }
 
+/// accessor
+int GraphContainer::GetRowM(int index) const
+{
+    if (index<0 || index>=this->NTimesNMinusOneDiv2)
+        throw std::invalid_argument("GetRowM must have 0 <= index < NTimesNMinusOneDiv2!\n");
+    return this->RowM[index];
+}
+
+
+/// accessor
+int GraphContainer::GetColM(int index) const
+{
+    if (index<0 || index>=this->NTimesNMinusOneDiv2)
+        throw std::invalid_argument("GetColM must have 0 <= index < NTimesNMinusOneDiv2!\n");
+    return this->ColM[index];
+}
+
 /// print out vertex orders
 void GraphContainer::PrintVertexOrders() const
 {
