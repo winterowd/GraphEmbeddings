@@ -136,7 +136,6 @@ void GraphGeneratorNauty::SetVertexColors(int *c, const std::vector<int>& rooted
 /// c: C-style array of N integers specifying the color of each vertex i.e. c_j gives the color of vertex labeled j (should be 0, 1, or 2)
 /// lab: C-style array of N integers specifying vertex labels
 /// ptn: C-style array of N integers specifying and partition of the vertex labels into colors
-/// TODO: add parameter for number of colors
 void GraphGeneratorNauty::SetColoredPartition(int* c, int* lab, int* ptn)
 {
     /* loop over all colors to fill it */

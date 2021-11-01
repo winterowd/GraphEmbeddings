@@ -1,6 +1,6 @@
 #include "AuxiliaryRoutinesForNauty.h"
 
-/// set the partition for two-rooted graphs only1
+/// set the partition for two-rooted graphs only
 void SetColoredPartition(int* c, int* lab, int* ptn, int n)
 {
     /* loop over all colors to fill it */

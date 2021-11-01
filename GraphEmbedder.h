@@ -40,6 +40,8 @@ private:
 
     std::string LatticeType; /// which lattice for embeddings
 
+    std::string G6; /// g6 string
+
     MaxInteractionLength MaxEmbeddingLength; /// length of longest bond for embedding
 
     MaxInteractionLength CorrelatorLength; /// correlator length
@@ -47,6 +49,8 @@ private:
     bool Correlator; /// flag for embedding correlator
 
     bool JonasFormat; /// output embeddings in Jonas' format
+
+    void RequiredOptionWhenOtherOptionMissing(const po::variables_map& vm, const char* required, const char* dependancy);
 
     bool ProcessCommandLine(int argc, char *argv[]);
 
@@ -62,6 +66,8 @@ public:
 
     std::string GetLatticeType() const { return this->LatticeType; }
 
+    std::string GetG6() const { return this->G6; }
+
     MaxInteractionLength GetMaxEmbeddingLength() const { return this->MaxEmbeddingLength; }
 
     MaxInteractionLength GetCorrelatorLength() const { return this->CorrelatorLength; }
@@ -71,6 +77,7 @@ public:
     bool UseJonasFormat() const { return this->JonasFormat; }
 
 };
+
 
 class GraphEmbedder
 {
@@ -99,6 +106,8 @@ private:
     std::unordered_set<int> VertexSet; /// precompute for embedding number
 
     bool DebugJonas; /// debug flag
+
+    std::string G6String; /// string if we want to access mode where a single graph is embedded by inputting the g6 string
 
     enum { NbrLevelsNeighbor = 4 }; //// DEBUG: this is for array of function pointers! Change as capability for third nearest and further are added!
 
@@ -167,9 +176,9 @@ private:
     bool IsDuplicate(const std::set<VertexEmbedList>& lists, const VertexEmbedList& toAdd);
 
     void TestEraseWrongSizes(std::vector<VertexEmbedList>& lists, int vertexCount); /// debugging routine
-public:
+
     std::pair<int, VertexEmbed> DetermineNextVertexToEmbed(const GraphContainer& container, const VertexEmbedList& embedded, const std::unordered_set<int>& remainingVertices);
-private:
+
     void CallDenseNauty(graph *g, int *lab, int *ptn, int *orbits, statsblk &stats);
 
     /// wrapper for lattice accessor
@@ -205,6 +214,10 @@ private:
     void UpdateBondCounts(VertexEmbedList &List, const std::vector<int>& countsToBeAdded);
 
     void PrintVertexEmbedList(const VertexEmbedList& list);
+
+    void EmbedFromFile();
+
+    void EmbedSingleG6();
 
 public:
 

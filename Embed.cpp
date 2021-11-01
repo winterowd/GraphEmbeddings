@@ -4,8 +4,8 @@
 
 int main(int argc, char *argv[])
 {
-    std::cout << "EMBEDDING GRAPHS!\n";
     GraphEmbedder MyEmbedder(argc, argv);
+    std::cout << "EMBEDDING GRAPHS!\n";
     auto start = std::chrono::high_resolution_clock::now();
     MyEmbedder.Embed();
     auto end = std::chrono::high_resolution_clock::now();

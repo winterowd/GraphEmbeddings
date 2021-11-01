@@ -63,7 +63,6 @@ inline bool operator<(const VertexEmbed& lhs,  const VertexEmbed& rhs)
         return (lhs.Index < rhs.Index);
 }
 
-/// TODO: think about some sort of sorting for std::vector<VertexEmbed> List for comparisons...
 /// class to hold lists for embedding
 /// when including next nearest neighbors and so on need to keep track of number of number of types of links used
 /// getters and setters mostly. What other types of routines? any other data fields?

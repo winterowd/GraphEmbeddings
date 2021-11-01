@@ -36,7 +36,16 @@ GraphEmbedder::GraphEmbedder(int argc, char *argv[]) :
     }
     }
 
-    this->N = this->Parameters.GetN();
+    if (!this->Parameters.GetG6().empty())
+    {
+        this->G6String = this->Parameters.GetG6();
+        char *tempg6 = new char[this->G6String.length()+1];
+        std::strcpy(tempg6, this->G6String.c_str());
+        this->N = graphsize(tempg6); /// get current size
+        delete[] tempg6;
+    }
+    else
+        this->N = this->Parameters.GetN();
 
     for (int v=this->N; v>0; --v)
         this->VertexSet.insert(v);
@@ -90,8 +99,52 @@ void GraphEmbedder::CallDenseNauty(graph *g, int *lab, int *ptn, int *orbits, st
 }
 
 /// public method to call for embedding
-/// reads in graphs from a file corresponding to a specific order N and computes the embedding number and size of the automorphism group
 void GraphEmbedder::Embed()
+{
+    if (this->Parameters.GetG6().empty())
+        this->EmbedFromFile();
+    else
+        this->EmbedSingleG6();
+}
+
+/// embed a single graph from a g6 string
+void GraphEmbedder::EmbedSingleG6()
+{
+
+    DYNALLSTAT(graph, g, g_sz); /// declare graph
+    DYNALLOC2(graph, g, g_sz, this->N, this->MWords, "malloc"); /// allocate graph
+
+    /// output file for writing
+    std::string outputFilename = this->G6String+"_embedding.dat";
+    FILE *fpo = fopen(outputFilename.c_str(), "w");
+    if (fpo!=NULL)
+        std::cout << "GraphEmbedder::Embed: Successfully opened " << outputFilename << std::endl;
+    else
+        throw std::invalid_argument("GraphEmbedder::Embed: Error opening "+outputFilename);
+
+    char *tempg6 = new char[this->G6String.length()+1];
+
+    std::strcpy(tempg6, this->G6String.c_str());
+    stringtograph(tempg6, g, this->MWords); /// g6 string to densenauty
+
+    delete[] tempg6;
+
+    GraphContainer container(this->N, this->MWords, g); /// container from densenauty
+
+    if(this->Parameters.EmbedCorrelator())
+        this->ComputeEmbeddingNumbers(container, g, fpo, -1);
+    else
+        this->ComputeEmbeddingNumbers(container, g, fpo);
+
+
+    DYNFREE(g, g_sz); /// free graph
+
+    fclose(fpo); /// close the file
+
+}
+
+/// reads in graphs from a file corresponding to a specific order N and computes the embedding number and size of the automorphism group
+void GraphEmbedder::EmbedFromFile()
 {
 
     DYNALLSTAT(graph, g, g_sz); /// declare graph
@@ -1230,6 +1283,17 @@ std::set<VertexEmbedList> GraphEmbedder::CreateInitialVertexEmbedListsNonRooted(
     return result;
 }
 
+/// we require one option if the other is not provided by the user (option either default or not specified)
+/// @param vm: variable map
+/// @param required: name of the required option
+/// @param other: the option which determines whether the first is actually required
+void GraphEmbedderParametersNauty::RequiredOptionWhenOtherOptionMissing(const po::variables_map& vm, const char* required, const char* other)
+{
+    if(vm.count(other)==0 || vm[other].defaulted())
+        if (vm.count(required) == 0 || vm[required].defaulted())
+            throw std::logic_error(std::string("Option ")+required+" required when "+other+" missing!\n");
+}
+
 /// process user's command-line arguments
 bool GraphEmbedderParametersNauty::ProcessCommandLine(int argc, char *argv[])
 {
@@ -1238,13 +1302,14 @@ bool GraphEmbedderParametersNauty::ProcessCommandLine(int argc, char *argv[])
         po::options_description desc("Allowed options");
         desc.add_options()
                 ("help,h", "Produce help message")
-                (",n", po::value<unsigned int>(&this->N)->required(), "Maximum vertex order")
-                (",i", po::value<std::string>(&this->InputFilename)->required(), "Input filename")
-                (",o", po::value<std::string>(&this->OutputFilename)->required(), "Output filename")
+                ("order,n", po::value<unsigned int>(&this->N), "Vertex order")
+                ("input,i", po::value<std::string>(&this->InputFilename), "Input filename")
+                ("output,o", po::value<std::string>(&this->OutputFilename), "Output filename")
+                ("g6,g", po::value<std::string>(&this->G6)->default_value(""), "Embed  single graph from g6 string")
                 (",l", po::value<std::string>(&this->LatticeType)->default_value("Cubic"), "Lattice type: Cubic, Square, or Triangular")
                 (",d", po::value<MaxInteractionLength>(&this->MaxEmbeddingLength)->default_value(MaxInteractionLength::NearestNeighbor), "MaxEmbeddingLength: NN NNN 3N or 4N (longer distances not yet supported!)")
-                (",c", po::value<bool>(&this->Correlator)->default_value(false), "Embed correlators (two-point functions)?")
-                (",j", po::value<bool>(&this->JonasFormat)->default_value(false), "Output using Jonas' format?")
+                (",c", po::bool_switch(&this->Correlator)->default_value(false), "Embed correlators (two-point functions)?")
+                (",j", po::bool_switch(&this->JonasFormat)->default_value(false), "Output using Jonas' format?")
                 (",m", po::value<MaxInteractionLength>(&this->CorrelatorLength)->default_value(MaxInteractionLength::NearestNeighbor), "CorrelatorLength: NN NNN 3N or 4N (longer distances not yet supported!)")
                 ;
 
@@ -1256,6 +1321,10 @@ bool GraphEmbedderParametersNauty::ProcessCommandLine(int argc, char *argv[])
             std::cout << desc << "\n";
             return false;
         }
+
+        this->RequiredOptionWhenOtherOptionMissing(vm, "order", "g6");
+        this->RequiredOptionWhenOtherOptionMissing(vm, "input", "g6");
+        this->RequiredOptionWhenOtherOptionMissing(vm, "output", "g6");
 
         po::notify(vm);
     }
