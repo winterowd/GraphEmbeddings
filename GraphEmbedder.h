@@ -133,7 +133,7 @@ private:
 
     int ComputeEmbeddingNumberComboOldWorking(const GraphContainer& container, const std::vector<int> &bondCombo); /// compute the embedding number of a graph for a given combo of bond counts
 
-    int ComputeEmbeddingNumberCombo(const GraphContainer& container, const std::vector<int> &bondCombo); /// compute the embedding number of a graph for a given combo of bond counts
+    std::pair<int,VertexEmbedList> ComputeEmbeddingNumberCombo(const GraphContainer& container, const std::vector<int> &bondCombo); /// compute the embedding number of a graph for a given combo of bond counts
 
     std::vector<int> GetAllowedBondDegreesOfList(const VertexEmbedList& list, const std::vector<int> &bondCombo); /// determine list of allowed neighbor degrees based on list and combination of bond counts
 
@@ -227,9 +227,9 @@ public:
 
     void Embed(); /// calculates embedding numbers for all graphs of a given order and outputs results
 
-    void EmbedSpecificGraphBondCombo(int graphNbr, const std::vector<int>& bondCounts); /// debugging routine: graphNbr is the line in the file and bondCounts needs to be provided by the user
+    std::pair<GraphContainer, VertexEmbedList> ContainerAndSampleCubicEmbeddingFromG6(); /// return a pair consisting of a container and a VertexEmbedList for a given g6 string input by the user (for debugging purposes)
 
-    void TestInitialRootedGraphList(std::string filename); /// test routine that reads in a graph in g6 format in filename and fixes v1 and v2 as rooted
+    void EmbedSpecificGraphBondCombo(int graphNbr, const std::vector<int>& bondCounts); /// debugging routine: graphNbr is the line in the file and bondCounts needs to be provided by the user
 
 };
 

@@ -4,6 +4,7 @@
 /// takes in what the max embedding length will be and the correlator distance
 VertexEmbedList::VertexEmbedList(MaxInteractionLength maxEmbeddingLength, MaxInteractionLength correlatorDistance) :
     NbrChoicesForFirstBond(1),
+    MaxLength(maxEmbeddingLength),
     TwoPointFunction(true),
     FixedVertices(2, VertexEmbed{-1,-1}),
     CorrelatorDistance(correlatorDistance)
@@ -33,14 +34,15 @@ VertexEmbedList::VertexEmbedList(MaxInteractionLength maxEmbeddingLength, MaxInt
 
 /// constructor for unrooted graph
 /// takes in what the max interaction length will be
-VertexEmbedList::VertexEmbedList(MaxInteractionLength maxLength) :
+VertexEmbedList::VertexEmbedList(MaxInteractionLength maxEmbeddingLength) :
+    MaxLength(maxEmbeddingLength),
     TwoPointFunction(false),
     FixedVertices(2, VertexEmbed{-1,-1})
 {
 #ifdef DEBUG
     std::cout << "Created an unrooted graph!\n";
 #endif
-    switch (maxLength)
+    switch (maxEmbeddingLength)
     {
     case MaxInteractionLength::NearestNeighbor:
         this->BondCounts.resize(1);
@@ -74,13 +76,7 @@ void VertexEmbedList::AddVertexEmbed(const VertexEmbed& v)
 /// add a vertex to the list
 void VertexEmbedList::AddVertexEmbed(int number, int index)
 {
-    VertexEmbed v{number,index};
-#ifdef DEBUG
-    for (auto it=this->List.begin(); it!=this->List.end(); ++it)
-        if ((v.Number==it->Number) !=  (v.Index==it->Index))
-            std::cout << "WARNING: AddVertexEmbed attempting to add VertexEmbed object with previously occupied site or previously used vertex label!\n";
-#endif
-    this->List.insert(v);
+    return this->AddVertexEmbed(VertexEmbed{number,index});
 }
 
 void VertexEmbedList::AddFixedVerticesEmbed(const std::vector<VertexEmbed> &embed)
@@ -94,6 +90,23 @@ void VertexEmbedList::AddFixedVerticesEmbed(const std::vector<VertexEmbed> &embe
     this->FixedVertices = embed;
     this->List.insert(embed[0]);
     this->List.insert(embed[1]);
+}
+
+void VertexEmbedList::AddFixedVertexEmbed(int fixedNbr, const VertexEmbed& embed)
+{
+    if (fixedNbr != 0 && fixedNbr != 1)
+        throw std::invalid_argument("AddFixedVertexEmbed requires fixedNbr to be 0 or 1!\n");
+    if (this->FixedVertices[0].Index!=-1 || this->FixedVertices[1].Index!=-1)
+        std::cerr << "WARNING: AddFixedVertexEmbed fixed vertices already set!\n";
+    if (!this->TwoPointFunction)
+        std::cerr << "WARNING: AddFixedVertexEmbed called but TwoPointFunction flag set to false!\n";
+    this->FixedVertices[fixedNbr] = embed;
+    this->List.insert(embed);
+}
+
+void VertexEmbedList::AddFixedVertexEmbed(int fixedNbr, int number, int index)
+{
+    this->AddFixedVertexEmbed(fixedNbr, VertexEmbed{number, index});
 }
 
 /// update the bond count

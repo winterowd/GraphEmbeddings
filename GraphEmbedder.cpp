@@ -60,12 +60,15 @@ GraphEmbedder::GraphEmbedder(int argc, char *argv[]) :
 
     nauty_check(WORDSIZE, this->N, this->MWords, NAUTYVERSIONID); /// check if everything is ok
 
-    this->fp = fopen(this->Parameters.GetInputFilename().c_str(), "r");
+    if (this->Parameters.GetG6().empty()) /// we read in the single g6 string from command line so do not need an input file
+    {
+        this->fp = fopen(this->Parameters.GetInputFilename().c_str(), "r");
 
-    if (this->fp!=NULL)
-        std::cout << "GraphEmbedder: Successfully opened " << this->Parameters.GetInputFilename() << std::endl;
-    else
-        throw std::invalid_argument("GraphEmbedder: Error opening "+this->Parameters.GetInputFilename());
+        if (this->fp!=NULL)
+            std::cout << "GraphEmbedder: Successfully opened " << this->Parameters.GetInputFilename() << std::endl;
+        else
+            throw std::invalid_argument("GraphEmbedder: Error opening "+this->Parameters.GetInputFilename());
+    }
 }
 
 /// destructor
@@ -73,7 +76,8 @@ GraphEmbedder::GraphEmbedder(int argc, char *argv[]) :
 GraphEmbedder::~GraphEmbedder()
 {
     delete this->Lattice; /// delete lattice which we allocated in construtor with new!
-    fclose(this->fp); /// close file pointer
+    if (this->Parameters.GetG6().empty())
+        fclose(this->fp); /// close file pointer
 }
 
 /// convert string specifying lattice type to private enumeration
@@ -658,20 +662,20 @@ void GraphEmbedder::ComputeEmbeddingNumbers(const GraphContainer& container, gra
             std::cout << " " << BondCombinations[i][c];
         std::cout << "\n";
 #endif
-        auto count = this->ComputeEmbeddingNumberCombo(container, this->BondCombinations[i]);
+        auto resultEmbed = this->ComputeEmbeddingNumberCombo(container, this->BondCombinations[i]);
 
         if (this->Parameters.UseJonasFormat()) /// Jonas' format: g6 E(p_1) E(p_2) ... E(p_N,) where E(p_i) is the ith partition of the number of bonds based on the allowed bond lengths
         {
             if (i==0)
                 fprintf(fpo, "%.*s", static_cast<int>(strlen(s)-1), s);
-            fprintf(fpo, " %d", count);
+            fprintf(fpo, " %d", resultEmbed.first);
         }
         else /// default format
         {
             fprintf(fpo, "%.*s ", static_cast<int>(strlen(s)-1), s); /// write g6 string
             for (int d=0; d<this->MaxDegreeNeighbor; ++d) /// write bomb combination i.e. parition of total number of bonds
                 fprintf(fpo, "%d ", this->BondCombinations[i][d]);
-            fprintf(fpo, "%d ", count);
+            fprintf(fpo, "%d ", resultEmbed.first);
             if (!this->Parameters.EmbedCorrelator())
                 writegroupsize(fpo,status.grpsize1,status.grpsize2); /// write group size (symmetry factor) to file
             else
@@ -690,7 +694,8 @@ void GraphEmbedder::ComputeEmbeddingNumbers(const GraphContainer& container, gra
 /// compute embedding number for a graph (rooted or unrooted); differs from old routine in that at every step, each list produces lists of higher order embedding new vertex connected with only ONE of previously embedded vertices
 /// @param container: graph to embed
 /// @param bondCombo: partition of N_{bonds} = \sum_i \tilde{N}_i, i=1,...,N_{deg}
-int GraphEmbedder::ComputeEmbeddingNumberCombo(const GraphContainer& container, const std::vector<int> &bondCombo)
+/// @return pair consisting of the count (first) and an example embedding (second)
+std::pair<int, VertexEmbedList> GraphEmbedder::ComputeEmbeddingNumberCombo(const GraphContainer& container, const std::vector<int> &bondCombo)
 {
 
     auto lists = CreateInitialVertexEmbedLists(container, bondCombo);
@@ -700,7 +705,7 @@ int GraphEmbedder::ComputeEmbeddingNumberCombo(const GraphContainer& container, 
 #ifdef DEBUG
         std::cout << "COULD NOT EMBED ROOTED GRAPH! (ROOTED VERTICES CONNECTED BY A BOND BUT BOND NOT POSSIBLE)\n";
 #endif
-        return 0; /// no embedding is possible
+        return std::pair<int, VertexEmbedList>(0, VertexEmbedList(this->Parameters.GetMaxEmbeddingLength(), static_cast<MaxInteractionLength>(this->Parameters.GetCorrelatorLength()))); /// no embedding is possible
     }
 
     int vertexCount = 2; /// two vertices already embedded in initialization...
@@ -814,8 +819,10 @@ int GraphEmbedder::ComputeEmbeddingNumberCombo(const GraphContainer& container, 
         count++;
     }
 #endif
-
-   return result;
+   if (lists.size()==0) /// check size
+       return std::pair<int, VertexEmbedList>(0, VertexEmbedList(this->Parameters.GetMaxEmbeddingLength(), static_cast<MaxInteractionLength>(this->Parameters.GetCorrelatorLength())));
+   else /// atleast one embedding to return
+       return std::pair<int, VertexEmbedList>(result, VertexEmbedList(*lists.begin()));
 }
 
 /// compute embedding number for a graph (rooted or unrooted)
@@ -1150,47 +1157,6 @@ std::set<VertexEmbedList> GraphEmbedder::CreateInitialVertexEmbedLists(const Gra
         return CreateInitialVertexEmbedListsNonRooted(container, bondCombo);
 }
 
-/// debugging routine for initialization of embedding routine for rooted graphs
-/// @param filename: file with graph in g6 format
-void GraphEmbedder::TestInitialRootedGraphList(std::string filename)
-{
-    DYNALLSTAT(graph, g, g_sz);
-    DYNALLOC2(graph, g, g_sz, this->N, this->MWords, "malloc");
-
-    fclose(this->fp); /// close main input file
-    this->fp = fopen(filename.c_str(), "r"); /// open temp
-
-    if (this->fp!=NULL)
-        std::cout << "TestInitialRootedGraphList: Successfully opened " << filename << std::endl;
-    else
-        throw std::invalid_argument("TestInitialRootedGraphList: Error opening "+filename);
-
-    graph *gtemp = this->GetNextGraph(g);
-    if (gtemp == NULL)
-    {
-        std::cerr << "TestInitialRootedGraphList: Error reading test graph!\n";
-        std::exit(1);
-    }
-
-    GraphContainer container(this->N, this->MWords, g); /// set up container
-
-    this->GetCombinationsOfBondsFixedNumberOfBonds(container.GetL()); /// get combos for a fixed number of bonds
-
-    int indexCombo = 3; /// hard-code
-    if (this->BondCombinations.size()==1)
-        indexCombo = 0;
-
-    auto result = this->CreateInitialVertexEmbedListsRooted(container, this->BondCombinations[indexCombo]);
-
-    if (this->fp!=NULL)
-        std::cout << "TestInitialRootedGraphList: Successfully opened " << this->Parameters.GetInputFilename() << std::endl;
-    else
-        throw std::invalid_argument("TestInitialRootedGraphList: Error opening "+this->Parameters.GetInputFilename());
-
-    //this->FixedVertexNumbers.pop_back(); /// CreateInitialVertexEmbedListsRooted has hardcoded as first element of FixedVertices
-
-}
-
 /// creates initial list of embedded vertices for rooted graphs
 /// NOTE: embedded vertices ALWAYS taken to be labeled 1 and 2 (0 and 1 in NAUTY convention)! Convention specified in GraphGeneratorNauty
 //std::vector<VertexEmbedList> GraphEmbedder::CreateInitialVertexEmbedListsRooted(const GraphContainer& container, const std::vector<int> &bondCombo)
@@ -1281,6 +1247,38 @@ std::set<VertexEmbedList> GraphEmbedder::CreateInitialVertexEmbedListsNonRooted(
         }
     }
     return result;
+}
+
+std::pair<GraphContainer, VertexEmbedList> GraphEmbedder::ContainerAndSampleCubicEmbeddingFromG6()
+{
+    if (this->Parameters.GetG6().empty())
+        throw std::invalid_argument("GraphEmbedder::ContainerFromG6 requires the user to input a g6 string!\n");
+
+    if (this->ResolveLatticeType(this->Parameters.GetLatticeType())!=GraphEmbedder::LatticeType::Cubic)
+        throw std::invalid_argument("GraphEmbedder::ContainerFromG6 requires the cubic lattice!\n");
+
+    DYNALLSTAT(graph, g, g_sz); /// declare graph
+    DYNALLOC2(graph, g, g_sz, this->N, this->MWords, "malloc"); /// allocate graph
+
+    char *tempg6 = new char[this->G6String.length()+1];
+
+    std::strcpy(tempg6, this->G6String.c_str());
+    stringtograph(tempg6, g, this->MWords); /// g6 string to densenauty
+
+    delete[] tempg6;
+
+    GraphContainer container(this->N, this->MWords, g); /// container from densenauty
+
+    this->GetCombinationsOfBondsFixedNumberOfBonds(container.GetL()); /// generate combos of bonds for fixed bond number
+
+    auto resultEmbed = this->ComputeEmbeddingNumberCombo(container, this->BondCombinations[0]);
+
+    if (resultEmbed.first==0)
+        std::cerr << "ERROR in ContainerAndSampleCubicEmbeddingFromG6(): graph has no embeddings on the cubic lattice!\n";
+
+    DYNFREE(g, g_sz); /// free graph
+
+    return std::pair<GraphContainer, VertexEmbedList>(container, resultEmbed.second);
 }
 
 /// we require one option if the other is not provided by the user (option either default or not specified)

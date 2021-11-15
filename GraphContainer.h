@@ -32,8 +32,8 @@ private:
     std::vector<std::vector<bool>> M; /// NxN adjacency matrix
 
     /// precompute these in constructor
-    std::vector<int> RowM;
-    std::vector<int> ColM;
+    std::vector<int> RowM; /// starts at 1
+    std::vector<int> ColM; /// starts at 1
 
     /**** private methods *****/
 

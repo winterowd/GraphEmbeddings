@@ -75,6 +75,8 @@ private:
 
     int NbrChoicesForFirstBond; /// remember number of choices for first bond for unrooted graphs or 1 for rooted graphs
 
+    MaxInteractionLength MaxLength; /// save this
+
     bool TwoPointFunction; /// flag for two-point function (rooted graph)
 
      /// NOTE: when making canonical form, first vertex corresponds to color 1 and second vertex to color 2 (equality operator will distinguish them)
@@ -90,11 +92,17 @@ public:
 
     VertexEmbedList(const VertexEmbedList& list) = default;
 
+    MaxInteractionLength GetMaxLength() const { return this->MaxLength; }
+
     void AddVertexEmbed(const VertexEmbed& v);
 
     void AddVertexEmbed(int number, int index);
 
     void AddFixedVerticesEmbed(const std::vector<VertexEmbed>& embed);
+
+    void AddFixedVertexEmbed(int fixedNbr, const VertexEmbed& embed);
+
+    void AddFixedVertexEmbed(int fixedNbr, int number, int index);
 
     void IncrementBondCount(int dIndex);
 
