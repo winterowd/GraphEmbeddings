@@ -67,7 +67,10 @@ double CubicLatticeCanonicalizor::NormCartesianVector(const CartesianCoords& a)
 /// result put into VerticesCartesianCOM
 void CubicLatticeCanonicalizor::ComputeCOMandShift()
 {
+
     this->VerticesCartesianCOM = this->VerticesCartesian; /// copy vertices into COM
+
+    this->COM = {0,0,0}; /// clear COM vector
 
     /// compute the COM vector
     CartesianCoords temp{0,0,0};
@@ -329,8 +332,6 @@ VertexEmbedList CubicLatticeCanonicalizor::GetCanonicalOld()
 VertexEmbedList CubicLatticeCanonicalizor::GetCanonical()
 {
     this->ComputeCOMandShift(); /// shift to COM
-
-    //this->PrintVerticesCartesianCOM();
 
     auto resultPermuations = this->PermutationsOnAllVertices(this->VerticesCartesianCOM); /// apply permutations (should be equivalent to rotations)
 

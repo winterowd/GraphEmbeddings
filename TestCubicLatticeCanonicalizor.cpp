@@ -113,14 +113,16 @@ int main(int argc, char *argv[])
     index2 = MyLattice.GetNearestNeighbor(index3, 6);
 
     VertexEmbedList EmbedList6(MaxInteractionLength::NearestNeighbor); /// some other
-    EmbedList5.AddVertexEmbed(1, index1);
-    EmbedList5.AddVertexEmbed(3, index3);
-    EmbedList5.AddVertexEmbed(2, index2);
+    EmbedList6.AddVertexEmbed(1, index1);
+    EmbedList6.AddVertexEmbed(3, index3);
+    EmbedList6.AddVertexEmbed(2, index2);
 
     CubicLatticeCanonicalizor TestCanonicalizor6(&TestContainer, &MyLattice, EmbedList6);
 
-    auto result6 = TestCanonicalizor5.GetCanonical();
-    std::cout << "RESULT5: " << result6 << "\n";
+    auto result6 = TestCanonicalizor6.GetCanonical();
+    std::cout << "RESULT6: " << result6 << "\n";
+    result6 = TestCanonicalizor6.GetCanonical();
+    std::cout << "RESULT6: " << result6 << "\n";
 
     if (result2==result3 && result2==result4 && result2==result5 && result2==result6)
         std::cout << "RESULT2, RESULT3, RESULT4, RESULT5, RESULT6 are identical! Success!\n";
