@@ -15,15 +15,33 @@ CubicLatticeCanonicalizor::CubicLatticeCanonicalizor(GraphContainer *container, 
     if (embedList.GetSize()!=container->GetN())
         throw std::invalid_argument("CubicLatticeCanonicalizor requires embedList to be of the same size as container!\n");
 
+    if (embedList.HasRepeatedSites())
+        throw std::invalid_argument("CubicLatticeCanonicalizor requires embedList to not have repeated lattice sites!\n");
+
+    if (embedList.HasRepeatedVertices())
+        throw std::invalid_argument("CubicLatticeCanonicalizor requires embedList to not have repeated vertices!\n");
+
+    if (embedList.IsTwoPointFunction() && ((embedList.GetFixedVertex(0).Number<=0 || embedList.GetFixedVertex(0).Number>container->GetN()) || (embedList.GetFixedVertex(1).Number<=0 || embedList.GetFixedVertex(1).Number>container->GetN())))
+        throw std::invalid_argument("CubicLatticeCanonicalizor requires embedList to have fixed vertices in the range 1,2,..,N!\n");
+
     std::vector<unsigned int> indices(3, 0);
     for (auto it=embedList.begin(); it!=embedList.end(); ++it)
     {
         this->Lattice->GetSiteCoordinates(it->Index, indices);
+        if (it->Number<=0 || it->Number>container->GetN()) /// check range and make sure it is 1 based!
+            throw std::invalid_argument("CubicLatticeCanonicalizor expects VertexEmbedList object to have vertices ranging from 1 to N!\n");
         /// NOTE: assume that vertex numbers start at 1 in VertexEmbedList so need to shift!
         this->VerticesCartesian[it->Number-1] = CartesianCoords{double(indices[0]), double(indices[1]), double(indices[2])};
-        /// TODO: check if graph is rotoed from VertexEmbedList and then add appropriate color to CartesianCoords (prepend)
     }
 
+}
+
+/// interface accessor which checks range of vertex number!
+int CubicLatticeCanonicalizor::GetVertexColor(int number) const
+{
+    if (number<=0 || number > this->Container->GetN())
+        throw std::invalid_argument("CubicLatticeCanonicalizor::GetVertexColor requires 1 <= number <= N!\n");
+    return this->OriginalList.GetVertexColor(number);
 }
 
 /// a += b
@@ -38,6 +56,20 @@ void CubicLatticeCanonicalizor::AccumulateCartesianVectorNeg(CartesianCoords& a,
 {
     for (int i=0; i<3; ++i)
         a[i] -= b[i];
+}
+
+/// a += b
+void CubicLatticeCanonicalizor::AccumulateCartesianVector(CartesianVertex& a, const CartesianCoords& b)
+{
+    for (int i=0; i<3; ++i)
+        a.second[i] += b[i];
+}
+
+/// a -= b
+void CubicLatticeCanonicalizor::AccumulateCartesianVectorNeg(CartesianVertex& a, const CartesianCoords& b)
+{
+    for (int i=0; i<3; ++i)
+        a.second[i] -= b[i];
 }
 
 /// a *= s
@@ -122,25 +154,17 @@ CubicLatticeCanonicalizor::CartesianCoords CubicLatticeCanonicalizor::RotationTr
     return result;
 }
 
+/// wraps the color of the vertex to the result of the rotation
+CubicLatticeCanonicalizor::CartesianVertex CubicLatticeCanonicalizor::RotationTransformColor(double theta, const CartesianCoords& axis, const CartesianCoords& p, const CartesianCoords& x, int color)
+{
+    return CartesianVertex(color, this->RotationTransform(theta, axis, p, x));
+}
+
 /// rotation of vector x about axis (unit-length) passing through the origin
 CubicLatticeCanonicalizor::CartesianCoords CubicLatticeCanonicalizor::RotationTransform(double theta, const CartesianCoords& axis, const CartesianCoords &x)
 {
-    if (std::fabs(this->NormCartesianVector(axis)-1.)>std::numeric_limits<double>::epsilon())
-        throw std::invalid_argument("RotationTransform requires axis to be of unit length!\n");
-
-    CartesianCoords result{0,0,0};
-
-    /// rotate by theta about axis
-    double cosTheta = std::cos(theta);
-    double oneMinusCosTheta = 1-cosTheta;
-    double sinTheta = std::sin(theta);
-
-    /// hard-code R times the vector
-    result[0] = (cosTheta+axis[0]*axis[0]*oneMinusCosTheta)*x[0]+(axis[0]*axis[1]*oneMinusCosTheta-axis[2]*sinTheta)*x[1]+(axis[0]*axis[2]*oneMinusCosTheta+axis[1]*sinTheta)*x[2];
-    result[1] = (axis[0]*axis[1]*oneMinusCosTheta+axis[2]*sinTheta)*x[0]+(cosTheta+axis[1]*axis[1]*oneMinusCosTheta)*x[1]+(axis[1]*axis[2]*oneMinusCosTheta-axis[0]*sinTheta)*x[2];
-    result[2] = (axis[0]*axis[2]*oneMinusCosTheta-axis[1]*sinTheta)*x[0]+(axis[2]*axis[1]*oneMinusCosTheta+axis[0]*sinTheta)*x[1]+(cosTheta+axis[2]*axis[2]*oneMinusCosTheta)*x[2];
-
-    return result;
+    CartesianCoords p{0,0,0};
+    return this->RotationTransform(theta, axis, p, x);
 }
 
 /// inversion about the point p
@@ -160,10 +184,17 @@ CubicLatticeCanonicalizor::CartesianCoords CubicLatticeCanonicalizor::InversionC
     return this->Inversion(p,this->RotationTransform(theta, axis, p, x));
 }
 
-/// apply rotations to a Cartesian vector about four-fold axes which pass through the centers of opposing faces
-std::vector<std::vector<CubicLatticeCanonicalizor::CartesianCoords>> CubicLatticeCanonicalizor::ApplyRotationsFourFoldAxisOnGraph(const CartesianCoords& p, const std::vector<CartesianCoords>& vertices)
+/// wraps the color of the vertex to the result of the rotation followed by inversion
+CubicLatticeCanonicalizor::CartesianVertex CubicLatticeCanonicalizor::InversionComposedWithRotationTransformColor(double theta, const CartesianCoords& axis, const CartesianCoords& p, const CartesianCoords& x, int color)
 {
-    std::vector<std::vector<CartesianCoords>> result;
+    return CartesianVertex(color, this->InversionComposedWithRotationTransform(theta, axis, p, x));
+}
+
+/// apply rotations to a Cartesian vector about four-fold axes which pass through the centers of opposing faces
+std::vector<std::vector<CubicLatticeCanonicalizor::CartesianVertex>> CubicLatticeCanonicalizor::ApplyRotationsFourFoldAxisOnGraph(const CartesianCoords& p, const std::vector<CartesianCoords>& vertices)
+{
+    //std::vector<std::vector<CartesianCoords>> result;
+    std::vector<std::vector<CartesianVertex>> result;
 
     std::vector<CartesianCoords> axes{{1,0,0}, {0,1,0}, {0,0,1}}; /// axes
     std::vector<double> angles{-M_PI_2,M_PI_2,M_PI}; /// angles (4-fold)
@@ -172,13 +203,13 @@ std::vector<std::vector<CubicLatticeCanonicalizor::CartesianCoords>> CubicLattic
     {
         for (auto angles_it=angles.begin(); angles_it!=angles.end(); ++angles_it) /// loop over angles
         {
-            std::vector<CartesianCoords> rotate;
+            std::vector<CartesianVertex> rotate;
             for (int i=0; i<vertices.size(); ++i)
-                rotate.push_back(this->RotationTransform(*angles_it, *axes_it, p, vertices[i])); /// rotation
+                rotate.push_back(this->RotationTransformColor(*angles_it, *axes_it, p, vertices[i], this->GetVertexColor(i+1))); /// rotation
             result.push_back(rotate);
-            std::vector<CartesianCoords> rotatePlusInversion;
+            std::vector<CartesianVertex> rotatePlusInversion;
             for (int i=0; i<vertices.size(); ++i)
-                rotatePlusInversion.push_back(this->InversionComposedWithRotationTransform(*angles_it, *axes_it, p, vertices[i])); /// rotation followed by inversion
+                rotatePlusInversion.push_back(this->InversionComposedWithRotationTransformColor(*angles_it, *axes_it, p, vertices[i], this->GetVertexColor(i+1))); /// rotation followed by inversion
             result.push_back(rotatePlusInversion);
         }
     }
@@ -187,9 +218,9 @@ std::vector<std::vector<CubicLatticeCanonicalizor::CartesianCoords>> CubicLattic
 }
 
 /// apply rotations to a Cartesian vector about two-fold axes which pass bewteen the midpoints of diagonally opposing edges
-std::vector<std::vector<CubicLatticeCanonicalizor::CartesianCoords>> CubicLatticeCanonicalizor::ApplyRotationsTwoFoldAxisOnGraph(const CartesianCoords& p, const std::vector<CartesianCoords>& vertices)
+std::vector<std::vector<CubicLatticeCanonicalizor::CartesianVertex>> CubicLatticeCanonicalizor::ApplyRotationsTwoFoldAxisOnGraph(const CartesianCoords& p, const std::vector<CartesianCoords>& vertices)
 {
-    std::vector<std::vector<CartesianCoords>> result;
+    std::vector<std::vector<CartesianVertex>> result;
 
     double inverseSqrtTwo = 1./std::sqrt(2);
     std::vector<CartesianCoords> axes{{0,inverseSqrtTwo,inverseSqrtTwo}, {0,-inverseSqrtTwo,inverseSqrtTwo}, {inverseSqrtTwo,0,inverseSqrtTwo},
@@ -197,22 +228,22 @@ std::vector<std::vector<CubicLatticeCanonicalizor::CartesianCoords>> CubicLattic
     double theta = M_PI; /// (2-fold)
     for (auto axes_it=axes.begin(); axes_it!=axes.end(); ++axes_it) ///  loop over axes
     {
-        std::vector<CartesianCoords> rotate;
+        std::vector<CartesianVertex> rotate;
         for (int i=0; i<vertices.size(); ++i)
-            rotate.push_back(this->RotationTransform(theta, *axes_it, p, vertices[i])); /// rotation
+            rotate.push_back(this->RotationTransformColor(theta, *axes_it, p, vertices[i], this->GetVertexColor(i+1))); /// rotation
         result.push_back(rotate);
-        std::vector<CartesianCoords> rotatePlusInversion;
+        std::vector<CartesianVertex> rotatePlusInversion;
         for (int i=0; i<vertices.size(); ++i)
-            rotatePlusInversion.push_back(this->InversionComposedWithRotationTransform(theta, *axes_it, p, vertices[i])); /// rotation followed by inversion
+            rotatePlusInversion.push_back(this->InversionComposedWithRotationTransformColor(theta, *axes_it, p, vertices[i], this->GetVertexColor(i+1))); /// rotation followed by inversion
         result.push_back(rotatePlusInversion);
     }
     return result;
 }
 
 /// apply rotations to a Cartesian vector about three-fold axes which pass betwen diagonally opposing vertices
-std::vector<std::vector<CubicLatticeCanonicalizor::CartesianCoords>> CubicLatticeCanonicalizor::ApplyRotationsThreeFoldAxisOnGraph(const CartesianCoords& p, const std::vector<CartesianCoords>& vertices)
+std::vector<std::vector<CubicLatticeCanonicalizor::CartesianVertex>> CubicLatticeCanonicalizor::ApplyRotationsThreeFoldAxisOnGraph(const CartesianCoords& p, const std::vector<CartesianCoords>& vertices)
 {
-    std::vector<std::vector<CartesianCoords>> result;
+    std::vector<std::vector<CartesianVertex>> result;
 
     double inverseSqrtThree = 1./std::sqrt(3);
     std::vector<CartesianCoords> axes{{inverseSqrtThree,inverseSqrtThree,inverseSqrtThree}, {inverseSqrtThree,-inverseSqrtThree,inverseSqrtThree},
@@ -223,13 +254,13 @@ std::vector<std::vector<CubicLatticeCanonicalizor::CartesianCoords>> CubicLattic
     {
         for (auto angles_it=angles.begin(); angles_it!=angles.end(); ++angles_it) /// loop over angles
         {
-            std::vector<CartesianCoords> rotate;
+            std::vector<CartesianVertex> rotate;
             for (int i=0; i<vertices.size(); ++i)
-                rotate.push_back(this->RotationTransform(*angles_it, *axes_it, p, vertices[i])); /// rotation
+                rotate.push_back(this->RotationTransformColor(*angles_it, *axes_it, p, vertices[i], this->GetVertexColor(i+1))); /// rotation
             result.push_back(rotate);
-            std::vector<CartesianCoords> rotatePlusInversion;
+            std::vector<CartesianVertex> rotatePlusInversion;
             for (int i=0; i<vertices.size(); ++i)
-                rotatePlusInversion.push_back(this->InversionComposedWithRotationTransform(*angles_it, *axes_it, p, vertices[i])); /// rotation followed by inversion
+                rotatePlusInversion.push_back(this->InversionComposedWithRotationTransformColor(*angles_it, *axes_it, p, vertices[i], this->GetVertexColor(i+1))); /// rotation followed by inversion
             result.push_back(rotatePlusInversion);
         }
     }
@@ -275,7 +306,7 @@ void CubicLatticeCanonicalizor::GenerateAllPermutationsWithoutRepeats(std::vecto
 /// generate the appropriate permutations on all vertices of the graph
 /// return a vector of vectors of CartesianCoords objects where the first index corresponds to the permutation number and the second corresponds to the vertex of the graph
 /// @input vertices: vertices of the graph
-std::vector<std::vector<CubicLatticeCanonicalizor::CartesianCoords>> CubicLatticeCanonicalizor::PermutationsOnAllVertices(const std::vector<CartesianCoords>& vertices)
+std::vector<std::vector<CubicLatticeCanonicalizor::CartesianCoords>> CubicLatticeCanonicalizor::PermutationsOnAllVerticesOld(const std::vector<CartesianCoords>& vertices)
 {
     std::vector<std::vector<CartesianCoords>> result(48 /* number of permutations (hard-coded) */, std::vector<CartesianCoords>(vertices.size()));
     for (int i=0; i<vertices.size(); ++i) /// loop over vertices
@@ -293,6 +324,28 @@ std::vector<std::vector<CubicLatticeCanonicalizor::CartesianCoords>> CubicLattic
     return result;
 }
 
+std::vector<std::vector<CubicLatticeCanonicalizor::CartesianVertex>> CubicLatticeCanonicalizor::PermutationsOnAllVertices(const std::vector<CartesianCoords>& vertices)
+{
+    std::vector<std::vector<CartesianVertex>> result(48 /* number of permutations (hard-coded) */, std::vector<CartesianVertex>(vertices.size()));
+    for (int i=0; i<vertices.size(); ++i) /// loop over vertices
+    {
+        auto color = this->GetVertexColor(i+1); /// get the color of vertex (add 1 just like we subtracted 1 in constructor when populating VerticesCartesian)
+        std::vector<double> coordsExtended(6,-1);
+        std::copy(vertices[i].begin(), vertices[i].end(), coordsExtended.begin());
+        for (int j=0; j<vertices[i].size(); ++j)
+            coordsExtended[j+3] = -vertices[i][j];
+        std::vector<CartesianCoords> temp;
+        this->GenerateAllPermutationsWithoutRepeats(temp, coordsExtended); /// permutations of coordinates and their negative
+        for (int j=0; j<temp.size(); ++j)
+        {
+            result[j][i].first = color;
+            result[j][i].second = temp[j];
+        }
+    }
+
+    return result;
+}
+
 /// old version of the canonicalization where we use the explicit rotations about the symmetry axes of the cube
 /// lexicographical order determines the canonical graph
 VertexEmbedList CubicLatticeCanonicalizor::GetCanonicalOld()
@@ -302,7 +355,7 @@ VertexEmbedList CubicLatticeCanonicalizor::GetCanonicalOld()
     this->ComputeCOMandShift();
 
     auto resultTwoFold = this->ApplyRotationsTwoFoldAxisOnGraph(origin, this->VerticesCartesianCOM);
-    std::vector<CartesianCoords> canonical = *std::min_element(resultTwoFold.begin(), resultTwoFold.end());
+    std::vector<CartesianVertex> canonical = *std::min_element(resultTwoFold.begin(), resultTwoFold.end());
 
     auto resultThreeFold = this->ApplyRotationsThreeFoldAxisOnGraph(origin, this->VerticesCartesianCOM);
     if (*std::min_element(resultThreeFold.begin(), resultThreeFold.end()) < canonical)
@@ -313,7 +366,7 @@ VertexEmbedList CubicLatticeCanonicalizor::GetCanonicalOld()
         canonical = *std::min_element(resultFourFold.begin(), resultFourFold.end());
 
     /// we now have the canonical graph. now need to get position of smallest lexicographical vertex
-    CartesianCoords minVector = *std::min_element(canonical.begin(), canonical.end());
+    CartesianCoords minVector = (*std::min_element(canonical.begin(), canonical.end())).second;
 
     CartesianCoords midpoint{this->Lattice->GetN()/2., this->Lattice->GetN()/2., this->Lattice->GetN()/2.};
 
@@ -324,7 +377,7 @@ VertexEmbedList CubicLatticeCanonicalizor::GetCanonicalOld()
         this->AccumulateCartesianVector(canonical[i], midpoint);
     }
 
-    return this->ConvertCartesianVectorToVertexEmbedList(canonical);
+    return this->ConvertCartesianVertexVectorToVertexEmbedList(canonical);
 }
 
 /// new method where we use permutations to produce the canonical graph
@@ -335,10 +388,10 @@ VertexEmbedList CubicLatticeCanonicalizor::GetCanonical()
 
     auto resultPermuations = this->PermutationsOnAllVertices(this->VerticesCartesianCOM); /// apply permutations (should be equivalent to rotations)
 
-    std::vector<CartesianCoords> canonical = *std::min_element(resultPermuations.begin(), resultPermuations.end()); /// find canonical embedding
+    std::vector<CartesianVertex> canonical = *std::min_element(resultPermuations.begin(), resultPermuations.end()); /// find canonical embedding
 
     /// we now have the canonical graph. now need to get position of smallest lexicographical vertex
-    CartesianCoords minVector = *std::min_element(canonical.begin(), canonical.end());
+    CartesianCoords minVector = (*std::min_element(canonical.begin(), canonical.end())).second;
 
     CartesianCoords midpoint{this->Lattice->GetN()/2., this->Lattice->GetN()/2., this->Lattice->GetN()/2.}; /// midpoint of lattice
 
@@ -349,17 +402,17 @@ VertexEmbedList CubicLatticeCanonicalizor::GetCanonical()
         this->AccumulateCartesianVector(canonical[i], midpoint);
     }
 
-    return this->ConvertCartesianVectorToVertexEmbedList(canonical);
+    return this->ConvertCartesianVertexVectorToVertexEmbedList(canonical);
 }
 
 /// convert the vector of CartesianCoordinates into a VertexEmbedList object
-VertexEmbedList CubicLatticeCanonicalizor::ConvertCartesianVectorToVertexEmbedList(const std::vector<CartesianCoords>& vec)
+VertexEmbedList CubicLatticeCanonicalizor::ConvertCartesianCoordsVectorToVertexEmbedList(const std::vector<CartesianCoords>& vec)
 {
     VertexEmbedList result = this->OriginalList.IsTwoPointFunction() ? VertexEmbedList(this->OriginalList.GetMaxLength(), this->OriginalList.GetCorrelatorDistance()) : VertexEmbedList(this->OriginalList.GetMaxLength());
 
     if (this->OriginalList.IsTwoPointFunction()) /// correlator
     {
-        std::vector<int> fixedVertexNumbers{this->OriginalList.GetFixedVertex(0).Number,this->OriginalList.GetFixedVertex(1).Number};
+        std::vector<int> fixedVertexNumbers{this->OriginalList.GetFixedVertex(0).Number,this->OriginalList.GetFixedVertex(1).Number}; /// NOTE: vertex numbers range from 1,...,N
         for (int i=0; i<vec.size(); ++i)
         {
             std::vector<unsigned int> indicesFromDouble(3);
@@ -370,12 +423,13 @@ VertexEmbedList CubicLatticeCanonicalizor::ConvertCartesianVectorToVertexEmbedLi
                 indicesFromDouble[j] = vec[i][j];
             }
             auto index = this->Lattice->GetSiteIndex(indicesFromDouble);
-            if (i==fixedVertexNumbers[0])
-                result.AddFixedVertexEmbed(0,i,index);
-            else if (i==fixedVertexNumbers[1])
-                result.AddFixedVertexEmbed(1,i,index);
+            auto vertexNumber = i+1; /// careful with index! for-loop starts at 0 but vertex numbers start at 1!
+            if (vertexNumber==fixedVertexNumbers[0])
+                result.AddFixedVertexEmbed(0,vertexNumber,index);
+            else if (vertexNumber==fixedVertexNumbers[1])
+                result.AddFixedVertexEmbed(1,vertexNumber,index);
             else
-                result.AddVertexEmbed(i,index);
+                result.AddVertexEmbed(vertexNumber,index);
         }
     }
     else /// otherwise
@@ -390,10 +444,20 @@ VertexEmbedList CubicLatticeCanonicalizor::ConvertCartesianVectorToVertexEmbedLi
                 indicesFromDouble[j] = vec[i][j];
             }
             auto index = this->Lattice->GetSiteIndex(indicesFromDouble);
-            result.AddVertexEmbed(i,index);
+            auto vertexNumber = i+1; /// careful with index! for-loop starts at 0 but vertex numbers start at 1!
+            result.AddVertexEmbed(vertexNumber,index);
         }
     }
     return result;
+}
+
+/// convert a vector of CartesianVertex objects to a VertexEmbed list object (use help from ConvertCartesianCoordsVectorToVertexEmbedList)
+VertexEmbedList CubicLatticeCanonicalizor::ConvertCartesianVertexVectorToVertexEmbedList(const std::vector<CartesianVertex>& vec)
+{
+    std::vector<CartesianCoords> newVec(vec.size());
+    for (int i=0; i<newVec.size(); ++i)
+        newVec[i] = vec[i].second;
+    return this->ConvertCartesianCoordsVectorToVertexEmbedList(newVec);
 }
 
 void CubicLatticeCanonicalizor::PrintVerticesCartesian()
@@ -458,15 +522,52 @@ bool operator!=(const std::vector<CubicLatticeCanonicalizor::CartesianCoords>& l
     return !(lhs==rhs);
 }
 
-/// use lexicographical order for a pair which contains the Coordinates and the vertex number
-/// need to keep the vertex number of each embedded vertex but VertexEmbed object sorts in lexicographical order with vertex number taking the first entry and site index the second
-bool operator<(const std::pair<CubicLatticeCanonicalizor::CartesianCoords,int>& lhs, const std::pair<CubicLatticeCanonicalizor::CartesianCoords,int>& rhs)
-{
-    return (lhs.first<rhs.first);
-}
-
 std::ostream& operator<<(std::ostream& os, const CubicLatticeCanonicalizor::CartesianCoords &list)
 {
     std::cout << "(" << list[0] << "," << list[1] << "," << list[2] << ")";
     return os;
+}
+
+bool operator<(const CubicLatticeCanonicalizor::CartesianVertex& lhs, const CubicLatticeCanonicalizor::CartesianVertex& rhs)
+{
+    if (lhs.first!=rhs.first)
+        return lhs.first<rhs.first;
+    return (lhs.second<rhs.second);
+}
+
+bool operator==(const CubicLatticeCanonicalizor::CartesianVertex& lhs, const CubicLatticeCanonicalizor::CartesianVertex& rhs)
+{
+    if (lhs.first!=rhs.first)
+        return false;
+    return (lhs.second==rhs.second);
+}
+
+bool operator!=(const CubicLatticeCanonicalizor::CartesianVertex& lhs, const CubicLatticeCanonicalizor::CartesianVertex& rhs)
+{
+    return !(lhs==rhs);
+}
+
+bool operator<(const std::vector<CubicLatticeCanonicalizor::CartesianVertex>& lhs, const std::vector<CubicLatticeCanonicalizor::CartesianVertex>& rhs)
+{
+    if (lhs.size()!=rhs.size())
+        return lhs.size()<rhs.size();
+    for (int i=0; i<lhs.size(); ++i)
+        if (lhs[i]!=rhs[i])
+            return lhs[i]<rhs[i];
+    return false;
+}
+
+bool operator==(const std::vector<CubicLatticeCanonicalizor::CartesianVertex>& lhs, const std::vector<CubicLatticeCanonicalizor::CartesianVertex>& rhs)
+{
+    if (lhs.size()!=rhs.size())
+        return false;
+    for (int i=0; i<lhs.size(); ++i)
+        if (lhs[i]!=rhs[i])
+            return false;
+    return true;
+}
+
+bool operator!=(const std::vector<CubicLatticeCanonicalizor::CartesianVertex>& lhs, const std::vector<CubicLatticeCanonicalizor::CartesianVertex>& rhs)
+{
+    return !(lhs==rhs);
 }

@@ -110,6 +110,8 @@ public:
 
     VertexEmbed GetFixedVertex(int index) const;
 
+    int GetVertexColor(int number) const;
+
     /**** accessors ****/
     int GetSize() const { return this->List.size(); }
 
@@ -121,9 +123,9 @@ public:
 
     int GetCorrelatorDistanceAsIndex() const { return static_cast<int>(this->CorrelatorDistance); }
 
-    bool HasRepeatedVertices(); /// debugging routine
+    bool HasRepeatedVertices() const; /// debugging routine
 
-    bool HasRepeatedSites(); /// debugging routine
+    bool HasRepeatedSites() const; /// debugging routine
 
     void SetNbrChoicesForFirstBond(int nbr) { this->NbrChoicesForFirstBond = nbr; }
 

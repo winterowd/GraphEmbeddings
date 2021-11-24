@@ -65,7 +65,7 @@ public:
 
    void GetDenseNautyFromGraph(graph *g) const; /// adjacency matrix to dense nauty graph
 
-   void ColoredCanonicalRelabeling(int *labCanon, int v1, int v2=-1, bool verbose=false);
+   void ColoredCanonicalRelabeling(int *labCanon, int v1, int v2=-1);
 
    void RelabelVertices(const std::vector<int>& newLabels);
 

@@ -3,28 +3,37 @@
 
 #include "GraphEmbedder.h"
 #include "CubicLatticeCanonicalizor.h"
+#include "GraphGeneratorNauty.h"
 
 int main(int argc, char *argv[])
 {
     GraphEmbedder MyEmbedder(argc, argv);
     auto resultPair = MyEmbedder.ContainerAndSampleCubicEmbeddingFromG6();
+
     CubicLattice MyLattice(100);
     CubicLatticeCanonicalizor MyCubicLatticeCanonicalizor1(&resultPair.first, &MyLattice, resultPair.second);
     CubicLatticeCanonicalizor MyCubicLatticeCanonicalizor2(&resultPair.first, &MyLattice, resultPair.second);
-    std::vector<double> coords{1.1,2.2,3.3};
-    //MyCubicLatticeCanonicalizor.TestPermutationsAsOrthogonalGroup(coords);
+
     auto start = std::chrono::high_resolution_clock::now();
     auto resultOld = MyCubicLatticeCanonicalizor1.GetCanonicalOld();
     auto end = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end-start);
+
     std::cout << "DURATION_OLD: " << duration.count() << "\n";
     std::cout << "DEBUG_RESULTOLD: " << resultOld;
+
     start = std::chrono::high_resolution_clock::now();
     auto resultNew = MyCubicLatticeCanonicalizor2.GetCanonical();
     end = std::chrono::high_resolution_clock::now();
     duration = std::chrono::duration_cast<std::chrono::microseconds>(end-start);
+
     std::cout << "DURATION_NEW: " << duration.count() << "\n";
     std::cout << "DEBUG_RESULTNEW: " << resultNew;
+
+    if (resultOld==resultNew)
+        std::cout << "Success! Explicit rotations and permutations agree!\n";
+    else
+        std::cout << "Failure! Explicit rotations and permutations do NOT agree!\n";
 
     /********** test **********/
 
@@ -44,8 +53,8 @@ int main(int argc, char *argv[])
 
     GraphContainer TestContainer(n, m, g); /// container from densenauty
 
-    std::vector<unsigned int> indices1(MyLattice.GetDim(), MyLattice.GetN()/2); /// spatial indices for first vertex
-    auto index1 = MyLattice.GetSiteIndex(indices1); /// index for vertex 1
+    std::vector<unsigned int> indicesCenter(MyLattice.GetDim(), MyLattice.GetN()/2); /// spatial indices for first vertex
+    auto index1 = MyLattice.GetSiteIndex(indicesCenter); /// index for vertex 1
     auto index3 = MyLattice.GetNearestNeighbor(index1, 1);
     auto index2 = MyLattice.GetNearestNeighbor(index3, 1);
 
@@ -72,6 +81,11 @@ int main(int argc, char *argv[])
 
     auto result2 = TestCanonicalizor2.GetCanonical();
     std::cout << "RESULT2: " << result2 << "\n";
+
+    if (result1!=result2)
+        std::cout << "RESULT1 and RESULT2 do not equal each other! Success!\n";
+    else
+        std::cout << "RESULT1 and RESULT2 equal each other! Failure!\n";
 
     index2 = MyLattice.GetNearestNeighbor(index3, 5); /// change vertex 2 only
 
@@ -129,7 +143,160 @@ int main(int argc, char *argv[])
     else
         std::cout << "RESULT2, RESULT3, RESULT4, RESULT5, RESULT6 are NOT identical! Failure!\n";
 
+    /// canonicalize a rooted graph and its embeddings
+    std::vector<std::string> arguments;
 
-    DYNFREE(g, g_sz); /// free graph
+    arguments.push_back("GenerateNauty");
+    arguments.push_back("-n");
+    arguments.push_back(std::to_string(3)); /// corresponds to g6String "BW"
+    arguments.push_back("-l");
+    arguments.push_back(std::to_string(2)); /// corresponds to g6String "BW"
+
+    std::vector<char*> argvGenerate;
+    for (const auto& arg: arguments)
+        argvGenerate.push_back((char*)arg.data());
+
+    GraphGeneratorNauty MyGenerator(argvGenerate.size(), argvGenerate.data());
+
+    std::vector<int> rootedVertices1{0,2};
+    auto rooted1 = MyGenerator.GetCanonicalColoredGraph(g6String, rootedVertices1);
+    std::cout << "TEST_CANONICAL_COLORED1:\n";
+    rooted1.PrintM(); /***** C0---C1---C2 *****/
+
+    std::vector<int> rootedVertices2{0,1};
+    auto rooted2 = MyGenerator.GetCanonicalColoredGraph(g6String, rootedVertices2);
+    std::cout << "TEST_CANONICAL_COLORED2:\n";
+    rooted2.PrintM(); /***** C0---C2---C1 *****/
+
+    std::vector<int> rootedVertices3{2,0};
+    auto rooted3 = MyGenerator.GetCanonicalColoredGraph(g6String, rootedVertices3);
+    std::cout << "TEST_CANONICAL_COLORED3:\n";
+    rooted3.PrintM(); /***** C1---C0---C2 *****/
+
+    index2 = MyLattice.GetNearestNeighbor(index1, 1);
+    index3 = MyLattice.GetNearestNeighbor(index2, 1);
+    VertexEmbedList EmbedListColor1Embed1(MaxInteractionLength::NearestNeighbor, MaxInteractionLength::NearestNeighbor); /// first embedding of first rooted grpah ("straight" embedding)
+    EmbedListColor1Embed1.AddFixedVertexEmbed(0 /*fixedNbr (color)*/, 1 /* vertexNbr (always 1 after NAUTY does canonicalization) */, index1);
+    EmbedListColor1Embed1.AddFixedVertexEmbed(1 /*fixedNbr (color)*/, 2 /* vertexNbr (always 2 after NAUTY does canonicalization) */, index2);
+    EmbedListColor1Embed1.AddVertexEmbed(3, index3);
+
+    CubicLatticeCanonicalizor TestCanonicalizorColor1Embed1(&rooted1, &MyLattice, EmbedListColor1Embed1);
+
+    auto resultColor1Embed1 = TestCanonicalizorColor1Embed1.GetCanonical();
+    std::cout << "RESULT_COLOR1_EMBED1: " << resultColor1Embed1 << "\n";
+
+    index3 = MyLattice.GetNearestNeighbor(index2, 2);
+    VertexEmbedList EmbedListColor1Embed2(MaxInteractionLength::NearestNeighbor, MaxInteractionLength::NearestNeighbor); /// second embedding of first rooted graph ("bent" in +y embedding)
+    EmbedListColor1Embed2.AddFixedVertexEmbed(0 /*fixedNbr (color)*/, 1 /* vertexNbr (always 1 after NAUTY does canonicalization) */, index1);
+    EmbedListColor1Embed2.AddFixedVertexEmbed(1 /*fixedNbr (color)*/, 2 /* vertexNbr (always 2 after NAUTY does canonicalization) */, index2);
+    EmbedListColor1Embed2.AddVertexEmbed(3, index3);
+
+    CubicLatticeCanonicalizor TestCanonicalizorColor1Embed2(&rooted1, &MyLattice, EmbedListColor1Embed2);
+
+    auto resultColor1Embed2 = TestCanonicalizorColor1Embed2.GetCanonical();
+    std::cout << "RESULT_COLOR1_EMBED2: " << resultColor1Embed2 << "\n";
+
+    index3 = MyLattice.GetNearestNeighbor(index2, 5);
+    VertexEmbedList EmbedListColor1Embed3(MaxInteractionLength::NearestNeighbor, MaxInteractionLength::NearestNeighbor); /// third embedding of first rooted graph ("bent" in -y embedding)
+    EmbedListColor1Embed3.AddFixedVertexEmbed(0 /*fixedNbr (color)*/, 1 /* vertexNbr (always 1 after NAUTY does canonicalization) */, index1);
+    EmbedListColor1Embed3.AddFixedVertexEmbed(1 /*fixedNbr (color)*/, 2 /* vertexNbr (always 2 after NAUTY does canonicalization) */, index2);
+    EmbedListColor1Embed3.AddVertexEmbed(3, index3);
+
+    CubicLatticeCanonicalizor TestCanonicalizorColor1Embed3(&rooted1, &MyLattice, EmbedListColor1Embed3);
+
+    auto resultColor1Embed3 = TestCanonicalizorColor1Embed3.GetCanonical();
+    std::cout << "RESULT_COLOR1_EMBED3: " << resultColor1Embed3 << "\n";
+
+    if (resultColor1Embed2==resultColor1Embed3)
+        std::cout << "SUCCESS! These rooted graph embeddings give same canonical graph!\n";
+    else
+        std::cout << "FAILURE! These rooted graph embeddings SHOULD give same canonilcal graph!\n";
+
+    index2 = MyLattice.GetNearestNeighbor(index1, 4);
+    index3 = MyLattice.GetNearestNeighbor(index1, 1);
+    VertexEmbedList EmbedListColor3Embed1(MaxInteractionLength::NearestNeighbor, MaxInteractionLength::NearestNeighbor); /// first embedding of third rooted grpah ("straight" embedding)
+    EmbedListColor3Embed1.AddFixedVertexEmbed(0 /*fixedNbr (color)*/, 1 /* vertexNbr (always 1 after NAUTY does canonicalization) */, index1);
+    EmbedListColor3Embed1.AddFixedVertexEmbed(1 /*fixedNbr (color)*/, 2 /* vertexNbr (always 2 after NAUTY does canonicalization) */, index2);
+    EmbedListColor3Embed1.AddVertexEmbed(3, index3);
+
+    CubicLatticeCanonicalizor TestCanonicalizorColor3Embed1(&rooted3, &MyLattice, EmbedListColor3Embed1);
+
+    auto resultColor3Embed1 = TestCanonicalizorColor3Embed1.GetCanonical();
+    std::cout << "RESULT_COLOR3_EMBED1: " << resultColor3Embed1 << "\n";
+
+    index2 = MyLattice.GetNearestNeighbor(index1, 4);
+    index3 = MyLattice.GetNearestNeighbor(index1, 2);
+    VertexEmbedList EmbedListColor3Embed2(MaxInteractionLength::NearestNeighbor, MaxInteractionLength::NearestNeighbor); /// second embedding of second rooted grpah ("bent" +y embedding)
+    EmbedListColor3Embed2.AddFixedVertexEmbed(0 /*fixedNbr (color)*/, 1 /* vertexNbr (always 1 after NAUTY does canonicalization) */, index1);
+    EmbedListColor3Embed2.AddFixedVertexEmbed(1 /*fixedNbr (color)*/, 2 /* vertexNbr (always 2 after NAUTY does canonicalization) */, index2);
+    EmbedListColor3Embed2.AddVertexEmbed(3, index3);
+
+    CubicLatticeCanonicalizor TestCanonicalizorColor3Embed2(&rooted3, &MyLattice, EmbedListColor3Embed2);
+
+    auto resultColor3Embed2 = TestCanonicalizorColor3Embed2.GetCanonical();
+    std::cout << "RESULT_COLOR3_EMBED2: " << resultColor3Embed2 << "\n";
+
+    if (resultColor1Embed1 != resultColor1Embed2 && resultColor1Embed1 != resultColor3Embed1 && resultColor1Embed1 != resultColor3Embed2 && resultColor3Embed1 != resultColor3Embed2 && resultColor1Embed2 != resultColor3Embed1 && resultColor1Embed2 != resultColor3Embed2)
+        std::cout << "SUCCESS! Embeddings of different rooted graphs not equal to each other!\n";
+    else
+        std::cout << "FAILURE! Embeddings of different rooted graphs SHOULD not equal to each other!\n";
+
+    index3 = MyLattice.GetNearestNeighbor(index1, 1);
+    index2 = MyLattice.GetNearestNeighbor(index3, 1);
+    VertexEmbedList EmbedListColor2Embed1(MaxInteractionLength::NearestNeighbor, MaxInteractionLength::NearestNeighbor); /// first embedding of second rooted grpah ("straight" embedding)
+    EmbedListColor2Embed1.AddFixedVertexEmbed(0 /*fixedNbr (color)*/, 1 /* vertexNbr (always 1 after NAUTY does canonicalization) */, index1);
+    EmbedListColor2Embed1.AddFixedVertexEmbed(1 /*fixedNbr (color)*/, 2 /* vertexNbr (always 2 after NAUTY does canonicalization) */, index2);
+    EmbedListColor2Embed1.AddVertexEmbed(3, index3);
+
+    CubicLatticeCanonicalizor TestCanonicalizorColor2Embed1(&rooted2, &MyLattice, EmbedListColor2Embed1);
+
+    auto resultColor2Embed1 = TestCanonicalizorColor2Embed1.GetCanonical();
+    std::cout << "RESULT_COLOR2_EMBED1: " << resultColor2Embed1 << "\n";
+
+    index3 = MyLattice.GetNearestNeighbor(index1, 1);
+    index2 = MyLattice.GetNearestNeighbor(index3, 2);
+    VertexEmbedList EmbedListColor2Embed2(MaxInteractionLength::NearestNeighbor, MaxInteractionLength::NearestNeighbor); /// second embedding of second rooted grpah ("bent" +y embedding)
+    EmbedListColor2Embed2.AddFixedVertexEmbed(0 /*fixedNbr (color)*/, 1 /* vertexNbr (always 1 after NAUTY does canonicalization) */, index1);
+    EmbedListColor2Embed2.AddFixedVertexEmbed(1 /*fixedNbr (color)*/, 2 /* vertexNbr (always 2 after NAUTY does canonicalization) */, index2);
+    EmbedListColor2Embed2.AddVertexEmbed(3, index3);
+
+    CubicLatticeCanonicalizor TestCanonicalizorColor2Embed2(&rooted2, &MyLattice, EmbedListColor2Embed2);
+
+    auto resultColor2Embed2 = TestCanonicalizorColor2Embed2.GetCanonical();
+    std::cout << "RESULT_COLOR2_EMBED2: " << resultColor2Embed2 << "\n";
+
+    if (resultColor2Embed1!=resultColor2Embed2)
+        std::cout << "SUCCESS! Embeddings of different rooted graphs not equal to each other!\n";
+    else
+        std::cout << "FAILURE! Embeddings of different rooted graphs SHOULD not equal to each other!\n";
+
+    index3 = MyLattice.GetNearestNeighbor(index1, 1);
+    index2 = MyLattice.GetNearestNeighbor(index3, 5);
+    VertexEmbedList EmbedListColor2Embed3(MaxInteractionLength::NearestNeighbor, MaxInteractionLength::NearestNeighbor); /// second embedding of second rooted grpah ("bent" -y embedding)
+    EmbedListColor2Embed3.AddFixedVertexEmbed(0 /*fixedNbr (color)*/, 1 /* vertexNbr (always 1 after NAUTY does canonicalization) */, index1);
+    EmbedListColor2Embed3.AddFixedVertexEmbed(1 /*fixedNbr (color)*/, 2 /* vertexNbr (always 2 after NAUTY does canonicalization) */, index2);
+    EmbedListColor2Embed3.AddVertexEmbed(3, index3);
+
+    CubicLatticeCanonicalizor TestCanonicalizorColor2Embed3(&rooted2, &MyLattice, EmbedListColor2Embed3);
+
+    auto resultColor2Embed3 = TestCanonicalizorColor2Embed3.GetCanonical();
+    std::cout << "RESULT_COLOR2_EMBED3: " << resultColor2Embed3 << "\n";
+
+    index3 = MyLattice.GetNearestNeighbor(index1, 1);
+    index2 = MyLattice.GetNearestNeighbor(index3, 3);
+    VertexEmbedList EmbedListColor2Embed4(MaxInteractionLength::NearestNeighbor, MaxInteractionLength::NearestNeighbor); /// second embedding of second rooted grpah ("bent" +z embedding)
+    EmbedListColor2Embed4.AddFixedVertexEmbed(0 /*fixedNbr (color)*/, 1 /* vertexNbr (always 1 after NAUTY does canonicalization) */, index1);
+    EmbedListColor2Embed4.AddFixedVertexEmbed(1 /*fixedNbr (color)*/, 2 /* vertexNbr (always 2 after NAUTY does canonicalization) */, index2);
+    EmbedListColor2Embed4.AddVertexEmbed(3, index3);
+
+    CubicLatticeCanonicalizor TestCanonicalizorColor2Embed4(&rooted2, &MyLattice, EmbedListColor2Embed4);
+
+    auto resultColor2Embed4 = TestCanonicalizorColor2Embed4.GetCanonical();
+    std::cout << "RESULT_COLOR2_EMBED4: " << resultColor2Embed4 << "\n";
+
+    if (resultColor2Embed2==resultColor2Embed3 && resultColor2Embed2==resultColor2Embed4)
+        std::cout << "Success! These rooted graph embeddings are equivalent!\n";
+    else
+        std::cout << "Success! These embeddings SHOULD be equivalent!\n";
 
 }

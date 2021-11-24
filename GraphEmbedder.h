@@ -119,7 +119,7 @@ private:
 
     std::vector<std::vector<int>> BondCombinations; /// for choosing combinations of links
 
-    /// NOTE: when making canonical form, colors 0 and 1 correspond to vertices 0 and 1, respectively
+    /// NOTE: when making canonical form, colors 0 and 1 correspond to vertices 1 and 2, respectively
     ///
     /***** private methods *****/
 

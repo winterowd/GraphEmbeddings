@@ -79,6 +79,7 @@ void VertexEmbedList::AddVertexEmbed(int number, int index)
     return this->AddVertexEmbed(VertexEmbed{number,index});
 }
 
+/// set both fixed vertices (add entries to member variable List as well!)
 void VertexEmbedList::AddFixedVerticesEmbed(const std::vector<VertexEmbed> &embed)
 {
     if (embed.size() != 2)
@@ -92,11 +93,12 @@ void VertexEmbedList::AddFixedVerticesEmbed(const std::vector<VertexEmbed> &embe
     this->List.insert(embed[1]);
 }
 
+/// set fixed vertex labeled by fixedNbr (0 or 1) (add to member variable List as well!)
 void VertexEmbedList::AddFixedVertexEmbed(int fixedNbr, const VertexEmbed& embed)
 {
     if (fixedNbr != 0 && fixedNbr != 1)
         throw std::invalid_argument("AddFixedVertexEmbed requires fixedNbr to be 0 or 1!\n");
-    if (this->FixedVertices[0].Index!=-1 || this->FixedVertices[1].Index!=-1)
+    if (this->FixedVertices[fixedNbr].Index!=-1)
         std::cerr << "WARNING: AddFixedVertexEmbed fixed vertices already set!\n";
     if (!this->TwoPointFunction)
         std::cerr << "WARNING: AddFixedVertexEmbed called but TwoPointFunction flag set to false!\n";
@@ -104,6 +106,7 @@ void VertexEmbedList::AddFixedVertexEmbed(int fixedNbr, const VertexEmbed& embed
     this->List.insert(embed);
 }
 
+/// set fixed vertex labeled by fixedNbr (overload)
 void VertexEmbedList::AddFixedVertexEmbed(int fixedNbr, int number, int index)
 {
     this->AddFixedVertexEmbed(fixedNbr, VertexEmbed{number, index});
@@ -127,7 +130,7 @@ int VertexEmbedList::GetBondCount(int dIndex) const
 }
 
 /// check if list has repeated vertices
-bool VertexEmbedList::HasRepeatedVertices()
+bool VertexEmbedList::HasRepeatedVertices() const
 {
     for (auto it=this->List.begin(); it!=std::prev(this->List.end(),2); ++it)
         if (std::find_if(std::next(it), this->List.end(), [it](const VertexEmbed& v) { return (it->Number == v.Number); } ) != this->List.end())
@@ -136,7 +139,7 @@ bool VertexEmbedList::HasRepeatedVertices()
 }
 
 /// check if list has repeated sites
-bool VertexEmbedList::HasRepeatedSites()
+bool VertexEmbedList::HasRepeatedSites() const
 {
     for (auto it=this->List.begin(); it!=std::prev(this->List.end(),2); ++it)
         if (std::find_if(std::next(it), this->List.end(), [it](const VertexEmbed& v) { return (it->Index == v.Index); } ) != this->List.end())
@@ -152,6 +155,27 @@ VertexEmbed VertexEmbedList::GetFixedVertex(int index) const
     if (index !=0 && index != 1)
         throw std::invalid_argument("GetFixedVertex requires index to be 0 or 1!\n");
     return this->FixedVertices[index];
+}
+
+/// gets the color of the vertex: 0 for the first rooted vertex, 1 for the second rooted vertex, and 2 for all others (returns 2 for unrooted graphs)
+/// @arg number: number of the vertex
+int VertexEmbedList::GetVertexColor(int number) const
+{
+#ifdef DEBUG
+    auto it = this->begin();
+    for (; it!=this->end(); ++it)
+        if (number==it->Number)
+            break;
+    if (it==this->end())
+        std::cout << "ERR: GetVertexColor given a vertex number which is not in the list!\n";
+#endif
+    if (!this->IsTwoPointFunction())
+        return 2;
+    if (number==this->FixedVertices[0])
+        return 0;
+    if (number==this->FixedVertices[1])
+        return 1;
+    return 2;
 }
 
 std::vector<VertexEmbed> VertexEmbedList::GetSortedList() const
@@ -213,6 +237,11 @@ std::ostream& operator<<(std::ostream& os, const VertexEmbedList& list)
     for (int i=0; i<list.GetNbrBondTypes(); ++i)
         os << "BondDegree " << i << " with count " << list.GetBondCount(i) << "\n";
     for (auto it=list.begin(); it!=list.end(); ++it)
-            os << "Vertex " << *it << "\n";
+        os << "Vertex " << *it << "\n";
+    if (list.IsTwoPointFunction())
+    {
+        for (auto it=list.FixedVertices.begin(); it!=list.FixedVertices.end(); ++it)
+            os << "ROOTED: " << *it << "\n";
+    }
     return os;
 }

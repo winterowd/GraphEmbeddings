@@ -59,9 +59,9 @@ void GraphGeneratorNauty::Generate(bool useIterativeRooted)
     /// call routine which reads in graphs in filename and then generates rooted graphs
     if (this->Parameters.GenerateTwoRooted())
     {
-        //if (useIterativeRooted)
+        if (useIterativeRooted)
             this->GenerateTwoRootedFixedOrderIterative(filename, this->Parameters.IsVerbose(), true);
-        //else
+        else
             this->GenerateTwoRootedFixedOrder(filename, this->Parameters.IsVerbose(), true);
     }
     else /// otherwise generate connected graphs
@@ -115,7 +115,7 @@ void GraphGeneratorNauty::SetVertexColors(int *c, const std::vector<int>& rooted
     if (rootedVertices.size()>this->N)
         throw std::invalid_argument("SetVertexColors requires number of rooted vertices to be less than or equal to N!\n");
 
-    if (std::find_if(rootedVertices.begin(), rootedVertices.end(), [this](const int& x) { return x>=this->N; } ) != rootedVertices.end())
+    if (std::find_if(rootedVertices.begin(), rootedVertices.end(), [this](const int& x) { return (x>=this->N || x<0); } ) != rootedVertices.end())
         throw std::invalid_argument("SetVertexColors requires each rooted vertex label x to satisfy 0 <= x < N!\n");
 
     if (verbose)
@@ -245,7 +245,7 @@ void GraphGeneratorNauty::GenerateTwoRootedFixedOrderIterative(std::string input
         {
             GraphContainer tempGraph(refContainer); /// copy constructor
 
-            tempGraph.SetRootedVertex(0,i); /// set first rooted vertex
+            tempGraph.SetRootedVertex(0,i); /// set first rooted vertex (label starts at zero)
 
             /// set colors
             std::vector<int> tempRootedList(1,i);
@@ -259,7 +259,7 @@ void GraphGeneratorNauty::GenerateTwoRootedFixedOrderIterative(std::string input
             tempGraph.ColoredCanonicalRelabeling(lab, i); /// relabel according to canonical labeling returned from densenauty (first rooted vertex only)
 #ifdef DEBUG
             GraphContainer testGraphFromDenseCG(this->N, this->MWords, cg1, true, 2);
-            testGraphFromDenseCG.SetRootedVertex(0,0);
+            testGraphFromDenseCG.SetRootedVertex(0,0); /// label starts at zero
             if (testGraphFromDenseCG!=tempGraph)
                 throw std::invalid_argument("In GenerateTwoRootedFixedOrderIterative relabeled graph does not equal graph created from canonical dense NAUTY graph afer first rooted vertex placed!\n");
 #endif
@@ -294,7 +294,7 @@ void GraphGeneratorNauty::GenerateTwoRootedFixedOrderIterative(std::string input
             {
                 GraphContainer tempGraph(rootedGraphList[i]); /// copy constructor (using graph already in list)
 
-                tempGraph.SetRootedVertex(1,j); /// set second rooted vertex
+                tempGraph.SetRootedVertex(1,j); /// set second rooted vertex (label starts at zero)
 
                 /// set colors
                 std::vector<int> tempRootedList{0, j};
@@ -635,6 +635,84 @@ void GraphGeneratorNauty::GenerateUniqueCombinationsWithNoDuplicates(std::vector
 graph* GraphGeneratorNauty::GetNextGraph(graph *g)
 {
     return readg(this->fp,g,0,&this->MWords,&this->N);
+}
+
+/// routine which takes a g6 string and rooted vertices and returns the canonical colored graph (useful for debugging purposes etc.)
+/// @arg g6string: valid g6 string (user must check this!)
+/// @arg rootedVertices: labels of rooted (colored) vertices (BEFORE relabeling!)
+GraphContainer GraphGeneratorNauty::GetCanonicalColoredGraph(const std::string& g6String, const std::vector<int>& rootedVertices)
+{
+    char *tempg6 = new char[g6String.length()+1];
+    std::strcpy(tempg6, g6String.c_str());
+
+    if (this->N != graphsize(tempg6)) /// check size
+        throw std::invalid_argument("GetCanonicalContainer g6String not of size N!\n");
+
+    if (rootedVertices.size() != 2)
+        throw std::invalid_argument("GetCanonicalColoredGraph rootedVertices should be of size 2!\n");
+
+    if (rootedVertices[0] < 0 || rootedVertices[0] >= this->N)
+        throw std::invalid_argument("GetCanonicalColoredGraph requires 0 <= rootedVertices[0] < N!\n");
+
+    if (rootedVertices[1] < 0 || rootedVertices[1] >= this->N)
+        throw std::invalid_argument("GetCanonicalColoredGraph requires 0 <= rootedVertices[1] < N!\n");
+
+    this->MWords = SETWORDSNEEDED(this->N); /// set m
+
+    int *c = (int*)malloc(this->N * sizeof(int)); /// alloc C-style arrray for colors of vertices
+
+    DYNALLSTAT(graph, g, g_sz); /// declare graph
+    DYNALLSTAT(graph, cg, cg_sz); /// declare canonical graph
+    DYNALLSTAT(int, lab, lab_sz); /// label
+    DYNALLSTAT(int, ptn, ptn_sz); /// partition for coloring
+    DYNALLSTAT(int, orbits, orbits_sz); /// orbits when calling densenauty
+    statsblk stats; /// status
+
+    DYNALLOC2(graph, g, g_sz, this->N, this->MWords, "malloc"); /// allocate graph
+    DYNALLOC2(graph, cg, cg_sz, this->N, this->MWords, "malloc"); /// allocate canonical graph
+    DYNALLOC2(int, lab, lab_sz, this->N, this->MWords, "malloc");
+    DYNALLOC2(int, ptn, ptn_sz, this->N, this->MWords, "malloc");
+    DYNALLOC2(int, orbits, orbits_sz, this->N, this->MWords, "malloc");
+
+    stringtograph(tempg6, g, this->MWords); /// g6 string to densenauty
+    GraphContainer resultContainer(this->N, this->MWords, g, true, 2); /// container for graphs
+
+    resultContainer.SetRootedVertex(0, rootedVertices[0]);
+    resultContainer.SetRootedVertex(1, rootedVertices[1]);
+
+    static DEFAULTOPTIONS_GRAPH(options); /// options
+    options.defaultptn = false; /// color the vertices
+    options.getcanon = true; /// get canong
+
+    this->SetVertexColors(c, rootedVertices);
+    this->SetColoredPartition(c, lab, ptn); /// set coloring (will be written over in call to densenauty)
+
+    /// call densenauty
+    densenauty(g, lab, ptn, orbits, &options, &stats, this->MWords, this->N, cg);
+
+    resultContainer.ColoredCanonicalRelabeling(lab, rootedVertices[0], rootedVertices[1]);
+
+#ifdef DEBUG
+    GraphContainer refContainer(this->N, this->MWords, cg, true, 2);
+    refContainer.SetRootedVertex(0, 0);
+    refContainer.SetRootedVertex(1, 1);
+    if (refContainer==refContainer)
+        std::cout << "Success! resultContainer equals refContainer!\n";
+    else
+        std::cout << "ERROR: resultContainer does not equal refContainer!\n";
+#endif
+
+    free(c); /// free vertex colors
+
+    delete[] tempg6;
+
+    DYNFREE(g, g_sz); /// free graph
+    DYNFREE(cg, cg_sz); /// free canonical graph
+    DYNFREE(lab,lab_sz);
+    DYNFREE(ptn,ptn_sz);
+    DYNFREE(orbits,orbits_sz);
+
+    return resultContainer;
 }
 
 /// process commmand line arguments using BOOST

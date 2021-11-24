@@ -83,6 +83,8 @@ public:
     void Generate(bool useIterativeRooted=true); /// interface for generating graphs
 
     void TestRelabeling(int n, std::string inputFilename); /// debugging routine
+
+    GraphContainer GetCanonicalColoredGraph(const std::string& g6String, const std::vector<int>& rootedVertices); /// returns canonical colored graph
 };
 
 #endif // GRAPHGENERATORNAUTY_H

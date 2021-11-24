@@ -801,6 +801,10 @@ std::pair<int, VertexEmbedList> GraphEmbedder::ComputeEmbeddingNumberCombo(const
     int count = 0;
     for (auto itLists=lists.begin(); itLists!=lists.end(); ++itLists)
     {
+        if (itLists->HasRepeatedSites())
+            std::cerr << "ERROR! In ComputeEmbeddingNumberCombo embedding has repeated lattice sites!\n";
+        if (itLists->HasRepeatedVertices())
+            std::cerr << "ERROR! In ComputeEmbeddingNumberCombo embedding has repeated vertices!\n";
         std::cout << "Embedded graph number " << count;
         if (this->Parameters.EmbedCorrelator())
         {
@@ -968,17 +972,18 @@ void GraphEmbedder::UpdateBondCounts(VertexEmbedList &List, const std::vector<in
 void GraphEmbedder::PrintVertexEmbedList(const VertexEmbedList& list)
 {
     std::vector<unsigned int> tempIndices(this->Lattice->GetDim(), 0);
-    std::vector<unsigned int> indicesOrigin(this->Lattice->GetDim(), 0);
-    auto firstElement = list.begin();
-    this->Lattice->GetSiteCoordinates(firstElement->Index, indicesOrigin);
+    std::vector<unsigned int> indicesOrigin(this->Lattice->GetDim(), this->Lattice->GetN()/2);
 
     std::cout << "********VertexEmbedList********\n";
     for (auto it=list.begin(); it!=list.end(); ++it)
     {
-        std::cout << "Vertex " << it->Number << " at site: ";
+        std::cout << "Vertex " << it->Number << " at site: (shifted)";
         this->Lattice->GetSiteCoordinates(it->Index, tempIndices);
         for (auto i=0; i<tempIndices.size(); ++i)
-            std::cout << " " << int(tempIndices[i]-indicesOrigin[i]);
+            std::cout << " " << int(tempIndices[i])-int(indicesOrigin[i]);
+        std::cout << " (unshifted)";
+        for (auto i=0; i<tempIndices.size(); ++i)
+            std::cout << " " << tempIndices[i];
         std::cout << "\n";
     }
 }
@@ -1170,7 +1175,6 @@ std::set<VertexEmbedList> GraphEmbedder::CreateInitialVertexEmbedListsRooted(con
 /// @param container: graph to be embedded
 /// @param bondCombo: set of bond specifications
 /// @param rootedVertices: labels of rooted vertices
-//std::vector<VertexEmbedList> GraphEmbedder::CreateInitialVertexEmbedListsRootedFixed(const GraphContainer& container, const std::vector<int> &bondCombo, const std::vector<int>& rootedVertices)
 std::set<VertexEmbedList> GraphEmbedder::CreateInitialVertexEmbedListsRootedFixed(const GraphContainer& container, const std::vector<int> &bondCombo, const std::vector<int>& rootedVertices)
 {
     //std::vector<VertexEmbedList> result;
@@ -1204,9 +1208,9 @@ std::set<VertexEmbedList> GraphEmbedder::CreateInitialVertexEmbedListsRootedFixe
         result.insert(tempList);
     }
 #ifdef DEBUG
-    //std::cout << "INITIAL_LIST:\n";
-    //for (auto it=result.begin(); it!=result.end(); ++it)
-        //std::cout << " " << *it << "\n";
+    std::cout << "INITIAL_LIST:\n";
+    for (auto it=result.begin(); it!=result.end(); ++it)
+        std::cout << " " << *it << "\n";
 #endif
     return result;
 }
@@ -1215,10 +1219,8 @@ std::set<VertexEmbedList> GraphEmbedder::CreateInitialVertexEmbedListsRootedFixe
 /// looks for the first non-zero off-diagonal element of the adjacency matrix and then embeds that bond on the lattice in the canonically defined "first direction" for all allowed bond lengths
 /// @param container: graph to be embedded
 /// @param bondCombo: set of bond counts
-//std::vector<VertexEmbedList> GraphEmbedder::CreateInitialVertexEmbedListsNonRooted(const GraphContainer& container, const std::vector<int> &bondCombo)
 std::set<VertexEmbedList> GraphEmbedder::CreateInitialVertexEmbedListsNonRooted(const GraphContainer& container, const std::vector<int> &bondCombo)
 {
-    //std::vector<VertexEmbedList> result;
     std::set<VertexEmbedList> result;
 
     std::vector<unsigned int> indices(this->Lattice->GetDim(), this->Lattice->GetN()/2); /// spatial indices for first vertex
@@ -1239,7 +1241,6 @@ std::set<VertexEmbedList> GraphEmbedder::CreateInitialVertexEmbedListsNonRooted(
                     tempList.AddVertexEmbed(VertexEmbed{v2,this->GetNeighbor(d,tempIndex,1)});
                     tempList.IncrementBondCount(d);
                     tempList.SetNbrChoicesForFirstBond(this->GetNbrNeighbors(d));
-                    //result.push_back(tempList);
                     result.insert(tempList);
                 }
             }

@@ -90,6 +90,7 @@ void GraphContainer::SetGraphFromDenseNauty(graph *g)
         this->SetVertexOrder(v, this->ComputeVertexOrder(v));
 
 #ifdef DEBUG
+    std::cout << "In GraphContainer::SetGraphFromDenseNauty:\n";
     this->PrintM();
     this->PrintVertexOrders();
 #endif
@@ -150,9 +151,9 @@ void GraphContainer::RelabelVertices(const std::vector<int>& newLabels)
 
 /// for two-rooted (colored) graphs, after calling densenauty to get the canonical form
 /// @param labCanon: N element array giving the mapping to the canonical graph i.e. vertex labCanon[i] is relabeled as vertex i
-/// @param v1: label of first rooted vertex (starts at zero!) (debugging: make sure map takes v1 to v1)
-/// @param v2: label of second rooted vertex (starts at zero!) (debugging: make sure map takes v2 to v2)
-void GraphContainer::ColoredCanonicalRelabeling(int *labCanon, int v1, int v2, bool verbose)
+/// @param v1: label of first rooted vertex (starts at zero!) (map must take v1 to 0 and match with RootedVertices[0])
+/// @param v2: label of second rooted vertex (starts at zero!) (map must take v2 to 1 and match with RootedVertices[1])
+void GraphContainer::ColoredCanonicalRelabeling(int *labCanon, int v1, int v2)
 {
 
     if (labCanon[0]!=v1)
@@ -161,11 +162,10 @@ void GraphContainer::ColoredCanonicalRelabeling(int *labCanon, int v1, int v2, b
     if (v2!=-1 && labCanon[1]!=v2)
         throw std::invalid_argument("ColoredCanonicalRelabeling labCanon[1] must equal v2!\n");
 
-    if (verbose)
-    {
+#ifdef DEBUG
         for (int i=0; i<this->N; ++i)
             std::cout << "labCanon maps vertex " << labCanon[i] << " to vertex " << i << "\n";
-    }
+#endif
 
     std::vector<std::vector<bool>> newM(N, std::vector<bool>(this->N, false));
     for (int i=0; i<this->N; ++i)
@@ -331,7 +331,7 @@ void GraphContainer::SetVertexOrder(unsigned int v, int order)
 
 /// set one of the rooted vertices to have a label
 /// @param index: index of rooted vertices (color)
-/// @param label: label of given rooted vertex
+/// @param label: label of given rooted vertex (starts at zero and goes to N-1)
 void GraphContainer::SetRootedVertex(int index, int label)
 {
     if (!this->StoreRooted)
@@ -344,6 +344,7 @@ void GraphContainer::SetRootedVertex(int index, int label)
 }
 
 /// accessor to obtain label of rooted vertex of index
+/// return vertex label (starts at 0 and goes to N-1)
 int GraphContainer::GetRootedVertex(int index) const
 {
     if (!this->StoreRooted)
@@ -380,41 +381,27 @@ bool operator==(const GraphContainer& lhs, const GraphContainer& rhs)
 {
     if (lhs.StoringRooted()!=rhs.StoringRooted())
         throw std::invalid_argument("ERROR: Comparing two containers and find that one is storing rooted vertices and the other is not!\n");
-    //std::cout << "HI_INSIDE!\n";
+
     if (lhs.StoringRooted())
     {
-        //std::cout << "HI_STORING_ROOTED!\n";
         if (lhs.GetNbrRooted()!=rhs.GetNbrRooted())
-        {
-            //std::cout << "DEBUG_EQUALITY_CONTAINER: DIFFERENT_NUMBER_ROOTED!\n";
             return false;
-        }
         for (int i=0; i<lhs.GetNbrRooted(); ++i)
             if (lhs.GetRootedVertex(i)!=rhs.GetRootedVertex(i))
-            {
-                //std::cout << "DEBUG_EQUALITY_CONTAINER: DIFFERENT_ROOTED_VERTICES!\n";
                 return false;
-            }
-        //std::cout << "HI_STORING_ROOTED_END!\n";
     }
 
     if (lhs.GetN()!=rhs.GetN()) /// compare graph order
-    {
-        //std::cout << "DEBUG_EQUALITY_CONTAINER: DIFFERENT_ORDER!\n";
         return false;
-    }
+
     if (lhs.GetL()!=rhs.GetL()) /// compare number of bonds
-    {
-        //std::cout << "DEBUG_EQUALITY_CONTAINER: DIFFERENT_NBR_BONDS!\n";
         return false;
-    }
+
     for (int i=1; i<lhs.GetN(); ++i) /// compare elements of adjacency matrix
         for (int j=0; j<i; ++j)
             if (lhs.GetElementAdjacencyMatrix(i+1,j+1)!=rhs.GetElementAdjacencyMatrix(i+1,j+1))
-            {
-                //std::cout << "DEBUG_EQUALITY_CONTAINER: DIFFERENT_ADJACENCY_MATRICES!\n";
                 return false;
-            }
+
     return true;
 }
 
