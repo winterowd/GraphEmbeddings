@@ -2,10 +2,35 @@
 #define GRAPHCONTAINER_H
 
 #include <vector>
+#include <iostream>
 
 extern "C" {
 #include "nauty.h"
 #include "gtools.h"
+}
+
+struct SiteCount {
+    SiteCount(int in=0, int out=0) : NbrIn(in), NbrOut(out) {}
+    int NbrIn;
+    int NbrOut;
+};
+
+inline std::ostream& operator<<(std::ostream& os, const SiteCount& c)
+{
+    os << "(" << c.NbrIn << ", " << c.NbrOut << ")";
+    return os;
+}
+
+struct UndirectedEdge {
+    UndirectedEdge(int v1=0, int v2=0) : FirstVertex(v1), SecondVertex(v2) {}
+    int FirstVertex;
+    int SecondVertex;
+};
+
+inline std::ostream& operator<<(std::ostream& os, const UndirectedEdge& e)
+{
+    os << "(" << e.FirstVertex << ", " << e.SecondVertex << ")";
+    return os;
 }
 
 class GraphContainer
@@ -61,6 +86,8 @@ public:
 
    GraphContainer(int n, int m, graph *g, bool storeRooted=false, int nbrRooted=1);
 
+   GraphContainer(int n, int m, const std::vector<UndirectedEdge>& edges, bool storeRooted=false, int nbrRooted=1);
+
    void SetGraphFromDenseNauty(graph *g); /// adjacency matrix, bond counts, and vertex order counts from dense nauty graph (assumes N and MWords set!)
 
    void GetDenseNautyFromGraph(graph *g) const; /// adjacency matrix to dense nauty graph
@@ -94,6 +121,8 @@ public:
    int GetRowM(int index) const;
 
    int GetColM(int index) const;
+
+   bool IsConnected(int vertexStart=0);
 
 };
 

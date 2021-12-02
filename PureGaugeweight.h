@@ -5,18 +5,6 @@
 #include <math.h>
 #include <iostream>
 
-struct SiteCount {
-    SiteCount(int in, int out) : NbrIn(in), NbrOut(out) {}
-    int NbrIn;
-    int NbrOut;
-};
-
-struct UndirectedEdge {
-    UndirectedEdge(int v1, int v2) : FirstVertex(v1), SecondVertex(v2) {}
-    int FirstVertex;
-    int SecondVertex;
-};
-
 class PureGaugeWeight
 {
 private:

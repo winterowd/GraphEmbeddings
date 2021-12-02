@@ -40,7 +40,7 @@ VertexEmbedList::VertexEmbedList(MaxInteractionLength maxEmbeddingLength) :
     FixedVertices(2, VertexEmbed{-1,-1})
 {
 #ifdef DEBUG
-    std::cout << "Created an unrooted graph!\n";
+    std::cout << "Created an unrooted VertexEmbedList!\n";
 #endif
     switch (maxEmbeddingLength)
     {
@@ -181,6 +181,18 @@ int VertexEmbedList::GetVertexColor(int number) const
 std::vector<VertexEmbed> VertexEmbedList::GetSortedList() const
 {
     return std::vector<VertexEmbed>(this->List.begin(), this->List.end());
+}
+
+/// get the site index (lattice) for a given vertex using it's label
+int VertexEmbedList::GetVertexSiteIndex(int vertexLabel) const
+{
+    auto it = std::find_if(this->List.begin(), this->List.end(), [vertexLabel](const VertexEmbed& v) { return (v.Number==vertexLabel); });
+    if (it==this->List.end()) /// could not find it
+    {
+        std::cerr << "ERROR: VertexEmbedList::GetVertexSiteIndex could not find the given vertex label!\n";
+        return -1;
+    }
+    return it->Index;
 }
 
 /// equality operator for VertexEmbedList

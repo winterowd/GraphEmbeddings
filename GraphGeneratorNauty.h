@@ -82,6 +82,8 @@ public:
 
     void Generate(bool useIterativeRooted=true); /// interface for generating graphs
 
+    std::vector<GraphContainer> GetColoredGraphsFromContainer(const GraphContainer& container); /// TODO: write this using GenerateTwoRootedFixedOrderIterative or GenerateTwoRootedFixedOrder
+
     void TestRelabeling(int n, std::string inputFilename); /// debugging routine
 
     GraphContainer GetCanonicalColoredGraph(const std::string& g6String, const std::vector<int>& rootedVertices); /// returns canonical colored graph

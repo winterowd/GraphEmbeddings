@@ -10,7 +10,7 @@
 
 /// data structure for an embedded vertex
 struct VertexEmbed {
-    int Number; /// vertex number
+    int Number; /// vertex number (label)
     int Index; /// lattice index
 };
 
@@ -130,6 +130,10 @@ public:
     void SetNbrChoicesForFirstBond(int nbr) { this->NbrChoicesForFirstBond = nbr; }
 
     int GetNbrChoicesForFirstBond() const { return this->NbrChoicesForFirstBond; }
+
+    int GetVertexSiteIndex(int vertexLabel) const;
+
+    VertexEmbedList GetSublist(const std::vector<int>& vertices) const; /// TODO write this function which takes in a set of vertex labels and returns a subset of VertexEmbed objects
 
     std::vector<VertexEmbed> GetSortedList() const; /// return sorted list for comparisons
 

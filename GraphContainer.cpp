@@ -1,7 +1,5 @@
 #include "GraphContainer.h"
 
-#include <iostream>
-
 /// constructor which accepts size and number of words (need to call SetGraphFromDenseNauty before container can be used!)
 GraphContainer::GraphContainer(int n, int m, bool storeRooted, int nbrRooted) :
     N(n),
@@ -20,6 +18,41 @@ GraphContainer::GraphContainer(int n, int m, bool storeRooted, int nbrRooted) :
         throw std::invalid_argument("GraphContainer constructor needs 0 < nbrRooted <= 2 if storeRooted is true!\n");
 
     this->SetRowAndColMapping();
+}
+
+GraphContainer::GraphContainer(int n, int m, const std::vector<UndirectedEdge>& edges, bool storeRooted, int nbrRooted) :
+    N(n),
+    MWords(m),
+    L(edges.size()),
+    StoreRooted(storeRooted),
+    NbrRooted(nbrRooted),
+    RootedVertices(nbrRooted,-1),
+    NTimesNMinusOneDiv2(n*(n-1)/2),
+    VertexOrder(n,0),
+    M(n, std::vector<bool>(n,false)),
+    RowM(n*(n-1)/2),
+    ColM(n*(n-1)/2)
+{
+    if (this->L>this->NTimesNMinusOneDiv2)
+        throw std::invalid_argument("ERROR: In GraphContainer the size of edges is required to be less than or equal to N(N-1)/2!\n");
+
+    if (storeRooted && (nbrRooted<0 || nbrRooted>2))
+        throw std::invalid_argument("GraphContainer constructor needs 0 < nbrRooted <= 2 if storeRooted is true!\n");
+
+    this->SetRowAndColMapping();
+
+    /// set up adjacency matrix from edges
+    for (int e=0; e<edges.size(); ++e)
+    {
+#ifdef DEBUG
+      if (edges[e].FirstVertex < 1 || edges[e].FirstVertex > this->N || edges[e].SecondVertex < 1 || edges[e].SecondVertex > this->N)
+          throw std::invalid_argument("ERROR: In GraphContainer each edge should have vertices which are labeled between 1 and N!\n");
+      if (this->GetElementAdjacencyMatrix(edges[e].FirstVertex, edges[e].SecondVertex) || this->GetElementAdjacencyMatrix(edges[e].SecondVertex, edges[e].FirstVertex))
+          throw std::invalid_argument("ERROR: In GraphContainer encountered a repeated edge!\n");
+#endif
+      this->SetElementAdjacenyMatrix(edges[e].FirstVertex, edges[e].SecondVertex);
+      this->SetElementAdjacenyMatrix(edges[e].SecondVertex, edges[e].FirstVertex);
+    }
 }
 
 /// mapping from linear index traversing upper triangular part of adjacency matrix to rows and columns
@@ -373,6 +406,39 @@ int GraphContainer::ComputeCurrentKey() const
        count++;
     }
     return result;
+}
+
+/// depth-first search for connectedness using vertexStart as the starting vertex
+bool GraphContainer::IsConnected(int vertexStart)
+{
+    if (vertexStart < 0 || vertexStart >=this->N) /// 0, 1, ..., N_V-1 (starts at ZERO!)
+        throw std::invalid_argument("ERROR: IsConnected expects vertexStart to be between 0 and N-1!\n");
+
+    std::vector<int> q;
+    std::vector<bool> visited(this->N, false);
+
+    visited[vertexStart] = true;
+    q.push_back(vertexStart);
+    while (!q.empty())
+    {
+        int j = q.back();
+        q.pop_back();
+        for (int k=0; k<this->N; ++k)
+        {
+            if (j!=k)
+            {
+                if (this->GetElementAdjacencyMatrix(j+1,k+1) && !visited[k])
+                {
+                    visited[k] = true;
+                    q.push_back(k);
+                }
+            }
+        }
+    }
+    for (auto v: visited)
+        if (!v)
+            return false;
+   return true;
 }
 
 /// compare two containers
