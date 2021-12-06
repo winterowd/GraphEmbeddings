@@ -30,7 +30,6 @@ public:
         }
         else
             std::cout << "ERROR: Set not of correct size()! " << set.size() << " " << this->N << "\n";
-
     }
 
     int GetN() const { return this->N; } /// get N
@@ -84,8 +83,6 @@ private:
     template<typename T>
     std::vector<std::vector<T>> GetPowerSet(const std::vector<T>& elements); /// generate a power set of a given type
 
-    std::pair<std::vector<UndirectedEdge>, std::vector<int>> GetRelabeledEdgesAndVertexMap(const std::vector<UndirectedEdge>& edgeSet); /// relabel edges and provide map to original labels
-
     bool IsEdgeInVertexSet(const UndirectedEdge& edge, const std::vector<int>& vertices); /// are the endpoints of edge in the given set of vertices
 
     void GenerateSubDiagrams(); /// main routine called by constructor
@@ -98,29 +95,41 @@ private:
 
     void ComputeDisjointSets(); /// construct D_n's
 
-    void PrintSubDiagram(int index) const; /// print a given subdiagram
-
     void AddToSortedSubdiagrams(const GraphContainer& g, int indexToUnsorted); /// add subgraph to the sorted set with index corresponding to the unsorted (VerticesMap)
 
     std::pair<int, int> IndexConversionSorted(int sortedIndex) const; /// sorted linear index 0,1,...,N_sub-1 mapped to (bondIndex,subIndex)
 
-    int GetVertexMapIndexForSubDiagram(int sortedIndex) const; /// for a given sorted linear index, get the corresponding index for unsorted (VerticesMap and EmbedLists)
-
 public:
     SubDiagramGenerator(GraphContainer *container, VertexEmbedList *list);
 
+    void PrintSubDiagram(int index) const; /// print a given subdiagram
+
     void PrintSubDiagrams(); /// print subdiagrams (debugging purposes)
+
+    static std::pair<std::vector<UndirectedEdge>, std::vector<int>> GetRelabeledEdgesAndVertexMap(const std::vector<UndirectedEdge>& edgeSet); /// relabel edges and provide map to original labels
 
     /**** public accessors ****/
     int GetNbrSubDiagrams() const { return this->NbrSubDiagrams; }
 
     int GetSizeDN(int n) const;
 
+    int GetSortedLinearIndex(int nbrBonds, int graphIndex) const;
+
+    int GetVertexMapIndexForSubDiagram(int sortedIndex) const; /// for a given sorted linear index, get the corresponding index for unsorted (VerticesMap and EmbedLists)
+
     GraphContainer GetSubDiagram(int sortedIndex) const;
+
+    GraphContainer GetSubDiagram(int nbrBonds, int graphIndex) const;
 
     std::vector<int> GetVertexMap(int sortedIndex) const;
 
+    std::vector<int> GetVertexMap(int nbrBonds, int graphIndex) const;
+
     VertexEmbedList GetEmbedList(int sortedIndex) const;
+
+    VertexEmbedList GetEmbedList(int nbrBonds, int graphIndex) const;
+
+    int GetSizeSubDiagrams(int nbrBonds) const;
 
 };
 

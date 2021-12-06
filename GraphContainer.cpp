@@ -20,6 +20,7 @@ GraphContainer::GraphContainer(int n, int m, bool storeRooted, int nbrRooted) :
     this->SetRowAndColMapping();
 }
 
+/// constructor from set of undirected edges (sets adjacency matrix from edges)
 GraphContainer::GraphContainer(int n, int m, const std::vector<UndirectedEdge>& edges, bool storeRooted, int nbrRooted) :
     N(n),
     MWords(m),

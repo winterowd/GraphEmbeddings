@@ -32,6 +32,7 @@ double PureGaugeWeight::GetGraphWeightFixedBonds(const std::vector<bool>& direct
 }
 
 /// factorial (recursive)
+/// @param n: size
 double PureGaugeWeight::Factorial(int n)
 {
 #ifdef DEBUG

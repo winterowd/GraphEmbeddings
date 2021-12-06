@@ -139,7 +139,7 @@ void SubDiagramGenerator::GenerateEmbedListsForSubDiagrams()
 }
 
 /// given a set of edges relabel vertices such that they go from 1,...,V_{sub} where V_{sub} is the number of vertices in the subgraph
-/// @param edgeSet: set of edges corresponding to a given subgraph (assume it is connected)
+/// @param edgeSet: set of edges corresponding to a given subgraph
 /// @return std::pair consisting of relabeled set of edges (first) and the vertex map specificing how the new vertex labels map back to the old ones
 std::pair<std::vector<UndirectedEdge>, std::vector<int>> SubDiagramGenerator::GetRelabeledEdgesAndVertexMap(const std::vector<UndirectedEdge>& edgeSet)
 {
@@ -214,6 +214,8 @@ void SubDiagramGenerator::PrintSubDiagram(int index) const
     std::cout << "SubDiagram: " << index+1 << "\nVertexMap:\n";
     for (int j=0; j<this->VerticesMap[vertexMapIndex].size(); ++j)
         std::cout << "Vertex " << j+1 << " maps to original vertex " << this->VerticesMap[vertexMapIndex][j] << "\n";
+    std::cout << "VertexEmbedList:\n";
+    std::cout << this->EmbedLists[vertexMapIndex] << "\n";
     this->SortedSubDiagramsWithMap[convertedIndex.first][convertedIndex.second].second.PrintM();
 }
 
@@ -357,6 +359,18 @@ GraphContainer SubDiagramGenerator::GetSubDiagram(int sortedIndex) const
     return this->SortedSubDiagramsWithMap[convertedIndex.first][convertedIndex.second].second;
 }
 
+/// accessor for subdiagrams
+/// @param nbrBonds: number of bonds
+/// @param graphIndex: index for subdiagrams with given number of bonds
+GraphContainer SubDiagramGenerator::GetSubDiagram(int nbrBonds, int graphIndex) const
+{
+    if (nbrBonds < 1 || nbrBonds > this->SortedSubDiagramsWithMap.size())
+        throw std::invalid_argument("ERROR: GetSubDiagram requires 1 <= nbrBonds <= N_bonds!\n");
+    if (graphIndex < 0 || graphIndex >= this->SortedSubDiagramsWithMap[nbrBonds-1].size())
+        throw std::invalid_argument("ERROR: GetSubDiagram requires 0 <= graphIndex < N_graphs!\n");
+    return this->SortedSubDiagramsWithMap[nbrBonds-1][graphIndex].second;
+}
+
 /// convert from linear SORTED index to (linkIndex, linkSubIndex) where linkIndex = NbrLinks-1 and linkSubIndex is the index within the set of subdiagrams with a given number of links
 /// @param index: linear SORTED index
 std::pair<int, int> SubDiagramGenerator::IndexConversionSorted(int sortedIndex) const
@@ -399,6 +413,16 @@ std::vector<int> SubDiagramGenerator::GetVertexMap(int sortedIndex) const
     return this->VerticesMap[unsortedIndex];
 }
 
+std::vector<int> SubDiagramGenerator::GetVertexMap(int nbrBonds, int graphIndex) const
+{
+    if (nbrBonds < 1 || nbrBonds > this->SortedSubDiagramsWithMap.size())
+        throw std::invalid_argument("ERROR: GetVertexMap requires 1 <= nbrBonds <= N_bonds!\n");
+    if (graphIndex < 0 || graphIndex >= this->SortedSubDiagramsWithMap[nbrBonds-1].size())
+        throw std::invalid_argument("ERROR: GetVertexMap requires 0 <= graphIndex < N_graphs!\n");
+    int unsortedIndex = this->SortedSubDiagramsWithMap[nbrBonds-1][graphIndex].first;
+    return this->VerticesMap[unsortedIndex];
+}
+
 /// accessor for EmbedLists using the linear SORTED index
 /// @param sortedIndex: linear SORTED index
 VertexEmbedList SubDiagramGenerator::GetEmbedList(int sortedIndex) const
@@ -407,4 +431,33 @@ VertexEmbedList SubDiagramGenerator::GetEmbedList(int sortedIndex) const
         throw std::invalid_argument("ERROR: GetEmbedList requires 0 <= sortedIndex < N_sd!\n");
     auto unsortedIndex = this->GetVertexMapIndexForSubDiagram(sortedIndex);
     return this->EmbedLists[unsortedIndex];
+}
+
+VertexEmbedList SubDiagramGenerator::GetEmbedList(int nbrBonds, int graphIndex) const
+{
+    if (nbrBonds < 1 || nbrBonds > this->SortedSubDiagramsWithMap.size())
+        throw std::invalid_argument("ERROR: GetVertexMap requires 1 <= nbrBonds <= N_bonds!\n");
+    if (graphIndex < 0 || graphIndex >= this->SortedSubDiagramsWithMap[nbrBonds-1].size())
+        throw std::invalid_argument("ERROR: GetVertexMap requires 0 <= graphIndex < N_graphs!\n");
+    int unsortedIndex = this->SortedSubDiagramsWithMap[nbrBonds-1][graphIndex].first;
+    return this->EmbedLists[unsortedIndex];
+}
+
+int SubDiagramGenerator::GetSortedLinearIndex(int nbrBonds, int graphIndex) const
+{
+    if (nbrBonds < 1 || nbrBonds > this->SortedSubDiagramsWithMap.size())
+        throw std::invalid_argument("ERROR: GetSortedLinearIndex requires 1 <= nbrBonds <= N_bonds!\n");
+    if (graphIndex < 0 || graphIndex >= this->SortedSubDiagramsWithMap[nbrBonds-1].size())
+        throw std::invalid_argument("ERROR: GetSortedLinearIndex requires 0 <= graphIndex < N_graphs!\n");
+    int result = 0;
+    for (int i=1; i<nbrBonds; ++i)
+        result += this->GetSizeSubDiagrams(i);
+    return result+graphIndex;
+}
+
+int SubDiagramGenerator::GetSizeSubDiagrams(int nbrBonds) const
+{
+    if (nbrBonds < 1 || nbrBonds > this->SortedSubDiagramsWithMap.size())
+        throw std::invalid_argument("ERROR: GetSizeSubDiagrams requires 1 <= nbrBonds <= N_bonds!\n");
+    return this->SortedSubDiagramsWithMap[nbrBonds-1].size();
 }
