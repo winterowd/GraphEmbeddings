@@ -60,6 +60,11 @@ private:
     std::vector<int> RowM; /// starts at 1
     std::vector<int> ColM; /// starts at 1
 
+    std::string G6String; /// save this when setting g from dense nauty
+
+    /// NOTE: only use this currently in GraphEmbedder::GetCanonicalGraphsAndCounts
+    int SymmFactor; /// symmetry factor which can be saved for embedding
+
     /**** private methods *****/
 
    bool VertexOrdersConsistentWithAdjacencyMatrix(); /// DEBUGGING: check vertex orders agree with sums over rows
@@ -75,6 +80,10 @@ private:
    void SetRowAndColMapping();
 
    void SetVertexOrder(unsigned int v, int order);
+
+   int GetSizeFromG6(const std::string& g6string);
+
+   void SetG6StringFromDenseNauty(graph *g);
 
 public: /// later make this private?
    void PrintM() const;
@@ -93,6 +102,8 @@ public:
    void GetDenseNautyFromGraph(graph *g) const; /// adjacency matrix to dense nauty graph
 
    void ColoredCanonicalRelabeling(int *labCanon, int v1, int v2=-1);
+
+   void CanonicalRelabeling(int *labCanon);
 
    void RelabelVertices(const std::vector<int>& newLabels);
 
@@ -121,6 +132,10 @@ public:
    int GetRowM(int index) const;
 
    int GetColM(int index) const;
+
+   int GetSymmFactor() const { return this->SymmFactor; };
+
+   void SetSymmFactor(int symmFactor); /// only use this currently in GraphEmbedder::GetCanonicalGraphsAndCounts
 
    bool IsConnected(int vertexStart=0);
 

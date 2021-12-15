@@ -6,6 +6,7 @@
 #include "GraphContainer.h"
 #include "VertexEmbedList.h"
 #include "CubicLattice.h"
+#include "CubicLatticeCanonicalizor.h"
 
 /// helper class for D_n: set of sets of n elements where each element is a connected subgraph of G and all are pairwise disjoint
 template<class T>
@@ -54,6 +55,49 @@ inline bool operator<(const SetOfSets<T>& lhs,  const SetOfSets<T>& rhs)
     return (lhs.GetN()<rhs.GetN());
 }
 
+/// helper class in order to distinguish canonical vertex lists with different number of bonds
+/// TODO: move this to CubicLatticeCanonicalizor and change return types etc so that this is returned
+class CanonicalSubDiagram
+{
+private:
+    int N; /// number of vertices
+
+    int L; /// number of bonds
+
+    VertexEmbedList CanonicalList; /// canonical vertex embed list (output from CubicLatticeCanonicalizor)
+public:
+    CanonicalSubDiagram(int l, const VertexEmbedList& list) : N(list.GetSize()), L(l), CanonicalList(list) {}
+
+    int GetN() const { return this->N; }
+
+    int GetL() const { return this->L; }
+
+    friend bool operator==(const CanonicalSubDiagram& lhs, const CanonicalSubDiagram& rhs);
+    friend std::ostream& operator<< (std::ostream& stream, const CanonicalSubDiagram& can);
+};
+
+/// equality operator (need to first compare number of bonds and vertices!)
+inline bool operator==(const CanonicalSubDiagram& lhs, const CanonicalSubDiagram& rhs)
+{
+    if (lhs.GetN()!=rhs.GetN())
+        return false;
+    if (lhs.GetL()!=rhs.GetL())
+        return false;
+    return (lhs.CanonicalList==rhs.CanonicalList);
+}
+
+inline bool operator!=(const CanonicalSubDiagram& lhs, const CanonicalSubDiagram& rhs)
+{
+   return !(lhs==rhs);
+}
+
+inline std::ostream& operator<< (std::ostream& stream, const CanonicalSubDiagram& can)
+{
+    std::cout << "CANONICAL_GRAPH: L " << can.L << " N " << can.N << "\n";
+    std::cout << can.CanonicalList;
+    return stream;
+}
+
 /// generate all subgraphs of a given graph (embedded on a lattice i.e. cubic)
 class SubDiagramGenerator
 {
@@ -75,10 +119,18 @@ private:
 
     std::vector<VertexEmbedList> EmbedLists; ///  embed list for the subgraphs (same order as VerticesMap)
 
+    std::vector<int> SubgraphToCanonicalMap;
+
+    /// TODO: add EmbedLists that are canonical with respect to NAUTY and the octohedral group! (cubic symmetry)
+    std::vector<CanonicalSubDiagram> CanonicalEmbedLists;
+
     std::vector<SetOfSets<int>> DisjointSets; /// D_n: set of subsets represented by the index corresponding to ordering of subgraphs in SortedSubDiagramsWithMap
     int NbrSubDiagrams; /// total number of connected subdiagrams
 
     /**** private methods ****/
+
+    //// canonicalize with respect to NAUTY and cubic symmetries
+    CanonicalSubDiagram ComputeCanonicalSubgraph(int sortedIndex);
 
     template<typename T>
     std::vector<std::vector<T>> GetPowerSet(const std::vector<T>& elements); /// generate a power set of a given type
@@ -86,6 +138,8 @@ private:
     bool IsEdgeInVertexSet(const UndirectedEdge& edge, const std::vector<int>& vertices); /// are the endpoints of edge in the given set of vertices
 
     void GenerateSubDiagrams(); /// main routine called by constructor
+
+    void GenerateCanonicalSubDiagrams(); /// generate list of UNIQUE canonical subgraphs
 
     void GenerateEmbedListsForSubDiagrams(); /// generate VertexEmbedList objects for each subgraph
 
@@ -100,7 +154,7 @@ private:
     std::pair<int, int> IndexConversionSorted(int sortedIndex) const; /// sorted linear index 0,1,...,N_sub-1 mapped to (bondIndex,subIndex)
 
 public:
-    SubDiagramGenerator(GraphContainer *container, VertexEmbedList *list);
+    SubDiagramGenerator(GraphContainer *container, VertexEmbedList *list, CubicLattice *lattice);
 
     void PrintSubDiagram(int index) const; /// print a given subdiagram
 

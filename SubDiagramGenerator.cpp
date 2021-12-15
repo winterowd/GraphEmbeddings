@@ -3,9 +3,10 @@
 /// constructor
 /// @param container: pointer to GraphContainer object (managed externally)
 /// @param list: pointer to VertexEmbedList object (managed externally)
-SubDiagramGenerator::SubDiagramGenerator(GraphContainer *container, VertexEmbedList *list) :
+SubDiagramGenerator::SubDiagramGenerator(GraphContainer *container, VertexEmbedList *list, CubicLattice *lattice) :
     OriginalContainer(container),
     OriginalList(list),
+    MyCubicLattice(lattice),
     Vertices(container->GetN()),
     SortedSubDiagramsWithMap(container->GetL(), std::vector<std::pair<int, GraphContainer>>())
 {
@@ -27,7 +28,43 @@ SubDiagramGenerator::SubDiagramGenerator(GraphContainer *container, VertexEmbedL
 
     this->GenerateSubDiagrams(); /// generate subdiagrams
     this->GenerateEmbedListsForSubDiagrams(); /// generate the embed list for the subdiagrams
+    this->GenerateCanonicalSubDiagrams();
     this->ComputeDisjointSets(); /// generate the pairwise disjoint sets of connected subgraphs
+
+}
+
+/// generate a list of subdiagrams which are canonical wrt the cubic symmetries and labels
+void SubDiagramGenerator::GenerateCanonicalSubDiagrams()
+{
+    for (int i=0; i<this->NbrSubDiagrams; ++i) /// loop over all subdiagrams
+    {
+        auto tempCanonical = this->ComputeCanonicalSubgraph(i); /// compute the canonical subgraph (labels and spatial symmetries)
+#ifdef DEBUG
+        std::cout << "DEBUG_CANONICAL_" << i << "\n";
+        std::cout << tempCanonical << "\n";
+#endif
+        auto tempIt = std::find(this->CanonicalEmbedLists.begin(), this->CanonicalEmbedLists.end(), tempCanonical);
+        if (tempIt!=this->CanonicalEmbedLists.end()) /// if it already exists in the list find index and save in vector containing map
+        {
+            int tempIndex = std::distance(this->CanonicalEmbedLists.begin(), tempIt);
+#ifdef DEBUG
+            std::cout << "DEBUG_CANONICAL_FOUND element " << tempIndex << "\n";
+            std::cout << this->CanonicalEmbedLists[tempIndex] << "\n";
+#endif
+            this->SubgraphToCanonicalMap.push_back(tempIndex);
+        }
+        else /// new canonical graph: add to list and update map (last element of current list)
+        {
+#ifdef DEBUG
+            std::cout << "DEBUG_CANONICAL_ADD_NEW!\n";
+#endif
+            this->CanonicalEmbedLists.push_back(tempCanonical);
+            this->SubgraphToCanonicalMap.push_back(this->CanonicalEmbedLists.size()-1); /// corresponds to LAST index  (size-1)
+        }
+    }
+#ifdef DEBUG
+    std::cout << "DEBUG_CANONICAL_TOTAL: " << this->CanonicalEmbedLists.size() << "\n";
+#endif
 
 }
 
@@ -118,6 +155,96 @@ void SubDiagramGenerator::GenerateSubDiagrams()
         for (int j=0; j<this->SortedSubDiagramsWithMap[i].size(); ++j)
             std::cout << "Diagram of index " << j+1 << " with " << i+1 << " bonds corresponds to unSorted " << this->SortedSubDiagramsWithMap[i][j].first+1 << "\n";
 #endif
+
+}
+
+/// compute the canonical subgraph for a given sorted index
+/// canonicalize vertex labels with nauty then canonicalize wrt cubic symmetries
+/// @param sortedIndex: linear sorted index
+CanonicalSubDiagram SubDiagramGenerator::ComputeCanonicalSubgraph(int sortedIndex)
+{
+#ifdef DEBUG
+    std::cout << "Canonicalizing the following subgraph:\n";
+    this->PrintSubDiagram(sortedIndex);
+#endif
+    GraphContainer subgraph = this->GetSubDiagram(sortedIndex);
+    auto vertexMap = this->GetVertexMap(sortedIndex);
+    VertexEmbedList embedList = this->GetEmbedList(sortedIndex);
+
+    int n = subgraph.GetN();
+    int m = SETWORDSNEEDED(n);
+
+    /// compute the canonical graph with NAUTY
+    /// declare nauty data structures
+    DYNALLSTAT(graph, g, g_sz); /// declare graph
+    DYNALLSTAT(graph, cg, cg_sz); /// declare canonical graph
+    DYNALLSTAT(int, lab, lab_sz); /// label
+    DYNALLSTAT(int, ptn, ptn_sz); /// partition for coloring
+    DYNALLSTAT(int, orbits, orbits_sz); /// orbits when calling densenauty
+    statsblk stats; /// status
+
+    /// allocate nauty data structures
+    DYNALLOC2(graph, g, g_sz, n, m, "malloc");
+    DYNALLOC2(graph, cg, cg_sz, n, m, "malloc");
+    DYNALLOC2(int, lab, lab_sz, n, m, "malloc");
+    DYNALLOC2(int, ptn, ptn_sz, n, m, "malloc");
+    DYNALLOC2(int, orbits, orbits_sz, n, m, "malloc");
+
+    static DEFAULTOPTIONS_GRAPH(options); /// options
+    options.getcanon = true; /// get canong
+
+    /// set g from container
+    subgraph.GetDenseNautyFromGraph(g);
+
+    /// call densenauty
+    densenauty(g, lab, ptn, orbits, &options, &stats, m, n, cg);
+
+    /// canonical container
+    subgraph.CanonicalRelabeling(lab);
+
+    /// convert vertex labels on embedList (subgraph) from original to canonical relabeled
+    VertexEmbedList canonicalList(embedList.GetMaxLength());
+    for (auto it=embedList.begin(); it!=embedList.end(); ++it)
+    {
+        /// find initial relabeling (from original labels to 1,..,N_bsg, where N_bsg is the number of bonds in the subgraph)
+        auto tempIt = std::find(vertexMap.begin(), vertexMap.end(), it->Number);
+        int tempIndex1 = std::distance(vertexMap.begin(), tempIt);
+#ifdef DEBUG
+        std::cout << "DEBUG_INVERSE_MAPPING: Vertex " << it->Number << " maps to " << tempIndex1+1 << "\n";
+#endif
+        /// find canonical relabeling
+        int tempIndex2 = -1;
+        for (int i=0; i<n; ++i)
+        {
+            if (lab[i]==tempIndex1)
+            {
+                tempIndex2 = i;
+                break;
+            }
+        }
+        canonicalList.AddVertexEmbed(tempIndex2+1, it->Index); /// add to embed list
+#ifdef DEBUG
+        std::cout << "DEBUG_CG_MAPPING: Vertex " << tempIndex1+1 << " maps to " << tempIndex2+1 << "\n";
+#endif
+    }
+
+#ifdef DEBUG
+    GraphContainer canonicalSubgraph(n, m, cg);
+    if (canonicalSubgraph!=subgraph)
+        std::cout << "ERROR: RELABELED_AND_CANONICAL_DIFFER!\n";
+#endif
+
+    /// canonicalize with respect to cubic symmetries
+    CubicLatticeCanonicalizor canonicalizor(&subgraph, this->MyCubicLattice, canonicalList);
+
+    /// free memory
+    DYNFREE(g,g_sz);
+    DYNFREE(cg,cg_sz);
+    DYNFREE(lab, lab_sz);
+    DYNFREE(ptn, ptn_sz);
+    DYNFREE(orbits, orbits_sz);
+
+    return CanonicalSubDiagram(subgraph.GetL(), canonicalizor.GetCanonical());
 
 }
 

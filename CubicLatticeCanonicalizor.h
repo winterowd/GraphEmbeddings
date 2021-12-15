@@ -11,7 +11,8 @@ extern "C" {
 #include "nauty.h"
 }
 
-#include "CubicLattice.h"
+//#include "CubicLattice.h"
+#include "AbstractLattice.h"
 #include "GraphContainer.h"
 #include "VertexEmbedList.h"
 
@@ -25,7 +26,7 @@ private:
      /******** private variables ********/
     GraphContainer *Container; /// pointer to container object (memory owned externally!)
 
-    CubicLattice *Lattice; /// pointer to cubic lattice object (memory owned externally!)
+    AbstractLattice *Lattice; /// pointer to lattice object (CUBIC!) (memory owned externally!)
 
     std::vector<CartesianCoords> VerticesCartesian; /// embedded vertices Cartesian coordinates on the cubic lattice
 
@@ -85,7 +86,7 @@ private:
     int GetVertexColor(int number) const;
 
 public:
-    CubicLatticeCanonicalizor(GraphContainer *container, CubicLattice *lattice, const VertexEmbedList& embedList); /// constructor
+    CubicLatticeCanonicalizor(GraphContainer *container, AbstractLattice *lattice, const VertexEmbedList& embedList); /// constructor
 
     VertexEmbedList GetCanonical(); /// get the canonical graph (main interface routine)
 

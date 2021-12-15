@@ -4,7 +4,7 @@
 /// @input container: pointer to GraphContainer object which describes connectivity etc
 /// @input lattice: pointer to CubicLattice object (not AbstractLattice)
 /// @input embedList: copy of VertexEmbedList so we can know where the vertices are on the lattice
-CubicLatticeCanonicalizor::CubicLatticeCanonicalizor(GraphContainer *container, CubicLattice *lattice, const VertexEmbedList &embedList) :
+CubicLatticeCanonicalizor::CubicLatticeCanonicalizor(GraphContainer *container, AbstractLattice *lattice, const VertexEmbedList &embedList) :
     Container(container),
     Lattice(lattice),
     VerticesCartesian(container->GetN(), {0,0,0}),
@@ -12,6 +12,9 @@ CubicLatticeCanonicalizor::CubicLatticeCanonicalizor(GraphContainer *container, 
     COM({0,0,0}),
     OriginalList(embedList)
 {
+    if (this->Lattice->GetName()!="Cubic")
+        throw std::invalid_argument("CubicLatticeCanonicalizor requires a CubicLattice object!\n");
+
     if (embedList.GetSize()!=container->GetN())
         throw std::invalid_argument("CubicLatticeCanonicalizor requires embedList to be of the same size as container!\n");
 

@@ -10,6 +10,7 @@
 #include <fstream>
 #include <sstream>
 #include <iostream>
+#include <tuple>
 
 /// user-defined headers
 #include "GraphContainer.h"
@@ -18,6 +19,7 @@
 #include "CubicLattice.h"
 #include "TriangularLattice.h"
 #include "VertexEmbedList.h"
+#include "CubicLatticeCanonicalizor.h"
 
 /// nauty headers
 #include "gtools.h"
@@ -119,6 +121,8 @@ private:
 
     std::vector<std::vector<int>> BondCombinations; /// for choosing combinations of links
 
+    std::set<VertexEmbedList> EmbedLists; /// this should get set each time we call ComputeEmbeddingNumberCombo and contain the lists
+
     /// NOTE: when making canonical form, colors 0 and 1 correspond to vertices 1 and 2, respectively
     ///
     /***** private methods *****/
@@ -134,6 +138,8 @@ private:
     int ComputeEmbeddingNumberComboOldWorking(const GraphContainer& container, const std::vector<int> &bondCombo); /// compute the embedding number of a graph for a given combo of bond counts
 
     std::pair<int,VertexEmbedList> ComputeEmbeddingNumberCombo(const GraphContainer& container, const std::vector<int> &bondCombo); /// compute the embedding number of a graph for a given combo of bond counts
+
+    std::pair<std::vector<VertexEmbedList>, std::vector<int>> ComputeCanonicalGraphsAndEmbeddingNumbers(GraphContainer container);
 
     std::vector<int> GetAllowedBondDegreesOfList(const VertexEmbedList& list, const std::vector<int> &bondCombo); /// determine list of allowed neighbor degrees based on list and combination of bond counts
 
@@ -219,17 +225,24 @@ private:
 
     void EmbedSingleG6();
 
+    int GetGraphSizeFromString(const std::string& g6String);
+
+    void DenseNautyFromString(const std::string& g6String, graph *g);
+
+    int GetSymmFactor(graph *g);
+
 public:
 
     GraphEmbedder(int argc, char *argv[]); /// new style constructor
 
     ~GraphEmbedder(); /// destructor
 
-    void Embed(); /// calculates embedding numbers for all graphs of a given order and outputs results
+    void Embed(); /// calculates embedding numbers for all graphs of a given order or a single and outputs results
+
+    /// routine which outputs vector of canonical graphs and counts for embeddings (all NN links)
+    std::tuple<GraphContainer, std::vector<VertexEmbedList>, std::vector<int>> GetCanonicalGraphsAndCounts();
 
     std::pair<GraphContainer, VertexEmbedList> ContainerAndSampleCubicEmbeddingFromG6(); /// return a pair consisting of a container and a VertexEmbedList for a given g6 string input by the user (for debugging purposes)
-
-    void EmbedSpecificGraphBondCombo(int graphNbr, const std::vector<int>& bondCounts); /// debugging routine: graphNbr is the line in the file and bondCounts needs to be provided by the user
 
 };
 

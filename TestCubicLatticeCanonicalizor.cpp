@@ -8,6 +8,13 @@
 int main(int argc, char *argv[])
 {
     GraphEmbedder MyEmbedder(argc, argv);
+    auto resultCanonicalGraphsAndCounts = MyEmbedder.GetCanonicalGraphsAndCounts(); /// test this routine! (plaquette with handle!)
+    std::cout << "CanonicalEmbeddingsAndCounts: ";
+    for (int i=0; std::get<1>(resultCanonicalGraphsAndCounts).size(); ++i)
+    {
+        std::cout << "embedding " << i << " with counts " << std::get<2>(resultCanonicalGraphsAndCounts)[i] << "\n";
+        std::cout << std::get<1>(resultCanonicalGraphsAndCounts)[i] << "\n";
+    }
     auto resultPair = MyEmbedder.ContainerAndSampleCubicEmbeddingFromG6();
 
     CubicLattice MyLattice(100);

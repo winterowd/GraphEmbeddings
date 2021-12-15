@@ -10,7 +10,7 @@ ZClusterPureGauge::ZClusterPureGauge(GraphContainer *clusterContainer, VertexEmb
     ClusterContainer(clusterContainer),
     ClusterEmbedList(clusterEmbedList),
     Lattice(lattice),
-    MySubDiagramGenerator(clusterContainer, clusterEmbedList)
+    MySubDiagramGenerator(clusterContainer, clusterEmbedList, lattice)
 {
     if (this->ClusterContainer->GetL()<2)
         std::cout << "WARNING: Cluster has no subgraphs with two bonds!\n";

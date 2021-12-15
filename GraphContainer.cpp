@@ -12,7 +12,9 @@ GraphContainer::GraphContainer(int n, int m, bool storeRooted, int nbrRooted) :
     VertexOrder(n,0),
     M(n, std::vector<bool>(n,false)),
     RowM(n*(n-1)/2),
-    ColM(n*(n-1)/2)
+    ColM(n*(n-1)/2),
+    G6String(""),
+    SymmFactor(-1)
 {   
     if (storeRooted && (nbrRooted<0 || nbrRooted>2))
         throw std::invalid_argument("GraphContainer constructor needs 0 < nbrRooted <= 2 if storeRooted is true!\n");
@@ -32,7 +34,9 @@ GraphContainer::GraphContainer(int n, int m, const std::vector<UndirectedEdge>& 
     VertexOrder(n,0),
     M(n, std::vector<bool>(n,false)),
     RowM(n*(n-1)/2),
-    ColM(n*(n-1)/2)
+    ColM(n*(n-1)/2),
+    G6String(""),
+    SymmFactor(-1)
 {
     if (this->L>this->NTimesNMinusOneDiv2)
         throw std::invalid_argument("ERROR: In GraphContainer the size of edges is required to be less than or equal to N(N-1)/2!\n");
@@ -77,7 +81,7 @@ void GraphContainer::SetRowAndColMapping()
 void GraphContainer::GetDenseNautyFromGraph(graph *g) const
 {
     if (g==NULL)
-        throw std::invalid_argument("SetDenseNautyFromGraph expects g to be point to memory that is already allocated!\n");
+        throw std::invalid_argument("SetDenseNautyFromGraph expects g to be a pointer to memory that is already allocated!\n");
 
     EMPTYGRAPH(g, this->N, this->MWords); /// clear graph
 
@@ -91,11 +95,38 @@ void GraphContainer::GetDenseNautyFromGraph(graph *g) const
     }
 }
 
+int GraphContainer::GetSizeFromG6(const std::string& g6string)
+{
+    char *tempg6 = new char[g6string.length()+1];
+    std::strcpy(tempg6, g6string.c_str());
+    int result = graphsize(tempg6);
+    delete[] tempg6;
+    return result;
+}
+
+/// set g6 string associated with a dense nauty graph
+void GraphContainer::SetG6StringFromDenseNauty(graph *g)
+{
+    if (g==NULL)
+        throw std::invalid_argument("SetG6StringFromDenseNauty expects g to be a pointer to memory that is already allocated!\n");
+
+    this->G6String = ntog6(g,this->MWords,this->N); /// graph to g6 string routine
+    this->G6String.erase(std::remove(this->G6String.begin(), this->G6String.end(), '\n'), this->G6String.end()); // get rid of newline character
+}
+
 /// set adjacency matrix and all other private variables from dense nauty data structure
 /// NOTE: assumes N and MWords set!
 /// g: pointer to dense nauty data structure
 void GraphContainer::SetGraphFromDenseNauty(graph *g)
 {
+    if (g==NULL)
+        throw std::invalid_argument("SetGraphFromDenseNauty expects g to be a pointer to memory that is already allocated!\n");
+
+    this->SetG6StringFromDenseNauty(g);
+
+    if (this->GetSizeFromG6(this->G6String)!=this->N)
+        throw std::invalid_argument("SetGraphFromDenseNauty requires size of dense nauty graph to be equal to N!\n");
+
     set *gj;
     auto count = 0;
     for (int j=1; j<this->N; ++j)
@@ -143,7 +174,9 @@ GraphContainer::GraphContainer(int n, int m, graph *g, bool storeRooted, int nbr
     VertexOrder(n,0),
     M(n, std::vector<bool>(n,false)),
     RowM(n*(n-1)/2),
-    ColM(n*(n-1)/2)
+    ColM(n*(n-1)/2),
+    G6String(""),
+    SymmFactor(-1)
 {
     if (storeRooted && (nbrRooted<0 || nbrRooted>2))
         throw std::invalid_argument("GraphContainer constructor needs 0 < nbrRooted <= 2 if storeRooted is true!\n");
@@ -198,7 +231,7 @@ void GraphContainer::ColoredCanonicalRelabeling(int *labCanon, int v1, int v2)
 
 #ifdef DEBUG
         for (int i=0; i<this->N; ++i)
-            std::cout << "labCanon maps vertex " << labCanon[i] << " to vertex " << i << "\n";
+            std::cout << "labCanon maps vertex " << labCanon[i]+1 << " to vertex " << i+1 << "\n";
 #endif
 
     std::vector<std::vector<bool>> newM(N, std::vector<bool>(this->N, false));
@@ -233,6 +266,35 @@ void GraphContainer::ColoredCanonicalRelabeling(int *labCanon, int v1, int v2)
     this->PrintVertexOrders();
 #endif
 
+}
+
+void GraphContainer::CanonicalRelabeling(int *labCanon)
+{
+#ifdef DEBUG
+        for (int i=0; i<this->N; ++i)
+            std::cout << "labCanon maps vertex " << labCanon[i]+1 << " to vertex " << i+1 << "\n";
+#endif
+
+    std::vector<std::vector<bool>> newM(N, std::vector<bool>(this->N, false));
+    for (int i=0; i<this->N; ++i)
+    {
+        for (int j=i+1; j<this->N; ++j)
+        {
+            newM[i][j] = this->GetElementAdjacencyMatrix(labCanon[i]+1,labCanon[j]+1);  /// RowM and ColM start at 1 and alpha at 0!!!!
+            newM[j][i] = newM[i][j]; /// symmetrize
+        }
+    }
+
+    this->M = newM; /// copy adjacency matrix
+    /// set the vertex orders
+    for (unsigned int v=1; v<=this->N; ++v)
+        this->SetVertexOrder(v, this->ComputeVertexOrder(v));
+
+#ifdef DEBUG
+    std::cout << "AFTER_CANONICAL_RELABELING:\n";
+    this->PrintM();
+    this->PrintVertexOrders();
+#endif
 }
 
 /// print out adjacency matrix
@@ -394,6 +456,17 @@ int GraphContainer::GetNbrRooted() const
     if (!this->StoreRooted)
         std::cerr << "ERROR: GetNbrRooted called when StoreRooted flag is false!\n";
     return this->NbrRooted;
+}
+
+void GraphContainer::SetSymmFactor(int symmFactor)
+{
+    if (this->SymmFactor!=-1)
+        throw std::logic_error("SetSymmFactor has already been called!\n");
+
+    if (symmFactor<1)
+        throw std::invalid_argument("SetSymmFactor requires symmFactor to be greater than or equal to 1!\n");
+
+    this->SymmFactor = symmFactor;
 }
 
 /// construct bit string from adjacency matrix and return this as an integer

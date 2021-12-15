@@ -37,15 +37,12 @@ GraphEmbedder::GraphEmbedder(int argc, char *argv[]) :
     }
 
     if (!this->Parameters.GetG6().empty())
-    {
         this->G6String = this->Parameters.GetG6();
-        char *tempg6 = new char[this->G6String.length()+1];
-        std::strcpy(tempg6, this->G6String.c_str());
-        this->N = graphsize(tempg6); /// get current size
-        delete[] tempg6;
-    }
-    else
-        this->N = this->Parameters.GetN();
+
+    this->N = this->Parameters.GetN();
+
+    if (this->N!=this->GetGraphSizeFromString(this->G6String))
+        throw std::invalid_argument("GraphEmbedder expects N to be equal to the same as g6 graph if given!\n");
 
     for (int v=this->N; v>0; --v)
         this->VertexSet.insert(v);
@@ -57,6 +54,8 @@ GraphEmbedder::GraphEmbedder(int argc, char *argv[]) :
     /// store number of neighbors
     this->NbrNeighbors[0] = this->Lattice->GetNbrNN();
     this->NbrNeighbors[1] = this->Lattice->GetNbrNNN();
+    this->NbrNeighbors[2] = this->Lattice->GetNbrThirdNN();
+    this->NbrNeighbors[3] = this->Lattice->GetNbrFourthNN();
 
     nauty_check(WORDSIZE, this->N, this->MWords, NAUTYVERSIONID); /// check if everything is ok
 
@@ -95,7 +94,7 @@ graph* GraphEmbedder::GetNextGraph(graph *g)
     return readg(this->fp,g,0,&this->MWords,&this->N);
 }
 
-/// wrapper for densenauty
+/// wrapper for densenauty with default options
 void GraphEmbedder::CallDenseNauty(graph *g, int *lab, int *ptn, int *orbits, statsblk &stats)
 {
     static DEFAULTOPTIONS(options);
@@ -126,20 +125,17 @@ void GraphEmbedder::EmbedSingleG6()
     else
         throw std::invalid_argument("GraphEmbedder::Embed: Error opening "+outputFilename);
 
-    char *tempg6 = new char[this->G6String.length()+1];
-
-    std::strcpy(tempg6, this->G6String.c_str());
-    stringtograph(tempg6, g, this->MWords); /// g6 string to densenauty
-
-    delete[] tempg6;
+    this->DenseNautyFromString(this->G6String, g);
 
     GraphContainer container(this->N, this->MWords, g); /// container from densenauty
 
     if(this->Parameters.EmbedCorrelator())
-        this->ComputeEmbeddingNumbers(container, g, fpo, -1);
+    {
+        int symmFactor = this->GetSymmFactor(g);
+        this->ComputeEmbeddingNumbers(container, g, fpo, symmFactor); /// TODO: incorrect! Need to get symmetry factor before calling this!
+    }
     else
         this->ComputeEmbeddingNumbers(container, g, fpo);
-
 
     DYNFREE(g, g_sz); /// free graph
 
@@ -205,60 +201,6 @@ void GraphEmbedder::EmbedFromFile()
 
     fclose(fpo); /// close the file
 
-}
-
-/// debugging routinefor embedding a specific graph (line in file described by graphNbr) for a specific set of bonds (bondCounts)
-void GraphEmbedder::EmbedSpecificGraphBondCombo(int graphNbr, const std::vector<int>& bondCounts)
-{
-
-    DYNALLSTAT(graph, g, g_sz); /// declare graph
-    DYNALLSTAT(int,lab,lab_sz); /// declare labels
-    DYNALLSTAT(int,ptn,ptn_sz); /// declare pattern
-    DYNALLSTAT(int,orbits,orbits_sz); /// declare orbits
-    statsblk status; /// status
-
-    DYNALLOC2(graph, g, g_sz, this->N, this->MWords, "malloc"); /// allocate graph
-    DYNALLOC2(int, lab, lab_sz, this->N, this->MWords, "malloc"); /// allocate labels
-    DYNALLOC2(int, ptn, ptn_sz, this->N, this->MWords, "malloc"); /// allocate pattern
-    DYNALLOC2(int, orbits, orbits_sz, this->N, this->MWords, "malloc"); /// allocate orbits
-
-    /// output file for writing
-    std::string outputFilename = "debug_embed_specific_graph_"+std::to_string(graphNbr)+"_bondCounts";
-    for (auto count: bondCounts)
-        outputFilename += "_"+std::to_string(count);
-    FILE *fpo = fopen(outputFilename.c_str(), "w");
-    if (fpo!=NULL)
-        std::cout << "GraphEmbedder::EmbedSpecificGraphBondCombo: Successfully opened " << outputFilename << std::endl;
-    else
-        throw std::invalid_argument("GraphEmbedder::EmbedSpecificGraphBondCombo: Error opening "+outputFilename);
-
-    /// just read first graph for now
-    GraphContainer container(this->N, this->MWords);
-    int count = 0;
-    while (1)
-    {
-        graph *gtemp = this->GetNextGraph(g);
-        if (gtemp == NULL)
-            break;
-        count++;
-
-        this->CallDenseNauty(g, lab, ptn, orbits, status); /// call densenauty
-        writegroupsize(fpo,status.grpsize1,status.grpsize2); /// write group size (symmetry factor) to file
-
-        std::cout << "GraphsFromFile read config " << count << "!\n";
-        container.SetGraphFromDenseNauty(g); /// setup container from nauty dense format
-
-        if (count == graphNbr)
-            this->ComputeEmbeddingNumberCombo(container, bondCounts);
-
-    }
-
-    DYNFREE(g, g_sz); /// free graph
-    DYNFREE(lab, lab_sz); /// free labels
-    DYNFREE(ptn, ptn_sz); /// free pattern
-    DYNFREE(orbits, orbits_sz); /// free orbits
-
-    fclose(fpo); /// close the file
 }
 
 /// check if we can add nearest neighbor (labeled by nn) to element of list (indexed by elem) if it is not already occupied
@@ -627,8 +569,6 @@ void GraphEmbedder::TestEraseWrongSizes(std::vector<VertexEmbedList>& lists, int
 /// compute embedding numbers over all combination of bonds \sum_i N^i_B = NB, where N^i_B is the number of bonds of type i (NN, NNN, 3N 4N) and NB is the total number of bonds
 void GraphEmbedder::ComputeEmbeddingNumbers(const GraphContainer& container, graph *g, FILE *fpo, int symmFactor)
 {
-    if (symmFactor==-1 && this->Parameters.EmbedCorrelator())
-        throw std::invalid_argument("ComputeEmbeddingNumbers requires the symmetry factor which is read in from file when embedding correlators (rooted graphs)!\n");
 
     this->GetCombinationsOfBondsFixedNumberOfBonds(container.GetL()); /// generate combos of bonds for fixed bond number
     /// TODO: how to incorporate the constraint with Manhattan distance? think about this...
@@ -636,23 +576,8 @@ void GraphEmbedder::ComputeEmbeddingNumbers(const GraphContainer& container, gra
     container.GetDenseNautyFromGraph(g); /// get dense nauty rep of graph
     char *s = ntog6(g,this->MWords,this->N); /// convert to g6
 
-    statsblk status; /// status
-    if (!this->Parameters.EmbedCorrelator())
-    {
-        DYNALLSTAT(int,lab,lab_sz); /// declare labels
-        DYNALLSTAT(int,ptn,ptn_sz); /// declare pattern
-        DYNALLSTAT(int,orbits,orbits_sz); /// declare orbits
-
-        DYNALLOC2(int, lab, lab_sz, this->N, this->MWords, "malloc"); /// allocate labels
-        DYNALLOC2(int, ptn, ptn_sz, this->N, this->MWords, "malloc"); /// allocate pattern
-        DYNALLOC2(int, orbits, orbits_sz, this->N, this->MWords, "malloc"); /// allocate orbits
-
-        this->CallDenseNauty(g, lab, ptn, orbits, status); /// call densenauty
-
-        DYNFREE(lab, lab_sz); /// free labels
-        DYNFREE(ptn, ptn_sz); /// free pattern
-        DYNFREE(orbits, orbits_sz); /// free orbits
-    }
+    if (symmFactor!=-1) /// get the symmetry factor if default value
+        symmFactor = this->GetSymmFactor(g);
 
     for (int i=0; i<this->BondCombinations.size(); ++i)
     {
@@ -673,14 +598,9 @@ void GraphEmbedder::ComputeEmbeddingNumbers(const GraphContainer& container, gra
         else /// default format
         {
             fprintf(fpo, "%.*s ", static_cast<int>(strlen(s)-1), s); /// write g6 string
-            for (int d=0; d<this->MaxDegreeNeighbor; ++d) /// write bomb combination i.e. parition of total number of bonds
+            for (int d=0; d<this->MaxDegreeNeighbor; ++d) /// write bond combination i.e. parition of total number of bonds
                 fprintf(fpo, "%d ", this->BondCombinations[i][d]);
-            fprintf(fpo, "%d ", resultEmbed.first);
-            if (!this->Parameters.EmbedCorrelator())
-                writegroupsize(fpo,status.grpsize1,status.grpsize2); /// write group size (symmetry factor) to file
-            else
-                fprintf(fpo, "%d", symmFactor);
-            fprintf(fpo, "\n");
+            fprintf(fpo, "%d %d\n", resultEmbed.first, symmFactor);
             fflush(fpo);
         }
     }
@@ -689,6 +609,63 @@ void GraphEmbedder::ComputeEmbeddingNumbers(const GraphContainer& container, gra
         fprintf(fpo, "\n");
         fflush(fpo);
     }
+}
+
+/// given a graph, compute embedding number for all bonds being bonds of the lattice (nearest-neighbors)
+/// after calling ComputeEmbeddingNumberCombo, EmbedLists contains all of the embeddings
+/// construct set of canonical graphs wrt cubic symmetry from EmbedLists and get counts of how many embeddings correspond to each canonical graph
+/// @param container: GraphContainer object describing graph to be embedded
+std::pair<std::vector<VertexEmbedList>, std::vector<int>> GraphEmbedder::ComputeCanonicalGraphsAndEmbeddingNumbers(GraphContainer container)
+{
+    std::vector<VertexEmbedList> canonicalList; /// canonical list to return
+    std::vector<int> counts; /// counts of canonical lists to return
+
+    std::vector<int> bondCombo(this->MaxDegreeNeighbor,0);
+    bondCombo[0] = container.GetL();
+
+    auto countAndOneEmbedding = this->ComputeEmbeddingNumberCombo(container, bondCombo); /// do the embeddings
+
+    /// now in EmbedLists we have the data that we need to get the list of canonical graphs and their counts
+    for (auto it=this->EmbedLists.begin(); it!=this->EmbedLists.end(); ++it)
+    {
+        CubicLatticeCanonicalizor tempCanonicalizor(&container, this->Lattice, *it); /// get canonical graph wrt octahedral group
+        auto tempCanonical = tempCanonicalizor.GetCanonical();
+        tempCanonical.SetNbrChoicesForFirstBond(it->GetNbrChoicesForFirstBond()); /// need to add this by hand to canonical!
+        auto tempIt = std::find(canonicalList.begin(), canonicalList.end(), tempCanonical);
+        if (tempIt!=canonicalList.end()) /// if it is already in the list get index and increment counts
+        {
+            int tempIndex = std::distance(canonicalList.begin(), tempIt);
+            counts[tempIndex]++;
+        }
+        else /// if it is not already in the list add to canonicalList and add entry to counts
+        {
+            canonicalList.push_back(tempCanonical);
+            counts.push_back(1);
+        }
+    }
+
+#ifdef DEBUG
+    int testTotal = 0;
+#endif
+    for (int i=0; i<canonicalList.size(); ++i) /// multiply counts by NbrChoicesForFirstBond
+    {
+#ifdef DEBUG
+        std::cout << "DEBUG_ComputeEmbeddingNumbersAndCanonicalGraphs " << i << " \n";
+        std::cout << canonicalList[i] << "\n";
+#endif
+        counts[i] *= canonicalList[i].GetNbrChoicesForFirstBond();
+#ifdef DEBUG
+        testTotal += counts[i];
+#endif
+    }
+
+#ifdef DEBUG
+    if (testTotal!=countAndOneEmbedding.first)
+        throw std::logic_error("ComputeEmbeddingNumbersAndCanonicalGraphs requires the sum of the embedding numbers to equal the total!\n");
+#endif
+
+    return std::pair<std::vector<VertexEmbedList>, std::vector<int>>(canonicalList, counts);
+
 }
 
 /// compute embedding number for a graph (rooted or unrooted); differs from old routine in that at every step, each list produces lists of higher order embedding new vertex connected with only ONE of previously embedded vertices
@@ -823,10 +800,11 @@ std::pair<int, VertexEmbedList> GraphEmbedder::ComputeEmbeddingNumberCombo(const
         count++;
     }
 #endif
-   if (lists.size()==0) /// check size
-       return std::pair<int, VertexEmbedList>(0, VertexEmbedList(this->Parameters.GetMaxEmbeddingLength(), static_cast<MaxInteractionLength>(this->Parameters.GetCorrelatorLength())));
-   else /// atleast one embedding to return
-       return std::pair<int, VertexEmbedList>(result, VertexEmbedList(*lists.begin()));
+    this->EmbedLists = lists; /// save most recent list of embedded graphs
+    if (lists.size()==0) /// check size
+        return std::pair<int, VertexEmbedList>(0, VertexEmbedList(this->Parameters.GetMaxEmbeddingLength(), static_cast<MaxInteractionLength>(this->Parameters.GetCorrelatorLength())));
+    else /// atleast one embedding to return
+        return std::pair<int, VertexEmbedList>(result, VertexEmbedList(*lists.begin()));
 }
 
 /// compute embedding number for a graph (rooted or unrooted)
@@ -1164,7 +1142,6 @@ std::set<VertexEmbedList> GraphEmbedder::CreateInitialVertexEmbedLists(const Gra
 
 /// creates initial list of embedded vertices for rooted graphs
 /// NOTE: embedded vertices ALWAYS taken to be labeled 1 and 2 (0 and 1 in NAUTY convention)! Convention specified in GraphGeneratorNauty
-//std::vector<VertexEmbedList> GraphEmbedder::CreateInitialVertexEmbedListsRooted(const GraphContainer& container, const std::vector<int> &bondCombo)
 std::set<VertexEmbedList> GraphEmbedder::CreateInitialVertexEmbedListsRooted(const GraphContainer& container, const std::vector<int> &bondCombo)
 {
     std::vector<int> rootedVertices{1,2}; /// CONVENTION!
@@ -1177,7 +1154,6 @@ std::set<VertexEmbedList> GraphEmbedder::CreateInitialVertexEmbedListsRooted(con
 /// @param rootedVertices: labels of rooted vertices
 std::set<VertexEmbedList> GraphEmbedder::CreateInitialVertexEmbedListsRootedFixed(const GraphContainer& container, const std::vector<int> &bondCombo, const std::vector<int>& rootedVertices)
 {
-    //std::vector<VertexEmbedList> result;
     std::set<VertexEmbedList> result;
 
     std::vector<unsigned int> indices(this->Lattice->GetDim(), this->Lattice->GetN()/2); /// spatial indices for first vertex
@@ -1250,8 +1226,43 @@ std::set<VertexEmbedList> GraphEmbedder::CreateInitialVertexEmbedListsNonRooted(
     return result;
 }
 
+std::tuple<GraphContainer, std::vector<VertexEmbedList>, std::vector<int> > GraphEmbedder::GetCanonicalGraphsAndCounts()
+{
+    if (this->Parameters.GetG6().empty())
+        throw std::invalid_argument("GraphEmbedder::GetCanonicalGraphsAndCounts requires the user to input a g6 string!\n");
+
+    if (this->ResolveLatticeType(this->Parameters.GetLatticeType())!=GraphEmbedder::LatticeType::Cubic)
+        throw std::invalid_argument("GraphEmbedder::GetCanonicalGraphsAndCounts requires the cubic lattice!\n");
+
+    DYNALLSTAT(graph, g, g_sz); /// declare graph
+    DYNALLOC2(graph, g, g_sz, this->N, this->MWords, "malloc"); /// allocate graph
+
+    this->DenseNautyFromString(this->G6String, g); /// get graph in dense nauty format
+
+    GraphContainer container(this->N, this->MWords, g); /// container from densenauty
+
+    container.SetSymmFactor(this->GetSymmFactor(g)); /// set symmetry factor
+#ifdef DEBUG
+    std::cout << "DEBUG_SYMMFACTOR: " << container.GetSymmFactor() << "\n";
+#endif
+
+    /// get canonical graphs and counts
+    auto canonicalListAndCounts = this->ComputeCanonicalGraphsAndEmbeddingNumbers(container);
+
+    DYNFREE(g, g_sz);
+
+    /// combine container with graphs and counts
+    return std::tuple<GraphContainer, std::vector<VertexEmbedList>, std::vector<int>>(container, canonicalListAndCounts.first, canonicalListAndCounts.second);
+
+}
+
+/// do not use with rooted graphs! each simple connected graph generates some number of rooted graphs and they are written to file
+/// quit if we ask for rooted graphs as we are unsure how to streamline the procedure from the files????
 std::pair<GraphContainer, VertexEmbedList> GraphEmbedder::ContainerAndSampleCubicEmbeddingFromG6()
 {
+    if (this->Parameters.EmbedCorrelator())
+        throw std::invalid_argument("GraphEmbedder::ContainerFromG6 not embedding rooted graphs!");
+
     if (this->Parameters.GetG6().empty())
         throw std::invalid_argument("GraphEmbedder::ContainerFromG6 requires the user to input a g6 string!\n");
 
@@ -1261,12 +1272,7 @@ std::pair<GraphContainer, VertexEmbedList> GraphEmbedder::ContainerAndSampleCubi
     DYNALLSTAT(graph, g, g_sz); /// declare graph
     DYNALLOC2(graph, g, g_sz, this->N, this->MWords, "malloc"); /// allocate graph
 
-    char *tempg6 = new char[this->G6String.length()+1];
-
-    std::strcpy(tempg6, this->G6String.c_str());
-    stringtograph(tempg6, g, this->MWords); /// g6 string to densenauty
-
-    delete[] tempg6;
+    this->DenseNautyFromString(this->G6String, g);
 
     GraphContainer container(this->N, this->MWords, g); /// container from densenauty
 
@@ -1280,6 +1286,75 @@ std::pair<GraphContainer, VertexEmbedList> GraphEmbedder::ContainerAndSampleCubi
     DYNFREE(g, g_sz); /// free graph
 
     return std::pair<GraphContainer, VertexEmbedList>(container, resultEmbed.second);
+}
+
+/// get the number of vertices from a g6 string
+int GraphEmbedder::GetGraphSizeFromString(const std::string& g6String)
+{
+    char *tempg6 = new char[g6String.length()+1];
+    std::strcpy(tempg6, g6String.c_str());
+    int result = graphsize(tempg6);
+    delete[] tempg6;
+    return result;
+}
+
+/// get the densenauty form of a graph from the g6 string
+void GraphEmbedder::DenseNautyFromString(const std::string& g6String, graph *g)
+{
+    char *tempg6 = new char[g6String.length()+1];
+
+    std::strcpy(tempg6, g6String.c_str());
+    stringtograph(tempg6, g, this->MWords); /// g6 string to densenauty
+
+    delete[] tempg6;
+}
+
+/// get the symmetry factor from a given graph
+/// g: pointer to allocated graph of size N
+int GraphEmbedder::GetSymmFactor(graph *g)
+{
+    DYNALLSTAT(int,lab,lab_sz); /// declare labels
+    DYNALLSTAT(int,ptn,ptn_sz); /// declare pattern
+    DYNALLSTAT(int,orbits,orbits_sz); /// declare orbits
+    statsblk status; /// status
+
+    DYNALLOC2(int, lab, lab_sz, this->N, this->MWords, "malloc"); /// allocate labels
+    DYNALLOC2(int, ptn, ptn_sz, this->N, this->MWords, "malloc"); /// allocate pattern
+    DYNALLOC2(int, orbits, orbits_sz, this->N, this->MWords, "malloc"); /// allocate orbits
+
+    this->CallDenseNauty(g, lab, ptn, orbits, status); /// call NAUTY
+
+    /// write out to temporary file and read back in
+    std::string tempFilename = "temp_symm"; /// HARD-CODED
+    FILE *fpo = fopen(tempFilename.c_str(), "w"); /// open file for writing
+    if (fpo!=NULL)
+        std::cout << "GraphEmbedder::GetSymmFactor: Successfully opened " << tempFilename << " for writing!\n";
+    else
+        throw std::invalid_argument("GraphEmbedder::GetSymmFactor: Error opening "+tempFilename);
+
+    writegroupsize(fpo,status.grpsize1,status.grpsize2); /// write symmetry factor to file
+    fprintf(fpo, "\n");
+
+    fclose(fpo); /// close file
+
+    FILE *fpi = fopen(tempFilename.c_str(), "r"); /// open file for reading
+    if (fpi!=NULL)
+        std::cout << "GraphEmbedder::GetSymmFactor: Successfully opened " << tempFilename << " for reading!\n";
+    else
+        throw std::invalid_argument("GraphEmbedder::GetSymmFactor: Error opening "+tempFilename);
+
+    int symmFactor = -1;
+    int res = fscanf(fpi, "%d\n", &symmFactor); /// read symmetry factor
+    if (symmFactor==-1)
+        throw std::invalid_argument("GetSymmFactor symmFactor has wrong value!\n");
+
+    fclose(fpi); /// close file
+
+    DYNFREE(lab, lab_sz); /// free labels
+    DYNFREE(ptn, ptn_sz); /// free pattern
+    DYNFREE(orbits, orbits_sz); /// free orbits
+
+    return symmFactor;
 }
 
 /// we require one option if the other is not provided by the user (option either default or not specified)

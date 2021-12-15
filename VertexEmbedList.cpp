@@ -233,7 +233,7 @@ bool operator!=(const VertexEmbedList& lhs, const VertexEmbedList& rhs)
 
 /// less than operator which will be needed for std::set<VertexEmbedList>
 /// lists with the smaller size come first
-/// comparison is then made on this->List (lexigraphical order for vectors)
+/// comparison is then made on this->List (lexigraphical order)
 /// no reference is made to rooted or unrooted
 bool operator<(const VertexEmbedList& lhs, const VertexEmbedList& rhs)
 {
