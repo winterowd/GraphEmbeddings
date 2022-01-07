@@ -244,7 +244,7 @@ std::array<int, ZClusterPureGauge::NbrCouplings> ZClusterPureGauge::LinearIndexT
     if (index < 0 || index >= this->LinearIndexMax)
         throw std::invalid_argument("ERROR: LinearIndexToPowersOfCouplings requires 0<= index < NTotalBondCounts!\n");
 #endif
-    std::array<int, ZClusterPureGauge::NbrCouplings> result{0, 0, 0};
+    std::array<int, ZClusterPureGauge::NbrCouplings> result{0, 0, 0, 0};
     result[0] = index%this->AllTotalBondCountsPlusOne[0]; /// one-link count
     int temp = index/this->AllTotalBondCountsPlusOne[0];
     for (int i=1; i<this->NbrCouplings; ++i)
@@ -287,7 +287,6 @@ int ZClusterPureGauge::PowersOfCouplingsToLinearIndex(const std::array<int, ZClu
     }
     return linearIndex;
 }
-
 
 /// recursively generate all combinations of boolean string
 /// @param tmp: current string

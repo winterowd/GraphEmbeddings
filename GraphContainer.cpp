@@ -35,6 +35,7 @@ GraphContainer::GraphContainer(int n, int m, const std::vector<UndirectedEdge>& 
     M(n, std::vector<bool>(n,false)),
     RowM(n*(n-1)/2),
     ColM(n*(n-1)/2),
+    Edges(edges),
     G6String(""),
     SymmFactor(-1)
 {
@@ -114,7 +115,7 @@ void GraphContainer::SetG6StringFromDenseNauty(graph *g)
     this->G6String.erase(std::remove(this->G6String.begin(), this->G6String.end(), '\n'), this->G6String.end()); // get rid of newline character
 }
 
-/// set adjacency matrix and all other private variables from dense nauty data structure
+/// set adjacency matrix, edges, and all other private variables from dense nauty data structure
 /// NOTE: assumes N and MWords set!
 /// g: pointer to dense nauty data structure
 void GraphContainer::SetGraphFromDenseNauty(graph *g)
@@ -138,6 +139,7 @@ void GraphContainer::SetGraphFromDenseNauty(graph *g)
             {
                 this->SetElementAdjacenyMatrix(i+1, j+1);
                 this->SetElementAdjacenyMatrix(j+1, i+1);
+                this->Edges.push_back(UndirectedEdge(i+1, j+1)); /// add edge/bond
                 count++;
             }
             else
@@ -148,7 +150,7 @@ void GraphContainer::SetGraphFromDenseNauty(graph *g)
         }
     }
 
-    this->L = count; /// set number of bonds
+    this->L = count; /// set number of bonds/edges
 
     /// set the vertex orders
     for (unsigned int v=1; v<=this->N; ++v)
@@ -513,6 +515,13 @@ bool GraphContainer::IsConnected(int vertexStart)
         if (!v)
             return false;
    return true;
+}
+
+UndirectedEdge GraphContainer::GetEdge(int index)
+{
+    if (index < 0 || index >= this->Edges.size())
+        throw std::invalid_argument("GetEdge requires 0 <= index < L!\n");
+    return this->Edges[index];
 }
 
 /// compare two containers

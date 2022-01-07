@@ -72,6 +72,7 @@ inline bool operator<(const InteractionSubDiagram& lhs, const InteractionSubDiag
 
 class ZClusterPureGauge
 {
+private:
     /**** private variables ****/
     GraphContainer *ClusterContainer; /// container corresponding to the cluster
 

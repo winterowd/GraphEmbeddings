@@ -615,13 +615,22 @@ void GraphEmbedder::ComputeEmbeddingNumbers(const GraphContainer& container, gra
 /// after calling ComputeEmbeddingNumberCombo, EmbedLists contains all of the embeddings
 /// construct set of canonical graphs wrt cubic symmetry from EmbedLists and get counts of how many embeddings correspond to each canonical graph
 /// @param container: GraphContainer object describing graph to be embedded
-std::pair<std::vector<VertexEmbedList>, std::vector<int>> GraphEmbedder::ComputeCanonicalGraphsAndEmbeddingNumbers(GraphContainer container)
+/// @param bondCombo: counts of types of bonds (NN, NNN, etc)
+std::pair<std::vector<VertexEmbedList>, std::vector<int>> GraphEmbedder::ComputeCanonicalGraphsAndEmbeddingNumbers(GraphContainer container, const std::vector<int>& bondCombo)
 {
     std::vector<VertexEmbedList> canonicalList; /// canonical list to return
     std::vector<int> counts; /// counts of canonical lists to return
 
-    std::vector<int> bondCombo(this->MaxDegreeNeighbor,0);
-    bondCombo[0] = container.GetL();
+#ifdef DEBUG
+    /// check that bond combo is valid
+    if (this->MaxDegreeNeighbor!=bondCombo.size())
+        throw std::invalid_argument("ComputeCanonicalGraphsAndEmbeddingNumbers requires bondCombo to be of size MaxDegreeNeighbor!\n");
+    int result = 0;
+    for (int i=0; i<bondCombo.size(); ++i)
+        result += bondCombo[i];
+    if (result!=container.GetL())
+        throw std::invalid_argument("ComputeCanonicalGraphsAndEmbeddingNumbers requires bondCombo to be consistent with container!\n");
+#endif
 
     auto countAndOneEmbedding = this->ComputeEmbeddingNumberCombo(container, bondCombo); /// do the embeddings
 
@@ -1226,6 +1235,7 @@ std::set<VertexEmbedList> GraphEmbedder::CreateInitialVertexEmbedListsNonRooted(
     return result;
 }
 
+/// from g6 string in command line arguments, compute the canonical embeddings (NN only) on the cubic lattice and their counts
 std::tuple<GraphContainer, std::vector<VertexEmbedList>, std::vector<int> > GraphEmbedder::GetCanonicalGraphsAndCounts()
 {
     if (this->Parameters.GetG6().empty())
@@ -1246,8 +1256,12 @@ std::tuple<GraphContainer, std::vector<VertexEmbedList>, std::vector<int> > Grap
     std::cout << "DEBUG_SYMMFACTOR: " << container.GetSymmFactor() << "\n";
 #endif
 
+    /// all bonds are NN i.e. true embedding on cubic lattice
+    std::vector<int> bondCombo(this->MaxDegreeNeighbor, 0);
+    bondCombo[0] = container.GetL();
+
     /// get canonical graphs and counts
-    auto canonicalListAndCounts = this->ComputeCanonicalGraphsAndEmbeddingNumbers(container);
+    auto canonicalListAndCounts = this->ComputeCanonicalGraphsAndEmbeddingNumbers(container, bondCombo);
 
     DYNFREE(g, g_sz);
 

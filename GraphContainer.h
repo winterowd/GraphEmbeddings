@@ -60,6 +60,8 @@ private:
     std::vector<int> RowM; /// starts at 1
     std::vector<int> ColM; /// starts at 1
 
+    std::vector<UndirectedEdge> Edges; /// edges of graph
+
     std::string G6String; /// save this when setting g from dense nauty
 
     /// NOTE: only use this currently in GraphEmbedder::GetCanonicalGraphsAndCounts
@@ -138,6 +140,8 @@ public:
    void SetSymmFactor(int symmFactor); /// only use this currently in GraphEmbedder::GetCanonicalGraphsAndCounts
 
    bool IsConnected(int vertexStart=0);
+
+   UndirectedEdge GetEdge(int index);
 
 };
 

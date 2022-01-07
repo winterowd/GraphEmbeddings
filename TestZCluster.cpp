@@ -1,6 +1,7 @@
 #include <iostream>
 
 #include "ZClusterPureGauge.h"
+#include "ZClusterPureGaugeArbEmbedding.h"
 
 int main()
 {
@@ -80,8 +81,6 @@ int main()
     index3 = MyLattice.GetNearestNeighbor(index2, 2);
     index4 = MyLattice.GetNearestNeighbor(index3, 1);
     index5 = MyLattice.GetNearestNeighbor(index2, 1);
-    if (index4!=MyLattice.GetNearestNeighbor(index5, 2))
-        throw std::invalid_argument("ERROR: embedding wrong!\n");
     VertexEmbedList EmbedListBentHanlde(MaxInteractionLength::NearestNeighbor);
     EmbedListBentHanlde.AddVertexEmbed(1, index1);
     EmbedListBentHanlde.AddVertexEmbed(2, index2);
@@ -93,6 +92,23 @@ int main()
     ZClusterPureGauge MyClusterBentHandle(&TestContainerHandle, &EmbedListBentHanlde, &MyLattice);
     std::cout << "****BENT_HANDLE****\n";
     MyClusterBentHandle.PrintZ();
+
+    index1 = MyLattice.GetSiteIndex(indicesCenter); /// embed with handle not being a nearest neighbor
+    index2 = MyLattice.GetNextNearestNeighbor(index1, 1);
+    index3 = MyLattice.GetNearestNeighbor(index2, 1);
+    index4 = MyLattice.GetNearestNeighbor(index3, 2);
+    index5 = MyLattice.GetNearestNeighbor(index2, 2);
+    VertexEmbedList EmbedListNNNHandle(MaxInteractionLength::NextNearestNeighbor);
+    EmbedListNNNHandle.AddVertexEmbed(1, index1);
+    EmbedListNNNHandle.AddVertexEmbed(2, index2);
+    EmbedListNNNHandle.AddVertexEmbed(3, index3);
+    EmbedListNNNHandle.AddVertexEmbed(4, index4);
+    EmbedListNNNHandle.AddVertexEmbed(5, index5);
+    EmbedListNNNHandle.PrintList();
+
+    ZClusterPureGaugeArbEmbedding MyClusterNNNHandle(&TestContainerHandle, &EmbedListNNNHandle, &MyLattice);
+    std::cout << "****NNN_HANDLE****\n";
+    MyClusterNNNHandle.PrintZ();
 
     DYNFREE(g, g_sz); /// free graph
 

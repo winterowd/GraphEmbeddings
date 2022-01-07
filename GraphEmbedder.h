@@ -139,7 +139,7 @@ private:
 
     std::pair<int,VertexEmbedList> ComputeEmbeddingNumberCombo(const GraphContainer& container, const std::vector<int> &bondCombo); /// compute the embedding number of a graph for a given combo of bond counts
 
-    std::pair<std::vector<VertexEmbedList>, std::vector<int>> ComputeCanonicalGraphsAndEmbeddingNumbers(GraphContainer container);
+    std::pair<std::vector<VertexEmbedList>, std::vector<int>> ComputeCanonicalGraphsAndEmbeddingNumbers(GraphContainer container, const std::vector<int> &bondCombo);
 
     std::vector<int> GetAllowedBondDegreesOfList(const VertexEmbedList& list, const std::vector<int> &bondCombo); /// determine list of allowed neighbor degrees based on list and combination of bond counts
 
@@ -239,8 +239,12 @@ public:
 
     void Embed(); /// calculates embedding numbers for all graphs of a given order or a single and outputs results
 
+    /// TODO: routine which returns all partitions for a given container
+
+    /// TODO: routine which takes a single partition and container returns all VertexEmbedLists
+
     /// routine which outputs vector of canonical graphs and counts for embeddings (all NN links)
-    std::tuple<GraphContainer, std::vector<VertexEmbedList>, std::vector<int>> GetCanonicalGraphsAndCounts();
+    std::tuple<GraphContainer, std::vector<VertexEmbedList>, std::vector<int>> GetCanonicalGraphsAndCounts(); /// uses the graph provided as a g6 string by the user (command line arguments sent to constructor)
 
     std::pair<GraphContainer, VertexEmbedList> ContainerAndSampleCubicEmbeddingFromG6(); /// return a pair consisting of a container and a VertexEmbedList for a given g6 string input by the user (for debugging purposes)
 
