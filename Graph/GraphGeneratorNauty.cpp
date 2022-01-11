@@ -1,14 +1,4 @@
-
-
 #include "GraphGeneratorNauty.h"
-
-extern "C" {
-int
-GENG_MAIN(int argc, char *argv[]);
-}
-
-#include <boost/program_options.hpp>
-namespace po = boost::program_options;
 
 /// constructor which receives command line arguments from user
 GraphGeneratorNauty::GraphGeneratorNauty(int argc, char *argv[]) :
@@ -31,6 +21,14 @@ bool GraphGeneratorNauty::AreGraphParametersOK()
     return true;
 }
 
+/// checks to see if non-rooted graph g is canonical (debugging routine)
+/// @arg g: dense nauty graph
+bool GraphGeneratorNauty::IsCanonical(graph *g)
+{
+    GraphContainer tempContainer(this->N, this->MWords, g);
+    return (tempContainer==AuxiliaryRoutinesForNauty::GetCanonicalGraphNauty(this->N, g));
+}
+
 /// Set up geng argument list.  The 0-th argument is the command name. There must be a NULL at the end.
 void GraphGeneratorNauty::Generate(bool useIterativeRooted)
 {
@@ -48,7 +46,7 @@ void GraphGeneratorNauty::Generate(bool useIterativeRooted)
     arguments.push_back(std::to_string(this->N)); /// order of graph
     arguments.push_back(std::to_string(this->L)+":"+std::to_string(this->L)); /// number of bonds
 
-    std::string filename = "graphs_g6_connected_N_"+std::to_string(this->N)+"_L_"+std::to_string(this->L)+".dat";
+    std::string filename = GetOutputFilenameFixedOrder();
     arguments.push_back(filename); /// output file
 
     std::vector<char*> argv;
@@ -67,42 +65,6 @@ void GraphGeneratorNauty::Generate(bool useIterativeRooted)
     else /// otherwise generate connected graphs
         GENG_MAIN(argv.size()-1,argv.data());
 
-}
-
-/// test routine for relabeling
-void GraphGeneratorNauty::TestRelabeling(int n, std::string inputFilename)
-{
-    this->N = n;
-
-    this->GetAllPossiblePairsForRootedVertices();
-
-    /// read in a random graph (should match order n)
-    int m = SETWORDSNEEDED(this->N);
-
-    FILE *fp = fopen(inputFilename.c_str(), "r");
-
-    if (fp!=NULL)
-        std::cout << "TestRelabeling: Successfully opened " << inputFilename << std::endl;
-    else
-        throw std::invalid_argument("TestRelabeling: Error opening "+inputFilename);
-
-    DYNALLSTAT(graph, g, g_sz);
-    DYNALLOC2(graph, g, g_sz, n, m, "malloc");
-
-    graph *gtemp = readg(fp,g,m,&m,&n);
-
-    GraphContainer refGraph(this->N, m, g);
-
-    std::vector<int> newLabels(this->N, -1);
-    for (int i=0; i<this->RootedVertexNumbers.size(); ++i)
-    {
-        this->ProduceNewLabelingGivenRootedVertices(this->RootedVertexNumbers[i], newLabels, true);
-        GraphContainer tempGraph(refGraph);
-        tempGraph.RelabelVertices(newLabels);
-    }
-
-    DYNFREE(g,g_sz);
-    fclose(fp);
 }
 
 /// set the vertex colors based on an array of rooted vertices
@@ -189,7 +151,7 @@ void GraphGeneratorNauty::GenerateTwoRootedFixedOrderIterative(std::string input
         throw std::invalid_argument("GenerateTwoRootedFixedOrder: Error opening "+inputFilename);
 
     //// output file stream for rooted graphs
-    std::string outputFilename = "test_iterative_graphs_g6_rooted_connected_N_"+std::to_string(this->N)+"_L_"+std::to_string(this->L)+".dat";
+    std::string outputFilename = this->GetOutputFilenameFixedOrder(true); //"test_iterative_graphs_g6_rooted_connected_N_"+std::to_string(this->N)+"_L_"+std::to_string(this->L)+".dat";
     FILE *fpg6 = fopen(outputFilename.c_str(), "w");
 
     FILE *fpg6sorted;
@@ -228,6 +190,10 @@ void GraphGeneratorNauty::GenerateTwoRootedFixedOrderIterative(std::string input
         count++; /// increment counter
 #ifdef DEBUG
         std::cout << "GenerateTwoRootedFixedOrderIterative: Read config " << count << "!\n";
+        if (this->IsCanonical(g))
+            std::cout << "Graph is canonical!\n";
+        else
+            std::cout << "Graph is not canonical!\n";
 #endif
         std::vector<GraphContainer> rootedGraphList; /// holds the list of rooted graphs produced from a single connected graph (one line of file produced by geng)
 
@@ -410,7 +376,7 @@ void GraphGeneratorNauty::GenerateTwoRootedFixedOrder(std::string inputFilename,
         throw std::invalid_argument("GenerateTwoRootedFixedOrder: Error opening "+inputFilename);
 
     //// output file stream for rooted graphs
-    std::string outputFilename = "graphs_g6_rooted_connected_N_"+std::to_string(this->N)+"_L_"+std::to_string(this->L)+".dat";
+    std::string outputFilename = this->GetOutputFilenameFixedOrder(true);
     FILE *fpg6 = fopen(outputFilename.c_str(), "w");
 
     FILE *fpg6sorted;
@@ -450,6 +416,10 @@ void GraphGeneratorNauty::GenerateTwoRootedFixedOrder(std::string inputFilename,
         count++; /// increment counter
 #ifdef DEBUG
         std::cout << "GenerateTwoRootedFixedOrder: Read config " << count << "!\n";
+        if (this->IsCanonical(g))
+            std::cout << "Graph is canonical!\n";
+        else
+            std::cout << "Graph is not canonical!\n";
 #endif
         std::vector<GraphContainer> rootedGraphList; /// holds the list of rooted graphs produced from a single connected graph (one line of file produced by geng)
 
@@ -635,84 +605,6 @@ void GraphGeneratorNauty::GenerateUniqueCombinationsWithNoDuplicates(std::vector
 graph* GraphGeneratorNauty::GetNextGraph(graph *g)
 {
     return readg(this->fp,g,0,&this->MWords,&this->N);
-}
-
-/// routine which takes a g6 string and rooted vertices and returns the canonical colored graph (useful for debugging purposes etc.)
-/// @arg g6string: valid g6 string (user must check this!)
-/// @arg rootedVertices: labels of rooted (colored) vertices (BEFORE relabeling!)
-GraphContainer GraphGeneratorNauty::GetCanonicalColoredGraph(const std::string& g6String, const std::vector<int>& rootedVertices)
-{
-    char *tempg6 = new char[g6String.length()+1];
-    std::strcpy(tempg6, g6String.c_str());
-
-    if (this->N != graphsize(tempg6)) /// check size
-        throw std::invalid_argument("GetCanonicalContainer g6String not of size N!\n");
-
-    if (rootedVertices.size() != 2)
-        throw std::invalid_argument("GetCanonicalColoredGraph rootedVertices should be of size 2!\n");
-
-    if (rootedVertices[0] < 0 || rootedVertices[0] >= this->N)
-        throw std::invalid_argument("GetCanonicalColoredGraph requires 0 <= rootedVertices[0] < N!\n");
-
-    if (rootedVertices[1] < 0 || rootedVertices[1] >= this->N)
-        throw std::invalid_argument("GetCanonicalColoredGraph requires 0 <= rootedVertices[1] < N!\n");
-
-    this->MWords = SETWORDSNEEDED(this->N); /// set m
-
-    int *c = (int*)malloc(this->N * sizeof(int)); /// alloc C-style arrray for colors of vertices
-
-    DYNALLSTAT(graph, g, g_sz); /// declare graph
-    DYNALLSTAT(graph, cg, cg_sz); /// declare canonical graph
-    DYNALLSTAT(int, lab, lab_sz); /// label
-    DYNALLSTAT(int, ptn, ptn_sz); /// partition for coloring
-    DYNALLSTAT(int, orbits, orbits_sz); /// orbits when calling densenauty
-    statsblk stats; /// status
-
-    DYNALLOC2(graph, g, g_sz, this->N, this->MWords, "malloc"); /// allocate graph
-    DYNALLOC2(graph, cg, cg_sz, this->N, this->MWords, "malloc"); /// allocate canonical graph
-    DYNALLOC2(int, lab, lab_sz, this->N, this->MWords, "malloc");
-    DYNALLOC2(int, ptn, ptn_sz, this->N, this->MWords, "malloc");
-    DYNALLOC2(int, orbits, orbits_sz, this->N, this->MWords, "malloc");
-
-    stringtograph(tempg6, g, this->MWords); /// g6 string to densenauty
-    GraphContainer resultContainer(this->N, this->MWords, g, true, 2); /// container for graphs
-
-    resultContainer.SetRootedVertex(0, rootedVertices[0]);
-    resultContainer.SetRootedVertex(1, rootedVertices[1]);
-
-    static DEFAULTOPTIONS_GRAPH(options); /// options
-    options.defaultptn = false; /// color the vertices
-    options.getcanon = true; /// get canong
-
-    this->SetVertexColors(c, rootedVertices);
-    this->SetColoredPartition(c, lab, ptn); /// set coloring (will be written over in call to densenauty)
-
-    /// call densenauty
-    densenauty(g, lab, ptn, orbits, &options, &stats, this->MWords, this->N, cg);
-
-    resultContainer.ColoredCanonicalRelabeling(lab, rootedVertices[0], rootedVertices[1]);
-
-#ifdef DEBUG
-    GraphContainer refContainer(this->N, this->MWords, cg, true, 2);
-    refContainer.SetRootedVertex(0, 0);
-    refContainer.SetRootedVertex(1, 1);
-    if (refContainer==refContainer)
-        std::cout << "Success! resultContainer equals refContainer!\n";
-    else
-        std::cout << "ERROR: resultContainer does not equal refContainer!\n";
-#endif
-
-    free(c); /// free vertex colors
-
-    delete[] tempg6;
-
-    DYNFREE(g, g_sz); /// free graph
-    DYNFREE(cg, cg_sz); /// free canonical graph
-    DYNFREE(lab,lab_sz);
-    DYNFREE(ptn,ptn_sz);
-    DYNFREE(orbits,orbits_sz);
-
-    return resultContainer;
 }
 
 /// process commmand line arguments using BOOST

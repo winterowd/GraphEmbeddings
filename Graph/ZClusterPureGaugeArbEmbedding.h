@@ -10,7 +10,6 @@
 class ZClusterPureGaugeArbEmbedding
 {
 private:
-private:
     /**** private variables ****/
     GraphContainer *ClusterContainer; /// container corresponding to the cluster
 

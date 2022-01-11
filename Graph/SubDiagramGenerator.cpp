@@ -7,7 +7,6 @@ SubDiagramGenerator::SubDiagramGenerator(GraphContainer *container, VertexEmbedL
     OriginalContainer(container),
     OriginalList(list),
     MyCubicLattice(lattice),
-    Vertices(container->GetN()),
     SortedSubDiagramsWithMap(container->GetL(), std::vector<std::pair<int, GraphContainer>>())
 {
     /// check that the list has the same size as container
@@ -16,15 +15,6 @@ SubDiagramGenerator::SubDiagramGenerator(GraphContainer *container, VertexEmbedL
 
     if (list->IsTwoPointFunction()) /// warn that the subdiagram VertexEmbedLists will not carry info about rooted/unrooted vertices (all unrooted)
         std::cout << "WARNING: SubDiagramGenerator received a two-point funtion! Embeddings of subdiagrams will not contain info about rooted vertices!\n";
-
-    /// construct list of edges
-    for (int i=this->OriginalContainer->GetNTimesNMinusOneDiv2()-1; i>=0; --i)
-        if (this->OriginalContainer->GetElementAdjacencyMatrix(this->OriginalContainer->GetRowM(i),this->OriginalContainer->GetColM(i)))
-            this->Edges.push_back(UndirectedEdge(this->OriginalContainer->GetRowM(i),this->OriginalContainer->GetColM(i)));
-
-    /// list of vertices
-    for (int i=0; i<this->OriginalContainer->GetN(); ++i)
-        this->Vertices[i] = i+1;
 
     this->GenerateSubDiagrams(); /// generate subdiagrams
     this->GenerateEmbedListsForSubDiagrams(); /// generate the embed list for the subdiagrams
@@ -116,9 +106,9 @@ bool SubDiagramGenerator::IsEdgeInVertexSet(const UndirectedEdge& edge, const st
 void SubDiagramGenerator::GenerateSubDiagrams()
 {
     /// create power set of E
-    auto powerE = this->GetPowerSet(this->Edges);
+    auto powerE = this->GetPowerSet(this->OriginalContainer->GetAllEdges());
 
-    for (auto eSetIt=(powerE.begin()+1); eSetIt!=powerE.end(); ++eSetIt) /// loop over power sets of E
+    for (auto eSetIt=(powerE.begin()+1); eSetIt!=powerE.end(); ++eSetIt) /// loop over power sets of E (skip first element which is the empty set!)
     {
 
 #ifdef DEBUG
@@ -267,7 +257,7 @@ void SubDiagramGenerator::GenerateEmbedListsForSubDiagrams()
 
 /// given a set of edges relabel vertices such that they go from 1,...,V_{sub} where V_{sub} is the number of vertices in the subgraph
 /// @param edgeSet: set of edges corresponding to a given subgraph
-/// @return std::pair consisting of relabeled set of edges (first) and the vertex map specificing how the new vertex labels map back to the old ones
+/// @return std::pair consisting of relabeled set of edges (first) and the vertex map specificing how the new vertex labels map back to the old ones (second)
 std::pair<std::vector<UndirectedEdge>, std::vector<int>> SubDiagramGenerator::GetRelabeledEdgesAndVertexMap(const std::vector<UndirectedEdge>& edgeSet)
 {
     std::vector<UndirectedEdge> relabeledEdges;
@@ -280,7 +270,7 @@ std::pair<std::vector<UndirectedEdge>, std::vector<int>> SubDiagramGenerator::Ge
         if (resultFindFirstVertex==vertexMap.end()) /// first vertex not yet relabeled (not found in vertexMap)
         {
             vertexMap.push_back(it->FirstVertex); /// v[i] contains the original labeling of vertex label i+1! (NOTE: labels start at 1!)
-            tempEdge.FirstVertex = vertexMap.size(); /// relabel first vertex in edge object
+            tempEdge.FirstVertex = vertexMap.size(); /// relabel first vertex in edge object (starts from 1!)
 #ifdef DEBUG
             std::cout << "Relabeling Vertex " << it->FirstVertex << " as " << vertexMap.size() << "!\n";
 #endif

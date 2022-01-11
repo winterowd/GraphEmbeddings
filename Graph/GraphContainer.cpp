@@ -517,6 +517,15 @@ bool GraphContainer::IsConnected(int vertexStart)
    return true;
 }
 
+/// accessor for entire set of edges (currently only needed for SubDiagramGenerator::GetPowerSet)
+std::vector<UndirectedEdge> GraphContainer::GetAllEdges()
+{
+    if (this->Edges.size()==0)
+        throw std::logic_error("GetAllEdges requires that Edges have nonzero number of elements!\n");
+    return this->Edges;
+}
+
+/// accessor for edges of graph
 UndirectedEdge GraphContainer::GetEdge(int index)
 {
     if (index < 0 || index >= this->Edges.size())

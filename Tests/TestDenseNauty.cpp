@@ -55,21 +55,21 @@ void TestDenseNautyColoredCanon(bool verbose=false)
 
     /// first two should give different canonical graphs
     tempRootedList[0] = 1; tempRootedList[1] = 4;
-    SetVertexColors(c, tempRootedList, n);
-    SetColoredPartition(c, lab1, ptn, n);
+    AuxiliaryRoutinesForNauty::SetVertexColors(c, tempRootedList, n);
+    AuxiliaryRoutinesForNauty::SetColoredPartition(c, lab1, ptn, n);
 
     tempRootedList[0] = 4; tempRootedList[1] = 1;
-    SetVertexColors(c, tempRootedList, n);
-    SetColoredPartition(c, lab2, ptn, n);
+    AuxiliaryRoutinesForNauty::SetVertexColors(c, tempRootedList, n);
+    AuxiliaryRoutinesForNauty::SetColoredPartition(c, lab2, ptn, n);
 
     /// second two should give identical canonical graphs
     tempRootedList[0] = 2; tempRootedList[1] = 0;
-    SetVertexColors(c, tempRootedList, n);
-    SetColoredPartition(c, lab3, ptn, n);
+    AuxiliaryRoutinesForNauty::SetVertexColors(c, tempRootedList, n);
+    AuxiliaryRoutinesForNauty::SetColoredPartition(c, lab3, ptn, n);
 
     tempRootedList[0] = 2; tempRootedList[1] = 3;
-    SetVertexColors(c, tempRootedList, n);
-    SetColoredPartition(c, lab4, ptn, n);
+    AuxiliaryRoutinesForNauty::SetVertexColors(c, tempRootedList, n);
+    AuxiliaryRoutinesForNauty::SetColoredPartition(c, lab4, ptn, n);
 
     free(c); /// free c-style array
 

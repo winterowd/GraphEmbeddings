@@ -70,6 +70,8 @@ inline bool operator<(const InteractionSubDiagram& lhs, const InteractionSubDiag
     return false;
 }
 
+/// NOTE: this way of implementing the partition function on a finite-cluster is not correct
+/// also counting of types of bonds is not correct!
 class ZClusterPureGauge
 {
 private:

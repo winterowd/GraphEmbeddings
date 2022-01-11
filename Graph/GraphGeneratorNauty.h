@@ -11,6 +11,15 @@
 //#include "gtools.h"
 #include "nauty.h"
 #include "GraphContainer.h"
+#include "AuxiliaryRoutinesForNauty.h"
+
+extern "C" {
+int
+GENG_MAIN(int argc, char *argv[]);
+}
+
+#include <boost/program_options.hpp>
+namespace po = boost::program_options;
 
 class GraphGeneratorParametersNauty /// graph generator parameters (get from user using Boost program options)
 {
@@ -75,6 +84,8 @@ private:
 
     bool AreGraphParametersOK();
 
+    bool IsCanonical(graph *g); /// debugging routine to see if geng output is canonical
+
     /// debugging routine to compare to lists
 
 public:
@@ -84,9 +95,8 @@ public:
 
     std::vector<GraphContainer> GetColoredGraphsFromContainer(const GraphContainer& container); /// TODO: write this using GenerateTwoRootedFixedOrderIterative or GenerateTwoRootedFixedOrder
 
-    void TestRelabeling(int n, std::string inputFilename); /// debugging routine
-
-    GraphContainer GetCanonicalColoredGraph(const std::string& g6String, const std::vector<int>& rootedVertices); /// returns canonical colored graph
+    /// get hardcoded filename for result of geng
+    std::string GetOutputFilenameFixedOrder(bool rooted=false) const { if (rooted) return "graphs_g6_rooted_connected_N_"+std::to_string(this->N)+"_L_"+std::to_string(this->L)+".dat"; else return "graphs_g6_connected_N_"+std::to_string(this->N)+"_L_"+std::to_string(this->L)+".dat"; }
 };
 
 #endif // GRAPHGENERATORNAUTY_H

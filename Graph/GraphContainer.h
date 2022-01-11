@@ -137,11 +137,15 @@ public:
 
    int GetSymmFactor() const { return this->SymmFactor; };
 
+   std::string GetG6String() const { return this->G6String; }
+
    void SetSymmFactor(int symmFactor); /// only use this currently in GraphEmbedder::GetCanonicalGraphsAndCounts
 
    bool IsConnected(int vertexStart=0);
 
    UndirectedEdge GetEdge(int index);
+
+   std::vector<UndirectedEdge> GetAllEdges();
 
 };
 

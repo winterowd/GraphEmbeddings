@@ -9,8 +9,7 @@ int main(int argc, char *argv[])
 {
     GraphEmbedder MyEmbedder(argc, argv);
     auto resultCanonicalGraphsAndCounts = MyEmbedder.GetCanonicalGraphsAndCounts(); /// test this routine! (plaquette with handle!)
-    std::cout << "CanonicalEmbeddingsAndCounts: ";
-    for (int i=0; std::get<1>(resultCanonicalGraphsAndCounts).size(); ++i)
+    for (int i=0; i<std::get<1>(resultCanonicalGraphsAndCounts).size(); ++i)
     {
         std::cout << "embedding " << i << " with counts " << std::get<2>(resultCanonicalGraphsAndCounts)[i] << "\n";
         std::cout << std::get<1>(resultCanonicalGraphsAndCounts)[i] << "\n";
@@ -151,32 +150,19 @@ int main(int argc, char *argv[])
         std::cout << "RESULT2, RESULT3, RESULT4, RESULT5, RESULT6 are NOT identical! Failure!\n";
 
     /// canonicalize a rooted graph and its embeddings
-    std::vector<std::string> arguments;
-
-    arguments.push_back("GenerateNauty");
-    arguments.push_back("-n");
-    arguments.push_back(std::to_string(3)); /// corresponds to g6String "BW"
-    arguments.push_back("-l");
-    arguments.push_back(std::to_string(2)); /// corresponds to g6String "BW"
-
-    std::vector<char*> argvGenerate;
-    for (const auto& arg: arguments)
-        argvGenerate.push_back((char*)arg.data());
-
-    GraphGeneratorNauty MyGenerator(argvGenerate.size(), argvGenerate.data());
 
     std::vector<int> rootedVertices1{0,2};
-    auto rooted1 = MyGenerator.GetCanonicalColoredGraph(g6String, rootedVertices1);
+    auto rooted1 = AuxiliaryRoutinesForNauty::GetCanonicalColoredGraphNauty(n, g6String, rootedVertices1);
     std::cout << "TEST_CANONICAL_COLORED1:\n";
     rooted1.PrintM(); /***** C0---C1---C2 *****/
 
     std::vector<int> rootedVertices2{0,1};
-    auto rooted2 = MyGenerator.GetCanonicalColoredGraph(g6String, rootedVertices2);
+    auto rooted2 = AuxiliaryRoutinesForNauty::GetCanonicalColoredGraphNauty(n, g6String, rootedVertices2);
     std::cout << "TEST_CANONICAL_COLORED2:\n";
     rooted2.PrintM(); /***** C0---C2---C1 *****/
 
     std::vector<int> rootedVertices3{2,0};
-    auto rooted3 = MyGenerator.GetCanonicalColoredGraph(g6String, rootedVertices3);
+    auto rooted3 = AuxiliaryRoutinesForNauty::GetCanonicalColoredGraphNauty(n, g6String, rootedVertices3);
     std::cout << "TEST_CANONICAL_COLORED3:\n";
     rooted3.PrintM(); /***** C1---C0---C2 *****/
 

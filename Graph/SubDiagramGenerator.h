@@ -107,13 +107,9 @@ private:
 
     VertexEmbedList *OriginalList; /// pointer to original vertex embed list
 
-    CubicLattice *MyCubicLattice; /// pointer to cubic lattice object TODO: modify constructor to take in address to a valid CubicLattice object
+    CubicLattice *MyCubicLattice; /// pointer to cubic lattice object
 
-    std::vector<UndirectedEdge> Edges; /// edges of original graph
-
-    std::vector<int> Vertices; /// vertices of original graph
-
-    std::vector<std::vector<std::pair<int, GraphContainer>>> SortedSubDiagramsWithMap; /// subdiagrams sorted by number of bonds together with index matching the vertex map
+    std::vector<std::vector<std::pair<int, GraphContainer>>> SortedSubDiagramsWithMap; /// subdiagrams sorted by number of bonds together with (UNSORTED) index matching the vertex map
 
     std::vector<std::vector<int>> VerticesMap; /// map of vertices of subgraphs (order differs with SortedSubDiagrams)
 

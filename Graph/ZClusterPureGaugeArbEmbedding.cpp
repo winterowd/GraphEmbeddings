@@ -32,6 +32,7 @@ ZClusterPureGaugeArbEmbedding::ZClusterPureGaugeArbEmbedding(GraphContainer *con
 
     this->TotalBondCounts = this->OneLink.size()+this->SquareDiagonal.size()+this->StraightTwoLink.size()+this->CubeDiagonal.size(); /// precompute total number of bonds (length of valid permutation)
     this->ZCoefficients.resize(this->LinearIndexMax); /// resize
+    this->EvaluateZ(); /// evaluate all terms
 }
 
 /// convert linear index to a tuple corresponding to the powers of each coupling \lambda_i
@@ -72,15 +73,12 @@ int ZClusterPureGaugeArbEmbedding::PowersOfCouplingsToLinearIndex(const std::arr
     if (!this->ValidPowersOfCouplings(powers))
         throw std::invalid_argument("ERROR: PowersOfCouplingsToLinearIndex requires powers to contain integers in the appropriate range!\n");
 
-    int linearIndex = powers[0];
-    int step = this->AllTotalBondCountsPlusOne[0];
-    for (int i=1; i<this->NbrCouplings; ++i)
+    int linearIndex = 0;
+    int step = 1;
+    for (int i=0; i<this->NbrCouplings; ++i)
     {
-        if (this->AllTotalBondCountsPlusOne[i]!=0)
-        {
-            linearIndex += powers[i]*step;
-            step *= this->AllTotalBondCountsPlusOne[i];
-        }
+        linearIndex += powers[i]*step;
+        step *= this->AllTotalBondCountsPlusOne[i];
     }
     return linearIndex;
 }
@@ -173,7 +171,7 @@ void ZClusterPureGaugeArbEmbedding::EvaluateZ()
 }
 
 /// convert the boolean string to undirected edges and counts for each bond type
-/// @param permutation: boolean strin of length \sum_i N_i
+/// @param permutation: boolean string of length \sum_i N_i
 std::pair<std::vector<UndirectedEdge>, std::array<int, ZClusterPureGaugeArbEmbedding::NbrCouplings>> ZClusterPureGaugeArbEmbedding::ZIntegrandToUndirectedEdgesAndBondCounts(const std::vector<bool>& permutation)
 {
 #ifdef DEBUG
