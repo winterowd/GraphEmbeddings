@@ -61,6 +61,41 @@ GraphContainer::GraphContainer(int n, int m, const std::vector<UndirectedEdge>& 
     }
 }
 
+// construtor from g6String
+//GraphContainer(int n, const std::string& g6String, bool storeRooted=false, int nbrRooted=1);
+GraphContainer::GraphContainer(int n, int m, const std::string& g6String, bool storeRooted, int nbrRooted) :
+    N(n),
+    MWords(m),
+    L(0),
+    StoreRooted(storeRooted),
+    NbrRooted(nbrRooted),
+    RootedVertices(nbrRooted,-1),
+    NTimesNMinusOneDiv2(n*(n-1)/2),
+    VertexOrder(n,0),
+    M(n, std::vector<bool>(n,false)),
+    RowM(n*(n-1)/2),
+    ColM(n*(n-1)/2),
+    G6String(g6String),
+    SymmFactor(-1)
+{
+    if (storeRooted && (nbrRooted<0 || nbrRooted>2))
+        throw std::invalid_argument("GraphContainer constructor needs 0 < nbrRooted <= 2 if storeRooted is true!\n");
+
+    this->SetRowAndColMapping();
+
+    DYNALLSTAT(graph, g, g_sz); /// declare graph
+    DYNALLOC2(graph, g, g_sz, this->N, this->MWords, "malloc"); /// allocate graph
+
+    char *tempg6 = new char[this->G6String.length()+1];
+    std::strcpy(tempg6, this->G6String.c_str());
+    stringtograph(tempg6, g, this->MWords); /// g6 string to densenauty
+    delete[] tempg6;
+
+    this->SetGraphFromDenseNauty(g); /// set up the graph
+
+    DYNFREE(g, g_sz); /// free graph
+}
+
 /// mapping from linear index traversing upper triangular part of adjacency matrix to rows and columns
 void GraphContainer::SetRowAndColMapping()
 {
@@ -123,7 +158,9 @@ void GraphContainer::SetGraphFromDenseNauty(graph *g)
     if (g==NULL)
         throw std::invalid_argument("SetGraphFromDenseNauty expects g to be a pointer to memory that is already allocated!\n");
 
-    this->SetG6StringFromDenseNauty(g);
+    /// if G6String not already set
+    if (this->G6String=="")
+        this->SetG6StringFromDenseNauty(g);
 
     if (this->GetSizeFromG6(this->G6String)!=this->N)
         throw std::invalid_argument("SetGraphFromDenseNauty requires size of dense nauty graph to be equal to N!\n");
@@ -259,7 +296,7 @@ void GraphContainer::ColoredCanonicalRelabeling(int *labCanon, int v1, int v2)
         if (v2!=-1 && v2!=this->RootedVertices[1])
             throw std::invalid_argument("ColoredCanonicalRelabeling requires RootedVertices[1] to equal v2!\n");
         if (v2!=-1) /// check if second vertex is set
-            this->RootedVertices[1] = 1; /// second rooted vertex is always labeled zero
+            this->RootedVertices[1] = 1; /// second rooted vertex is always labeled one
     }
 
 #ifdef DEBUG

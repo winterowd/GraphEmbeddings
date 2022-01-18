@@ -66,3 +66,6 @@ target_link_libraries(TestPowerSet ${PROJECT_LIBS} nauty)
 
 add_executable(TestDenseNauty Tests/TestDenseNauty.cpp)
 target_link_libraries(TestDenseNauty ${PROJECT_LIBS} nauty)
+
+add_executable(TestRecursionXi Tests/TestRecursionXi.cpp)
+target_link_libraries(TestRecursionXi ${PROJECT_LIBS} ${LIBS} nauty)

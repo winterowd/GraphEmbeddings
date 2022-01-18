@@ -97,6 +97,8 @@ public:
 
    GraphContainer(int n, int m, graph *g, bool storeRooted=false, int nbrRooted=1);
 
+   GraphContainer(int n, int m, const std::string& g6String, bool storeRooted=false, int nbrRooted=1);
+
    GraphContainer(int n, int m, const std::vector<UndirectedEdge>& edges, bool storeRooted=false, int nbrRooted=1);
 
    void SetGraphFromDenseNauty(graph *g); /// adjacency matrix, bond counts, and vertex order counts from dense nauty graph (assumes N and MWords set!)

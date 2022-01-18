@@ -1250,7 +1250,6 @@ std::tuple<GraphContainer, std::vector<VertexEmbedList>, std::vector<int> > Grap
     this->DenseNautyFromString(this->G6String, g); /// get graph in dense nauty format
 
     GraphContainer container(this->N, this->MWords, g); /// container from densenauty
-    std::cout << "HI_GRAPH!\n";
 
     container.SetSymmFactor(this->GetSymmFactor(g)); /// set symmetry factor
 #ifdef DEBUG
@@ -1263,13 +1262,14 @@ std::tuple<GraphContainer, std::vector<VertexEmbedList>, std::vector<int> > Grap
 
     /// get canonical graphs and counts
     auto canonicalListAndCounts = this->ComputeCanonicalGraphsAndEmbeddingNumbers(container, bondCombo);
-    std::cout << "HI_EMBEDDED!\n";
+#ifdef DEBUG
     std::cout << "SIZES_DEBUG: " << canonicalListAndCounts.first.size() << " " << canonicalListAndCounts.second.size() << "\n";
     for (int i=0; i<canonicalListAndCounts.first.size(); ++i)
     {
         std::cout << "embedding " << i << " with counts " << canonicalListAndCounts.second[i] << "\n";
         std::cout << canonicalListAndCounts.first[i] << "\n";
     }
+#endif
     DYNFREE(g, g_sz);
 
     /// combine container with graphs and counts

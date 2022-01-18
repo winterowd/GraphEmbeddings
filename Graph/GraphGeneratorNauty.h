@@ -78,10 +78,6 @@ private:
 
     void ProduceNewLabelingGivenRootedVertices(const std::vector<int>& rooted, std::vector<int>& newLabeling, bool verbose=false); /// relabel vertices such that vertices of colors 0 and 1 are given labels 0 and 1, respectively
 
-    void SetColoredPartition(int* c, int* lab, int* ptn); /// set up color parition of vertices
-
-    void SetVertexColors(int *c, const std::vector<int>& rootedVertices, bool verbose=false); /// set the vertex colors for a given set of rooted vertices
-
     bool AreGraphParametersOK();
 
     bool IsCanonical(graph *g); /// debugging routine to see if geng output is canonical
@@ -89,6 +85,13 @@ private:
     /// debugging routine to compare to lists
 
 public:
+
+    int GetN() const { return this->N; }
+
+    int GetL() const { return this->L; }
+
+    bool GeneratedRooted() const { return this->Parameters.GenerateTwoRooted(); }
+
     GraphGeneratorNauty(int argc, char *argv[]); /// constructor
 
     void Generate(bool useIterativeRooted=true); /// interface for generating graphs

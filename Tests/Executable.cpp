@@ -79,8 +79,8 @@ void ReadAndReformatJonas(std::string inputFilename, int nMax=10)
 
         int *c = (int*)malloc(n * sizeof(int)); /// alloc C-style arrray for colors of vertices
 
-        SetVertexColors(c, tempRootedList, n); /// set vertex colors based on rooted vertices
-        SetColoredPartition(c, lab, ptn, n); /// set up lab and ptn based on colors
+        AuxiliaryRoutinesForNauty::SetVertexColors(c, tempRootedList, n); /// set vertex colors based on rooted vertices
+        AuxiliaryRoutinesForNauty::SetColoredPartition(c, lab, ptn, n); /// set up lab and ptn based on colors
 
         densenauty(g, lab, ptn, orbits, &options, &stats, m, n, cg); /// call nauty
 

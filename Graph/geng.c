@@ -2448,6 +2448,8 @@ PLUGIN_INIT
             free(data[i].xinv);
             free(data[i].xcard);
         }
+    if (outfile!=stdout)
+        fclose(outfile);
     return 0;
 #else
     exit(0);
