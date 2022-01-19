@@ -169,7 +169,7 @@ void ZClusterPureGauge::EvaluateZ()
         for (int j=0; j<ZClusterPureGauge::NbrCouplings; ++j)
             std::cout << " " << edgesAndBondCount.second[j];
         std::cout << "\n";
-        tempContainer.PrintM();
+        std::cout << tempContainer;
         for (int j=0; j<relabeledEdgesAndVertexMap.second.size(); ++j)
             std::cout << "Vertex " << j+1 << " maps to original vertex " << relabeledEdgesAndVertexMap.second[j] << "\n";
         std::cout << "Weight: " << weight << "\n";
@@ -227,7 +227,7 @@ void ZClusterPureGauge::PrintContributionZFixedOrder(const std::array<int, ZClus
             for (int j=0; j<ZClusterPureGauge::NbrCouplings; ++j)
                 std::cout << " " << edgesAndBondCount.second[j];
             std::cout << "\n";
-            tempContainer.PrintM();
+            std::cout << tempContainer;
             for (int j=0; j<relabeledEdgesAndVertexMap.second.size(); ++j)
                 std::cout << "Vertex " << j+1 << " maps to original vertex " << relabeledEdgesAndVertexMap.second[j] << "\n";
             std::cout << "Weight: " << weight << "\n";

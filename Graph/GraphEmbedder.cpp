@@ -131,8 +131,8 @@ void GraphEmbedder::EmbedSingleG6()
 
     if(this->Parameters.EmbedCorrelator())
     {
-        int symmFactor = this->GetSymmFactor(g);
-        this->ComputeEmbeddingNumbers(container, g, fpo, symmFactor); /// TODO: incorrect! Need to get symmetry factor before calling this!
+        int symmFactor = this->GetSymmFactor(g); /// get symmetry factor!
+        this->ComputeEmbeddingNumbers(container, g, fpo, symmFactor);
     }
     else
         this->ComputeEmbeddingNumbers(container, g, fpo);

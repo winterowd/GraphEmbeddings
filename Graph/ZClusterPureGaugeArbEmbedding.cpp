@@ -160,7 +160,7 @@ void ZClusterPureGaugeArbEmbedding::EvaluateZ()
         for (int j=0; j<ZClusterPureGaugeArbEmbedding::NbrCouplings; ++j)
             std::cout << " " << edgesAndBondCount.second[j];
         std::cout << "\n";
-        tempContainer.PrintM();
+        std::cout << tempContainer;
         for (int j=0; j<relabeledEdgesAndVertexMap.second.size(); ++j)
             std::cout << "Vertex " << j+1 << " maps to original vertex " << relabeledEdgesAndVertexMap.second[j] << "\n";
         std::cout << "Weight: " << weight << "\n";
@@ -271,7 +271,7 @@ void ZClusterPureGaugeArbEmbedding::PrintContributionZFixedOrder(const std::arra
             for (int j=0; j<ZClusterPureGaugeArbEmbedding::NbrCouplings; ++j)
                 std::cout << " " << edgesAndBondCount.second[j];
             std::cout << "\n";
-            tempContainer.PrintM();
+            std::cout << tempContainer;
             for (int j=0; j<relabeledEdgesAndVertexMap.second.size(); ++j)
                 std::cout << "Vertex " << j+1 << " maps to original vertex " << relabeledEdgesAndVertexMap.second[j] << "\n";
             std::cout << "Weight: " << weight << "\n";

@@ -7,6 +7,7 @@
 #include "VertexEmbedList.h"
 #include "CubicLattice.h"
 #include "CubicLatticeCanonicalizor.h"
+#include "AuxiliaryRoutinesForNauty.h"
 
 /// helper class for D_n: set of sets of n elements where each element is a connected subgraph of G and all are pairwise disjoint
 template<class T>
@@ -55,35 +56,28 @@ inline bool operator<(const SetOfSets<T>& lhs,  const SetOfSets<T>& rhs)
     return (lhs.GetN()<rhs.GetN());
 }
 
-/// helper class in order to distinguish canonical vertex lists with different number of bonds
-/// TODO: move this to CubicLatticeCanonicalizor and change return types etc so that this is returned
+/// helper class in order to distinguish canonical subgraphs
 class CanonicalSubDiagram
 {
 private:
-    int N; /// number of vertices
-
-    int L; /// number of bonds
-
     VertexEmbedList CanonicalList; /// canonical vertex embed list (output from CubicLatticeCanonicalizor)
+
+    GraphContainer CanonicalContainer; /// canonical container (connectivity)
 public:
-    CanonicalSubDiagram(int l, const VertexEmbedList& list) : N(list.GetSize()), L(l), CanonicalList(list) {}
+    CanonicalSubDiagram(const VertexEmbedList& list, const GraphContainer& container) : CanonicalList(list), CanonicalContainer(container) {}
 
-    int GetN() const { return this->N; }
+    int GetN() const { return this->CanonicalContainer.GetN(); }
 
-    int GetL() const { return this->L; }
+    int GetL() const { return this->CanonicalContainer.GetL(); }
 
     friend bool operator==(const CanonicalSubDiagram& lhs, const CanonicalSubDiagram& rhs);
     friend std::ostream& operator<< (std::ostream& stream, const CanonicalSubDiagram& can);
 };
 
-/// equality operator (need to first compare number of bonds and vertices!)
+/// equality operator (compare embed list and container!)
 inline bool operator==(const CanonicalSubDiagram& lhs, const CanonicalSubDiagram& rhs)
 {
-    if (lhs.GetN()!=rhs.GetN())
-        return false;
-    if (lhs.GetL()!=rhs.GetL())
-        return false;
-    return (lhs.CanonicalList==rhs.CanonicalList);
+    return (lhs.CanonicalList==rhs.CanonicalList && lhs.CanonicalContainer==rhs.CanonicalContainer);
 }
 
 inline bool operator!=(const CanonicalSubDiagram& lhs, const CanonicalSubDiagram& rhs)
@@ -93,8 +87,9 @@ inline bool operator!=(const CanonicalSubDiagram& lhs, const CanonicalSubDiagram
 
 inline std::ostream& operator<< (std::ostream& stream, const CanonicalSubDiagram& can)
 {
-    std::cout << "CANONICAL_GRAPH: L " << can.L << " N " << can.N << "\n";
-    std::cout << can.CanonicalList;
+    stream << "CANONICAL_GRAPH:\n";
+    stream << can.CanonicalContainer;
+    stream << can.CanonicalList;
     return stream;
 }
 

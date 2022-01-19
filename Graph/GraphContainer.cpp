@@ -59,10 +59,18 @@ GraphContainer::GraphContainer(int n, int m, const std::vector<UndirectedEdge>& 
       this->SetElementAdjacenyMatrix(edges[e].FirstVertex, edges[e].SecondVertex);
       this->SetElementAdjacenyMatrix(edges[e].SecondVertex, edges[e].FirstVertex);
     }
+
+    /// set g6 string (first get densenauty)
+    DYNALLSTAT(graph, g, g_sz); /// declare graph
+    DYNALLOC2(graph, g, g_sz, this->N, this->MWords, "malloc"); /// allocate graph
+
+    this->GetDenseNautyFromGraph(g);
+    this->SetG6StringFromDenseNauty(g);
+
+    DYNFREE(g, g_sz); /// free graph
 }
 
 // construtor from g6String
-//GraphContainer(int n, const std::string& g6String, bool storeRooted=false, int nbrRooted=1);
 GraphContainer::GraphContainer(int n, int m, const std::string& g6String, bool storeRooted, int nbrRooted) :
     N(n),
     MWords(m),
@@ -131,6 +139,7 @@ void GraphContainer::GetDenseNautyFromGraph(graph *g) const
     }
 }
 
+/// get the number of vertices from g6 string
 int GraphContainer::GetSizeFromG6(const std::string& g6string)
 {
     char *tempg6 = new char[g6string.length()+1];
@@ -195,7 +204,7 @@ void GraphContainer::SetGraphFromDenseNauty(graph *g)
 
 #ifdef DEBUG
     std::cout << "In GraphContainer::SetGraphFromDenseNauty:\n";
-    this->PrintM();
+    std::cout << *this;
     this->PrintVertexOrders();
 #endif
 
@@ -250,7 +259,7 @@ void GraphContainer::RelabelVertices(const std::vector<int>& newLabels)
 
 #ifdef DEBUG
     std::cout << "AFTER_RELABELING:\n";
-    this->PrintM();
+    std::cout << *this;
     this->PrintVertexOrders();
 #endif
 }
@@ -301,12 +310,14 @@ void GraphContainer::ColoredCanonicalRelabeling(int *labCanon, int v1, int v2)
 
 #ifdef DEBUG
     std::cout << "AFTER_COLORED_CANONICAL_RELABELING:\n";
-    this->PrintM();
+    std::cout << *this;
     this->PrintVertexOrders();
 #endif
 
 }
 
+/// for unrooted graphs, after calling densenauty to get the canonical form
+/// @param labCanon: N element array giving the mapping to the canonical graph i.e. vertex labCanon[i] is relabeled as vertex i
 void GraphContainer::CanonicalRelabeling(int *labCanon)
 {
 #ifdef DEBUG
@@ -331,19 +342,12 @@ void GraphContainer::CanonicalRelabeling(int *labCanon)
 
 #ifdef DEBUG
     std::cout << "AFTER_CANONICAL_RELABELING:\n";
-    this->PrintM();
+    std::cout << *this;
     this->PrintVertexOrders();
 #endif
 }
 
-/// print out adjacency matrix
-void GraphContainer::PrintM() const
-{
-    for (int i=0; i<this->NTimesNMinusOneDiv2; ++i)
-        std::cout << "M: " << i << " " << RowM[i] << " " << ColM[i] << " " << this->GetElementAdjacencyMatrix(RowM[i], ColM[i]) << "\n";
-}
-
-/// accessor
+/// accessor for the row number corresponding to linearized index for adjacency matrix (above the diagonal)
 int GraphContainer::GetRowM(int index) const
 {
     if (index<0 || index>=this->NTimesNMinusOneDiv2)
@@ -352,7 +356,7 @@ int GraphContainer::GetRowM(int index) const
 }
 
 
-/// accessor
+/// accessor for the column number corresponding to linearized index for adjacency matrix (above the diagonal)
 int GraphContainer::GetColM(int index) const
 {
     if (index<0 || index>=this->NTimesNMinusOneDiv2)
@@ -606,7 +610,16 @@ bool operator!=(const GraphContainer& lhs, const GraphContainer& rhs)
     return !(lhs==rhs);
 }
 
+/// less than operator for lexicographical ordering of graph containers
 bool operator<(const GraphContainer& lhs, const GraphContainer& rhs)
 {
     return lhs.ComputeCurrentKey() < rhs.ComputeCurrentKey();
+}
+
+/// output adjacency matrix
+std::ostream& operator<< (std::ostream& stream, const GraphContainer& can)
+{
+    for (int i=0; i<can.NTimesNMinusOneDiv2; ++i)
+        stream << "M: " << i << " " << can.RowM[i] << " " << can.ColM[i] << " " << can.GetElementAdjacencyMatrix(can.RowM[i], can.ColM[i]) << "\n";
+    return stream;
 }

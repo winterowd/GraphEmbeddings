@@ -399,8 +399,6 @@ void GraphGeneratorNauty::GenerateTwoRootedFixedOrder(std::string inputFilename,
                 {
                     countComparison += rootedGraphList.size();
                     countComparisonIndividual += rootedGraphList.size();
-                    std::cout << "ADDING ROOTED GRAPH TO LIST!\n";
-                    tempGraph.PrintM(); /// DEBUG: want to see which graphs produced from plaquette (remove later)
                 }
                 /// output cg to file
                 char *s = ntog6(cg,this->MWords,this->N);

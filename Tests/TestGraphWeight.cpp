@@ -51,7 +51,7 @@ int main(int argc, char *argv[])
             break;
 
         refContainer.SetGraphFromDenseNauty(g);
-        refContainer.PrintM();
+        std::cout << refContainer;
         PureGaugeWeight weight(&refContainer);
         result = weight.Weight();
         std::cout << "TOTAL_WEIGHT: " << result << "\n";

@@ -25,7 +25,7 @@ int main()
     std::vector<unsigned int> indicesCenter(MyLattice.GetDim(), MyLattice.GetN()/2); /// spatial indices for first vertex
 
     GraphContainer TestContainer(n, m, g); /// container from densenauty
-    TestContainer.PrintM();
+    std::cout << TestContainer;
 
     auto index1 = MyLattice.GetSiteIndex(indicesCenter); /// index for vertex 1
     auto index3 = MyLattice.GetNearestNeighbor(index1, 2);
@@ -58,7 +58,7 @@ int main()
     delete[] tempg6;
 
     GraphContainer TestContainerHandle(n, m, g); /// container from densenauty
-    TestContainerHandle.PrintM();
+    std::cout << TestContainerHandle;
 
     index1 = MyLattice.GetSiteIndex(indicesCenter); /// embed with "long" handle (straight two-link coupling available!)
     index2 = MyLattice.GetNearestNeighbor(index1, 1);

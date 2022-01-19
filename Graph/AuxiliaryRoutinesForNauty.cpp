@@ -121,18 +121,19 @@ void AuxiliaryRoutinesForNauty::SetVertexColors(int *c, const std::vector<int>& 
 }
 
 /// routine which takes a graph in dense nauty format and returns the canonical graph
-GraphContainer AuxiliaryRoutinesForNauty::GetCanonicalGraphNauty(int n, graph *g)
+GraphContainer AuxiliaryRoutinesForNauty::GetCanonicalGraphNauty(int n, graph *g, int* labOutput)
 {
     int m = SETWORDSNEEDED(n);
     std::string g6String = ntog6(g,m,n); /// graph to g6 string routine
     g6String.erase(std::remove(g6String.begin(), g6String.end(), '\n'), g6String.end()); // get rid of newline character
-    return GetCanonicalGraphNauty(n, g6String);
+    return GetCanonicalGraphNauty(n, g6String, labOutput);
 }
 
 /// routine which takes a g6 string and rooted vertices and returns the canonical graph (useful for debugging purposes etc.)
 /// @arg n: number of vertices
 /// @arg g6string: valid g6 string (user must check this!)
-GraphContainer AuxiliaryRoutinesForNauty::GetCanonicalGraphNauty(int n, const std::string& g6String)
+/// @arg labOutput: labeling for output (if NULL, allocate locally; assume it is properly allocated by calling routine otherwise)
+GraphContainer AuxiliaryRoutinesForNauty::GetCanonicalGraphNauty(int n, const std::string& g6String, int *labOutput)
 {
     char *tempg6 = new char[g6String.length()+1];
     std::strcpy(tempg6, g6String.c_str());
@@ -141,17 +142,19 @@ GraphContainer AuxiliaryRoutinesForNauty::GetCanonicalGraphNauty(int n, const st
         throw std::invalid_argument("GetCanonicalGraph g6String not of size N!\n");
 
     int mWords = SETWORDSNEEDED(n); /// set m
+    bool allocateLabLocally = (labOutput==NULL) ? true : false; /// do we need to allocate memory for label?
 
     DYNALLSTAT(graph, g, g_sz); /// declare graph
     DYNALLSTAT(graph, cg, cg_sz); /// declare canonical graph
-    DYNALLSTAT(int, lab, lab_sz); /// label
     DYNALLSTAT(int, ptn, ptn_sz); /// partition for coloring
     DYNALLSTAT(int, orbits, orbits_sz); /// orbits when calling densenauty
     statsblk stats; /// status
 
     DYNALLOC2(graph, g, g_sz, n, mWords, "malloc"); /// allocate graph
     DYNALLOC2(graph, cg, cg_sz, n, mWords, "malloc"); /// allocate canonical graph
-    DYNALLOC2(int, lab, lab_sz, n, mWords, "malloc");
+    size_t lab_sz=0;
+    if (allocateLabLocally)
+        DYNALLOC2(int, labOutput, lab_sz, n, mWords, "malloc");
     DYNALLOC2(int, ptn, ptn_sz, n, mWords, "malloc");
     DYNALLOC2(int, orbits, orbits_sz, n, mWords, "malloc");
 
@@ -162,9 +165,12 @@ GraphContainer AuxiliaryRoutinesForNauty::GetCanonicalGraphNauty(int n, const st
     options.getcanon = true; /// get canong
 
     /// call densenauty
-    densenauty(g, lab, ptn, orbits, &options, &stats, mWords, n, cg);
+    densenauty(g, labOutput, ptn, orbits, &options, &stats, mWords, n, cg);
 
-    resultContainer.CanonicalRelabeling(lab);
+    if (stats.errstatus!=0)
+        std::cerr << "AuxiliaryRoutinesForNauty::GetCanonicalGraphNauty: call to NAUTY produced an error!\n";
+
+    resultContainer.CanonicalRelabeling(labOutput);
 
 #ifdef DEBUG
     GraphContainer refContainer(n, mWords, cg);
@@ -177,7 +183,11 @@ GraphContainer AuxiliaryRoutinesForNauty::GetCanonicalGraphNauty(int n, const st
 
     DYNFREE(g, g_sz); /// free graph
     DYNFREE(cg, cg_sz); /// free canonical graph
-    DYNFREE(lab,lab_sz);
+    if (allocateLabLocally) /// deallocate memory and set pointer back to NULL
+    {
+        DYNFREE(labOutput,lab_sz);
+        labOutput = NULL;
+    }
     DYNFREE(ptn,ptn_sz);
     DYNFREE(orbits,orbits_sz);
 
@@ -188,7 +198,8 @@ GraphContainer AuxiliaryRoutinesForNauty::GetCanonicalGraphNauty(int n, const st
 /// @arg n: number of vertices
 /// @arg g6string: valid g6 string (user must check this!)
 /// @arg rootedVertices: labels of rooted (colored) vertices (BEFORE relabeling!)
-GraphContainer AuxiliaryRoutinesForNauty::GetCanonicalColoredGraphNauty(int n, const std::string& g6String, const std::vector<int>& rootedVertices)
+/// @arg labOutput: labeling for output (if NULL, allocate locally; assume it is properly allocated by calling routine otherwise)
+GraphContainer AuxiliaryRoutinesForNauty::GetCanonicalColoredGraphNauty(int n, const std::string& g6String, const std::vector<int>& rootedVertices, int *labOutput)
 {
     char *tempg6 = new char[g6String.length()+1];
     std::strcpy(tempg6, g6String.c_str());
@@ -205,20 +216,22 @@ GraphContainer AuxiliaryRoutinesForNauty::GetCanonicalColoredGraphNauty(int n, c
     if (rootedVertices[1] < 0 || rootedVertices[1] >= n)
         throw std::invalid_argument("GetCanonicalColoredGraph requires 0 <= rootedVertices[1] < N!\n");
 
+    bool allocateLabLocally = (labOutput==NULL) ? true : false; /// do we need to allocate memory for label?
     int mWords = SETWORDSNEEDED(n); /// set m
 
     int *c = (int*)malloc(n * sizeof(int)); /// alloc C-style arrray for colors of vertices
 
     DYNALLSTAT(graph, g, g_sz); /// declare graph
     DYNALLSTAT(graph, cg, cg_sz); /// declare canonical graph
-    DYNALLSTAT(int, lab, lab_sz); /// label
     DYNALLSTAT(int, ptn, ptn_sz); /// partition for coloring
     DYNALLSTAT(int, orbits, orbits_sz); /// orbits when calling densenauty
     statsblk stats; /// status
 
     DYNALLOC2(graph, g, g_sz, n, mWords, "malloc"); /// allocate graph
     DYNALLOC2(graph, cg, cg_sz, n, mWords, "malloc"); /// allocate canonical graph
-    DYNALLOC2(int, lab, lab_sz, n, mWords, "malloc");
+    size_t lab_sz = 0;
+    if (allocateLabLocally)
+        DYNALLOC2(int, labOutput, lab_sz, n, mWords, "malloc");
     DYNALLOC2(int, ptn, ptn_sz, n, mWords, "malloc");
     DYNALLOC2(int, orbits, orbits_sz, n, mWords, "malloc");
 
@@ -233,12 +246,15 @@ GraphContainer AuxiliaryRoutinesForNauty::GetCanonicalColoredGraphNauty(int n, c
     options.getcanon = true; /// get canong
 
     SetVertexColors(c, rootedVertices, n);
-    SetColoredPartition(c, lab, ptn, n); /// set coloring (will be written over in call to densenauty)
+    SetColoredPartition(c, labOutput, ptn, n); /// set coloring (will be written over in call to densenauty)
 
     /// call densenauty
-    densenauty(g, lab, ptn, orbits, &options, &stats, mWords, n, cg);
+    densenauty(g, labOutput, ptn, orbits, &options, &stats, mWords, n, cg);
 
-    resultContainer.ColoredCanonicalRelabeling(lab, rootedVertices[0], rootedVertices[1]);
+    if (stats.errstatus!=0)
+        std::cerr << "AuxiliaryRoutinesForNauty::GetCanonicalColoredGraphNauty: call to NAUTY produced an error!\n";
+
+    resultContainer.ColoredCanonicalRelabeling(labOutput, rootedVertices[0], rootedVertices[1]);
 
 #ifdef DEBUG
     GraphContainer refContainer(n, mWords, cg, true, 2);
@@ -256,7 +272,11 @@ GraphContainer AuxiliaryRoutinesForNauty::GetCanonicalColoredGraphNauty(int n, c
 
     DYNFREE(g, g_sz); /// free graph
     DYNFREE(cg, cg_sz); /// free canonical graph
-    DYNFREE(lab,lab_sz);
+    if (allocateLabLocally) /// deallocate memory and set pointer back to NULL
+    {
+        DYNFREE(labOutput,lab_sz);
+        labOutput = NULL;
+    }
     DYNFREE(ptn,ptn_sz);
     DYNFREE(orbits,orbits_sz);
 

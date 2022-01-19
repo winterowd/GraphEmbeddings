@@ -154,17 +154,17 @@ int main(int argc, char *argv[])
     std::vector<int> rootedVertices1{0,2};
     auto rooted1 = AuxiliaryRoutinesForNauty::GetCanonicalColoredGraphNauty(n, g6String, rootedVertices1);
     std::cout << "TEST_CANONICAL_COLORED1:\n";
-    rooted1.PrintM(); /***** C0---C1---C2 *****/
+    std::cout << rooted1; /***** C0---C1---C2 *****/
 
     std::vector<int> rootedVertices2{0,1};
     auto rooted2 = AuxiliaryRoutinesForNauty::GetCanonicalColoredGraphNauty(n, g6String, rootedVertices2);
     std::cout << "TEST_CANONICAL_COLORED2:\n";
-    rooted2.PrintM(); /***** C0---C2---C1 *****/
+    std::cout << rooted2; /***** C0---C2---C1 *****/
 
     std::vector<int> rootedVertices3{2,0};
     auto rooted3 = AuxiliaryRoutinesForNauty::GetCanonicalColoredGraphNauty(n, g6String, rootedVertices3);
     std::cout << "TEST_CANONICAL_COLORED3:\n";
-    rooted3.PrintM(); /***** C1---C0---C2 *****/
+    std::cout << rooted3; /***** C1---C0---C2 *****/
 
     index2 = MyLattice.GetNearestNeighbor(index1, 1);
     index3 = MyLattice.GetNearestNeighbor(index2, 1);

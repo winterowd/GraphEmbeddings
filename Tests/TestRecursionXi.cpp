@@ -3,6 +3,6 @@
 
 int main(int argc, char *argv[])
 {
-    CanonicalGraphManager MyManager(2, true);
+    CanonicalGraphManager MyManager(3);
     return 0;
 }

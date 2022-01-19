@@ -5,9 +5,6 @@
 #include "SubDiagramGenerator.h"
 #include "CubicLattice.h"
 
-/// TODO: class which takes a GraphContainer AND VertexEmbedList (geometry is important!), makes list of Edges, and makes power sets of Edges and Vertices
-/// THEN: take list of edges, vertices and checks if graph is connected!
-
 template<typename T>
 std::vector<std::vector<T>> GetPowerSet(const std::vector<T>& elements)
 {
@@ -66,7 +63,7 @@ int main()
     delete[] tempg6;
 
     GraphContainer TestContainer(n, m, g); /// container from densenauty
-    TestContainer.PrintM();
+    std::cout << TestContainer;
 
     CubicLattice MyLattice(100);
 
@@ -82,11 +79,10 @@ int main()
     EmbedList.AddVertexEmbed(4, index4);
 
     SubDiagramGenerator MySubDiagrams(&TestContainer, &EmbedList, &MyLattice);
-
+    std::cout << "PRINTING_SUBDIAGRAMS!\n";
     MySubDiagrams.PrintSubDiagrams();
 
     DYNFREE(g, g_sz); /// free graph
-
 
     return 0;
 }

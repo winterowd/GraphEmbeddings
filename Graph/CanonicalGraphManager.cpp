@@ -1,6 +1,8 @@
 #include "CanonicalGraphManager.h"
 
-CanonicalGraphManager::CanonicalGraphManager(int lMax, bool rooted) :
+/// constructor
+/// @param lMax: maximum number of bonds for container
+CanonicalGraphManager::CanonicalGraphManager(int lMax) :
     LMax(lMax),
     NbrGraphs(0),
     NbrRootedGraphs(0),
@@ -10,6 +12,7 @@ CanonicalGraphManager::CanonicalGraphManager(int lMax, bool rooted) :
     this->GenerateCanonicalGraphs();
 }
 
+/// call GetGraphsNauty for all values (n,l) such that we get all graphs with links 1 <= L <= LMax
 void CanonicalGraphManager::GenerateCanonicalGraphs()
 {
     for (int n=2; n<=this->LMax+1; ++n) ///
@@ -17,7 +20,9 @@ void CanonicalGraphManager::GenerateCanonicalGraphs()
         int connUpper = n*(n-1)/2;
         int minBondsFixedN = n-1;
         int maxBondsFixedN = (connUpper < this->LMax) ? connUpper : this->LMax;
+#ifdef DEBUG
         std::cout << "DEBUG_GENERATE N: " << n << " L: [" << minBondsFixedN << "," << maxBondsFixedN << "]\n";
+#endif
         for (int l=minBondsFixedN; l<=maxBondsFixedN; ++l)
             this->GetGraphsNauty(n, l);
     }
@@ -31,7 +36,7 @@ void CanonicalGraphManager::GetGraphsNauty(int n, int l)
     // prepare arguments for GraphGeneratorNauty object (unrooted)
     std::vector<std::string> arguments;
 
-    arguments.push_back("Foo");
+    arguments.push_back("Foo"); /// dummy first argument
     arguments.push_back("-n"); /// order of graph
     arguments.push_back(std::to_string(n));
     arguments.push_back("-l"); /// number of bonds
@@ -64,6 +69,10 @@ void CanonicalGraphManager::GetGraphsNauty(int n, int l)
 }
 
 /// read in g6 from file: all graphs (rooted and unrooted) have n vertices and l bonds
+/// @param n: number of vertices
+/// @param l: number of links
+/// @param filenameUnrooted: filename for unrooted graphs (standard name from GraphGeneratorNauty object)
+/// @param filenameRooted: filename for rooted graphs (standard name from GraphGeneratorNauty object)
 void CanonicalGraphManager::ImportFromFileAndCanonicalize(int n, int l, std::string filenameUnrooted, std::string filenameRooted)
 {
     std::ifstream unrootedFile(filenameUnrooted, std::ifstream::in); /// unrooted file
@@ -72,7 +81,7 @@ void CanonicalGraphManager::ImportFromFileAndCanonicalize(int n, int l, std::str
     std::string tempLine;
     int m = SETWORDSNEEDED(n);
     int count=0;
-    while (std::getline(unrootedFile, tempLine))
+    while (std::getline(unrootedFile, tempLine)) /// loop over unrooted graphs (canonicalize before we add)
     {
         std::string g6String;
         std::stringstream ss(tempLine);
@@ -80,8 +89,8 @@ void CanonicalGraphManager::ImportFromFileAndCanonicalize(int n, int l, std::str
         ss >> g6String; /// first token is g6 string (regardless of rooted or unrooted)
 #ifdef DEBUG
         auto temp = AuxiliaryRoutinesForNauty::GetCanonicalGraphNauty(n, g6String);
-        if (temp.GetL()!=l)
-            throw std::invalid_argument("ImportFromFileAndCanonicalize requires the correct number of bonds!\n");
+        if (temp.GetL()!=l || temp.GetN()!=n)
+            throw std::invalid_argument("ImportFromFileAndCanonicalize requires the correct number of bonds and vertices!\n");
         this->AddCanonicalGraph(temp);
 #else
         this->AddCanonicalGraph(AuxiliaryRoutinesForNauty::GetCanonicalGraphNauty(n, g6String));
@@ -93,12 +102,11 @@ void CanonicalGraphManager::ImportFromFileAndCanonicalize(int n, int l, std::str
     std::cout << "IMPORTED_UNROOTED: (" << n << "," << l << "): " << count << "\n";
 #endif
 
-
     std::ifstream rootedFile(filenameRooted, std::ifstream::in); /// unrooted file
     if (!rootedFile.is_open())
         throw std::logic_error("ImportFromFileAndCanonicalize: rootedFile not open!\n");
     count = 0;
-    while(std::getline(rootedFile, tempLine))
+    while(std::getline(rootedFile, tempLine)) /// loop over rooted graphs (already canonical)
     {
         std::string g6String;
         std::stringstream ss(tempLine);
@@ -109,8 +117,8 @@ void CanonicalGraphManager::ImportFromFileAndCanonicalize(int n, int l, std::str
         temp.SetRootedVertex(0, 0);
         temp.SetRootedVertex(1, 1);
 #ifdef DEBUG
-        if (temp.GetL()!=l)
-            throw std::invalid_argument("ImportFromFileAndCanonicalize requires the correct number of bonds!\n");
+        if (temp.GetL()!=l || temp.GetN()!=n)
+            throw std::invalid_argument("ImportFromFileAndCanonicalize requires the correct number of bonds and vertices!\n");
 #endif
         this->AddCanonicalRootedGraph(temp);
         count++;
@@ -122,6 +130,8 @@ void CanonicalGraphManager::ImportFromFileAndCanonicalize(int n, int l, std::str
 
 }
 
+/// add a canonical graph to container
+/// @param g: canonical unrooted graph container
 void CanonicalGraphManager::AddCanonicalGraph(const GraphContainer& g)
 {
     if (g.GetL() < 1 || g.GetL() > this->LMax)
@@ -130,6 +140,8 @@ void CanonicalGraphManager::AddCanonicalGraph(const GraphContainer& g)
     this->NbrGraphs++;
 }
 
+/// add a canonical rooted graph to container
+/// @param g: canonical rooted graph container
 void CanonicalGraphManager::AddCanonicalRootedGraph(const GraphContainer& g)
 {
     if (g.GetL() < 1 || g.GetL() > this->LMax)
@@ -138,6 +150,8 @@ void CanonicalGraphManager::AddCanonicalRootedGraph(const GraphContainer& g)
     this->NbrRootedGraphs++;
 }
 
+/// get the number of graphs with a certain number of bonds
+/// @param l: number of bonds
 int CanonicalGraphManager::GetNbrGraphs(int l) const
 {
     if (l<1 || l>this->LMax)
@@ -145,6 +159,8 @@ int CanonicalGraphManager::GetNbrGraphs(int l) const
     return this->CanonicalGraphs[l-1].size();
 }
 
+/// get the number of rooted graphs with a certain number of bonds
+/// @param l: number of bonds
 int CanonicalGraphManager::GetNbrRootedGraphs(int l) const
 {
     if (l<1 || l>this->LMax)

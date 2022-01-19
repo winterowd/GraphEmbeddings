@@ -88,7 +88,7 @@ private:
    void SetG6StringFromDenseNauty(graph *g);
 
 public: /// later make this private?
-   void PrintM() const;
+
    void PrintVertexOrders() const;
 
 public:
@@ -148,6 +148,8 @@ public:
    UndirectedEdge GetEdge(int index);
 
    std::vector<UndirectedEdge> GetAllEdges();
+
+   friend std::ostream& operator<< (std::ostream& stream, const GraphContainer& can);
 
 };
 

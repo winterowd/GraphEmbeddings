@@ -527,7 +527,7 @@ bool operator!=(const std::vector<CubicLatticeCanonicalizor::CartesianCoords>& l
 
 std::ostream& operator<<(std::ostream& os, const CubicLatticeCanonicalizor::CartesianCoords &list)
 {
-    std::cout << "(" << list[0] << "," << list[1] << "," << list[2] << ")";
+    os << "(" << list[0] << "," << list[1] << "," << list[2] << ")";
     return os;
 }
 

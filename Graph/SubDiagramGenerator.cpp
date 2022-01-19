@@ -23,7 +23,8 @@ SubDiagramGenerator::SubDiagramGenerator(GraphContainer *container, VertexEmbedL
 
 }
 
-/// generate a list of subdiagrams which are canonical wrt the cubic symmetries and labels
+/// generate a set of subdiagrams which are canonical wrt the cubic symmetries and labels
+/// each subgraph then maps to an element of the set of canonical subgraphs (i.e. more than one subgraph can map to a single element of the set)
 void SubDiagramGenerator::GenerateCanonicalSubDiagrams()
 {
     for (int i=0; i<this->NbrSubDiagrams; ++i) /// loop over all subdiagrams
@@ -47,6 +48,7 @@ void SubDiagramGenerator::GenerateCanonicalSubDiagrams()
         {
 #ifdef DEBUG
             std::cout << "DEBUG_CANONICAL_ADD_NEW!\n";
+            std::cout << tempCanonical << "\n";
 #endif
             this->CanonicalEmbedLists.push_back(tempCanonical);
             this->SubgraphToCanonicalMap.push_back(this->CanonicalEmbedLists.size()-1); /// corresponds to LAST index  (size-1)
@@ -150,7 +152,8 @@ void SubDiagramGenerator::GenerateSubDiagrams()
 
 /// compute the canonical subgraph for a given sorted index
 /// canonicalize vertex labels with nauty then canonicalize wrt cubic symmetries
-/// @param sortedIndex: linear sorted index
+/// what we return is a container for the canonical embedded subgraph which
+/// @param sortedIndex: linear sorted index for subgraph
 CanonicalSubDiagram SubDiagramGenerator::ComputeCanonicalSubgraph(int sortedIndex)
 {
 #ifdef DEBUG
@@ -164,33 +167,11 @@ CanonicalSubDiagram SubDiagramGenerator::ComputeCanonicalSubgraph(int sortedInde
     int n = subgraph.GetN();
     int m = SETWORDSNEEDED(n);
 
-    /// compute the canonical graph with NAUTY
-    /// declare nauty data structures
-    DYNALLSTAT(graph, g, g_sz); /// declare graph
-    DYNALLSTAT(graph, cg, cg_sz); /// declare canonical graph
     DYNALLSTAT(int, lab, lab_sz); /// label
-    DYNALLSTAT(int, ptn, ptn_sz); /// partition for coloring
-    DYNALLSTAT(int, orbits, orbits_sz); /// orbits when calling densenauty
-    statsblk stats; /// status
-
-    /// allocate nauty data structures
-    DYNALLOC2(graph, g, g_sz, n, m, "malloc");
-    DYNALLOC2(graph, cg, cg_sz, n, m, "malloc");
     DYNALLOC2(int, lab, lab_sz, n, m, "malloc");
-    DYNALLOC2(int, ptn, ptn_sz, n, m, "malloc");
-    DYNALLOC2(int, orbits, orbits_sz, n, m, "malloc");
 
-    static DEFAULTOPTIONS_GRAPH(options); /// options
-    options.getcanon = true; /// get canong
-
-    /// set g from container
-    subgraph.GetDenseNautyFromGraph(g);
-
-    /// call densenauty
-    densenauty(g, lab, ptn, orbits, &options, &stats, m, n, cg);
-
-    /// canonical container
-    subgraph.CanonicalRelabeling(lab);
+    /// TODO: remember this only works with unrooted graphs! Need to eventually update this to have rooted awareness and maybe more? (sources?)
+    GraphContainer canGraphNew = AuxiliaryRoutinesForNauty::GetCanonicalGraphNauty(subgraph.GetN(), subgraph.GetG6String(), lab);
 
     /// convert vertex labels on embedList (subgraph) from original to canonical relabeled
     VertexEmbedList canonicalList(embedList.GetMaxLength());
@@ -218,23 +199,12 @@ CanonicalSubDiagram SubDiagramGenerator::ComputeCanonicalSubgraph(int sortedInde
 #endif
     }
 
-#ifdef DEBUG
-    GraphContainer canonicalSubgraph(n, m, cg);
-    if (canonicalSubgraph!=subgraph)
-        std::cout << "ERROR: RELABELED_AND_CANONICAL_DIFFER!\n";
-#endif
-
     /// canonicalize with respect to cubic symmetries
-    CubicLatticeCanonicalizor canonicalizor(&subgraph, this->MyCubicLattice, canonicalList);
+    CubicLatticeCanonicalizor canonicalizor(&canGraphNew, this->MyCubicLattice, canonicalList);
 
-    /// free memory
-    DYNFREE(g,g_sz);
-    DYNFREE(cg,cg_sz);
-    DYNFREE(lab, lab_sz);
-    DYNFREE(ptn, ptn_sz);
-    DYNFREE(orbits, orbits_sz);
+    DYNFREE(lab, lab_sz); /// free label
 
-    return CanonicalSubDiagram(subgraph.GetL(), canonicalizor.GetCanonical());
+    return CanonicalSubDiagram(canonicalizor.GetCanonical(), canGraphNew);
 
 }
 
@@ -333,7 +303,7 @@ void SubDiagramGenerator::PrintSubDiagram(int index) const
         std::cout << "Vertex " << j+1 << " maps to original vertex " << this->VerticesMap[vertexMapIndex][j] << "\n";
     std::cout << "VertexEmbedList:\n";
     std::cout << this->EmbedLists[vertexMapIndex] << "\n";
-    this->SortedSubDiagramsWithMap[convertedIndex.first][convertedIndex.second].second.PrintM();
+    std::cout << this->SortedSubDiagramsWithMap[convertedIndex.first][convertedIndex.second].second;
 }
 
 /// see if two subgraphs are disjoint i.e. do not contain a single common vertex (using ORIGINAL labels to search!)
@@ -530,6 +500,9 @@ std::vector<int> SubDiagramGenerator::GetVertexMap(int sortedIndex) const
     return this->VerticesMap[unsortedIndex];
 }
 
+/// accessor for the vertex map between original vertex labels (graph itself) and those of the subgraph
+/// @param nbrBonds: number of bonds for the subgraph
+/// @param graphIndex: index of subgraph with a particular number of bonds
 std::vector<int> SubDiagramGenerator::GetVertexMap(int nbrBonds, int graphIndex) const
 {
     if (nbrBonds < 1 || nbrBonds > this->SortedSubDiagramsWithMap.size())
@@ -550,6 +523,9 @@ VertexEmbedList SubDiagramGenerator::GetEmbedList(int sortedIndex) const
     return this->EmbedLists[unsortedIndex];
 }
 
+/// accessor for the embed list of a particular subgraph (vertices retain original labels!)
+/// @nbrBonds: number of bonds of a particular subgraph
+/// @graphIndex: index of the graph with a particular number of bonds
 VertexEmbedList SubDiagramGenerator::GetEmbedList(int nbrBonds, int graphIndex) const
 {
     if (nbrBonds < 1 || nbrBonds > this->SortedSubDiagramsWithMap.size())
@@ -560,6 +536,9 @@ VertexEmbedList SubDiagramGenerator::GetEmbedList(int nbrBonds, int graphIndex) 
     return this->EmbedLists[unsortedIndex];
 }
 
+/// get the linearized index for the SORTED subdiagram (sorted on number of bonds)
+/// @nbrBonds: number of bonds of a particular subgraph
+/// @graphIndex: index of the graph with a particular number of bonds
 int SubDiagramGenerator::GetSortedLinearIndex(int nbrBonds, int graphIndex) const
 {
     if (nbrBonds < 1 || nbrBonds > this->SortedSubDiagramsWithMap.size())
@@ -572,6 +551,8 @@ int SubDiagramGenerator::GetSortedLinearIndex(int nbrBonds, int graphIndex) cons
     return result+graphIndex;
 }
 
+/// get the number of subdiagrams with a particular number of bonds
+/// @param nbrBonds: number of bonds
 int SubDiagramGenerator::GetSizeSubDiagrams(int nbrBonds) const
 {
     if (nbrBonds < 1 || nbrBonds > this->SortedSubDiagramsWithMap.size())

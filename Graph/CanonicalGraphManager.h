@@ -15,15 +15,15 @@ class CanonicalGraphManager
 {
 private:
     /**** private variables ****/
-    int LMax;
+    int LMax; /// maximum number of links (>1)
 
-    int NbrGraphs;
+    int NbrGraphs; /// total number of unrooted graphs
 
-    int NbrRootedGraphs;
+    int NbrRootedGraphs; /// total number of rooted graphs
 
-    std::vector<std::vector<GraphContainer>> CanonicalGraphs;
+    std::vector<std::vector<GraphContainer>> CanonicalGraphs; /// container for unrooted graphs
 
-    std::vector<std::vector<GraphContainer>> CanonicalRootedGraphs;
+    std::vector<std::vector<GraphContainer>> CanonicalRootedGraphs; /// container for rooted graphs
 
     /**** private methods ****/
     void GenerateCanonicalGraphs();
@@ -39,9 +39,11 @@ private:
     bool FileExists(const std::string& name);
 
 public:
-    CanonicalGraphManager(int lMax, bool rooted=false);
+    CanonicalGraphManager(int lMax);
 
     /**** accessors ****/
+
+    int GetLMax() const { return this->LMax; }
 
     int GetTotalNbrGraphs() const { return this->NbrGraphs; }
 
