@@ -167,3 +167,59 @@ int CanonicalGraphManager::GetNbrRootedGraphs(int l) const
         throw std::invalid_argument("GetNbrRootedGraphs requires 1 <= l <= LMax!\n");
     return this->CanonicalRootedGraphs[l-1].size();
 }
+
+/// get the 2D index of a given unrooted graph: (L, graphIndex)
+/// NOTE: expects container to be already canonical with respect to vertex labels (produced by NAUTY)
+/// @param container: GraphContainer containing the graph whose index we want
+std::pair<int, int> CanonicalGraphManager::GetGraphIndex(const GraphContainer& container)
+{
+    if (container.GetL() > this->LMax)
+        throw std::invalid_argument("GetGraphIndex requires container's number of bonds to satisfy 1 <= L <= LMax!\n");
+    for (int i=0; i<this->GetNbrGraphs(container.GetL()); ++i)
+    {
+        if (container==this->CanonicalGraphs[container.GetL()-1][i])
+            return std::pair<int,int>(container.GetL(),i);
+    }
+#ifdef DEBUG
+    std::cerr << "WARNING! Requested graph not found in list of canonical unrooted graphs!\n";
+#endif
+    return std::pair<int,int>(-1,-1);
+}
+
+/// get the 2D index of a given rooted graph: (L, graphIndex)
+/// NOTE: expects container to be already canonical with respect to vertex labels (produced by NAUTY)
+/// @param container: GraphContainer containing the graph whose index we want
+std::pair<int, int> CanonicalGraphManager::GetRootedGraphIndex(const GraphContainer& container)
+{
+    if (container.GetL() > this->LMax)
+        throw std::invalid_argument("GetRootedGraphIndex requires container's number of bonds to satisfy 1 <= L <= LMax!\n");
+    for (int i=0; i<this->GetNbrRootedGraphs(container.GetL()); ++i)
+        if (container==this->CanonicalRootedGraphs[container.GetL()-1][i])
+            return std::pair<int,int>(container.GetL(),i);
+    std::cerr << "WARNING! Requested rooted graph not found in list of canonical rooted graphs!\n";
+    return std::pair<int,int>(-1,-1);
+}
+
+/// accessor for unrooted graph
+/// @param l: number of bonds
+/// @param graphIndex: index of the graph in the container for a given number of bonds
+GraphContainer CanonicalGraphManager::GetGraph(int l, int graphIndex) const
+{
+    if (l < 1 || l > this->LMax)
+        throw std::invalid_argument("GetGraph expects number of bonds to satisfy 1 <= L <= L_Max!\n");
+    if (graphIndex < 0 || graphIndex >= this->CanonicalGraphs[l-1].size())
+        throw std::invalid_argument("GetGraph expects graph number to satisfy 0 <= graphNbr < N_graphs at order L!\n");
+    return this->CanonicalGraphs[l-1][graphIndex];
+}
+
+/// accessor for rooted graph
+/// @param l: number of bonds
+/// @param graphIndex: index of the graph in the container for a given number of bonds
+GraphContainer CanonicalGraphManager::GetRootedGraph(int l, int graphIndex) const
+{
+    if (l < 1 || l > this->LMax)
+        throw std::invalid_argument("GetRootedGraph expects number of bonds to satisfy 1 <= L <= L_Max!\n");
+    if (graphIndex < 0 || graphIndex >= this->CanonicalGraphs[l-1].size())
+        throw std::invalid_argument("GetRootedGraph expects graph number to satisfy 0 <= graphNbr < N_graphs at order L!\n");
+    return this->CanonicalRootedGraphs[l-1][graphIndex];
+}

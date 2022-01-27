@@ -1,27 +1,5 @@
 #include "GraphContainer.h"
 
-/// constructor which accepts size and number of words (need to call SetGraphFromDenseNauty before container can be used!)
-GraphContainer::GraphContainer(int n, int m, bool storeRooted, int nbrRooted) :
-    N(n),
-    MWords(m),
-    L(0),
-    StoreRooted(storeRooted),
-    NbrRooted(nbrRooted),
-    RootedVertices(nbrRooted,-1),
-    NTimesNMinusOneDiv2(n*(n-1)/2),
-    VertexOrder(n,0),
-    M(n, std::vector<bool>(n,false)),
-    RowM(n*(n-1)/2),
-    ColM(n*(n-1)/2),
-    G6String(""),
-    SymmFactor(-1)
-{   
-    if (storeRooted && (nbrRooted<0 || nbrRooted>2))
-        throw std::invalid_argument("GraphContainer constructor needs 0 < nbrRooted <= 2 if storeRooted is true!\n");
-
-    this->SetRowAndColMapping();
-}
-
 /// constructor from set of undirected edges (sets adjacency matrix from edges)
 GraphContainer::GraphContainer(int n, int m, const std::vector<UndirectedEdge>& edges, bool storeRooted, int nbrRooted) :
     N(n),
@@ -235,33 +213,22 @@ GraphContainer::GraphContainer(int n, int m, graph *g, bool storeRooted, int nbr
 
 }
 
-/// relabel vertices of the graph
-/// newLabels: N element vector with the new labels i.e. newLabels_i = j means vertex i mapped to vertex j (starts at zero!)
-void GraphContainer::RelabelVertices(const std::vector<int>& newLabels)
+/// relabel the edges after relabeling
+void GraphContainer::ResetEdges()
 {
-    if (newLabels.size()!=this->N)
-        throw std::invalid_argument("RelabelVertices requires newLabels to be of size N!\n");
-
-    std::vector<std::vector<bool>> newM(N, std::vector<bool>(this->N, false));
-    for (int i=0; i<this->N; ++i)
+    int count = 0;
+    for (int v1=1; v1<=this->N; ++v1)
     {
-        for (int j=i+1; j<this->N; ++j)
+        for (int v2=v1+1; v2<=this->N; ++v2)
         {
-            newM[i][j] = this->GetElementAdjacencyMatrix(newLabels[i]+1, newLabels[j]+1); /// newLabels assumes vertex labels starting at zero!
-            newM[j][i] = newM[i][j]; /// symmetrize
+            if (this->GetElementAdjacencyMatrix(v1,v2))
+            {
+                this->Edges[count].FirstVertex = v1;
+                this->Edges[count].SecondVertex = v2;
+                count++;
+            }
         }
     }
-
-    this->M = newM; /// copy adjacency matrix
-    /// set the vertex orders
-    for (unsigned int v=1; v<=this->N; ++v)
-        this->SetVertexOrder(v, this->ComputeVertexOrder(v));
-
-#ifdef DEBUG
-    std::cout << "AFTER_RELABELING:\n";
-    std::cout << *this;
-    this->PrintVertexOrders();
-#endif
 }
 
 /// for two-rooted (colored) graphs, after calling densenauty to get the canonical form
@@ -296,6 +263,9 @@ void GraphContainer::ColoredCanonicalRelabeling(int *labCanon, int v1, int v2)
     /// set the vertex orders
     for (unsigned int v=1; v<=this->N; ++v)
         this->SetVertexOrder(v, this->ComputeVertexOrder(v));
+
+    /// relabel edges
+    this->ResetEdges();
 
     if (this->StoreRooted)
     {
@@ -339,6 +309,9 @@ void GraphContainer::CanonicalRelabeling(int *labCanon)
     /// set the vertex orders
     for (unsigned int v=1; v<=this->N; ++v)
         this->SetVertexOrder(v, this->ComputeVertexOrder(v));
+
+    /// relabel edges
+    this->ResetEdges();
 
 #ifdef DEBUG
     std::cout << "AFTER_CANONICAL_RELABELING:\n";

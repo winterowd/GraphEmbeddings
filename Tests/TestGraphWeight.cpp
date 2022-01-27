@@ -43,14 +43,15 @@ int main(int argc, char *argv[])
     else
         throw std::invalid_argument("TestGraphWeight: Error opening "+inputFilename);
 
-    GraphContainer refContainer(n, m);
+    //GraphContainer refContainer(n, m);
     while (1) /// read graphs in file (ASSUME THEY ARE ALL OF THE SAME ORDER N!)
     {
         graph *g1 = readg(fp,g,0,&m,&n);
         if (g1 == NULL)
             break;
 
-        refContainer.SetGraphFromDenseNauty(g);
+        GraphContainer refContainer(n, m, g);
+        //refContainer.SetGraphFromDenseNauty(g);
         std::cout << refContainer;
         PureGaugeWeight weight(&refContainer);
         result = weight.Weight();

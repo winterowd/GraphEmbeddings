@@ -76,11 +76,11 @@ class ZClusterPureGauge
 {
 private:
     /**** private variables ****/
-    GraphContainer *ClusterContainer; /// container corresponding to the cluster
+    GraphContainer ClusterContainer; /// container corresponding to the cluster
 
-    VertexEmbedList *ClusterEmbedList; /// embed list corresponding to the cluster
+    VertexEmbedList ClusterEmbedList; /// embed list corresponding to the cluster
 
-    CubicLattice *Lattice; /// lattice object
+    CubicLattice *Lattice; /// pointer to lattice object
 
     SubDiagramGenerator MySubDiagramGenerator; /// subdiagrams of cluster
 
@@ -134,7 +134,7 @@ private:
     void EvaluateZ();
 
 public:
-    ZClusterPureGauge(GraphContainer* clusterContainer, VertexEmbedList* clusterEmbedList, CubicLattice* lattice); /// constructor
+    ZClusterPureGauge(const GraphContainer& clusterContainer, const VertexEmbedList& clusterEmbedList, CubicLattice* lattice); /// constructor
 
     /**** accessors ****/
     int GetNbrHooks() const { return this->Hooks.size(); }

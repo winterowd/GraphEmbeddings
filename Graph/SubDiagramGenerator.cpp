@@ -3,44 +3,46 @@
 /// constructor
 /// @param container: pointer to GraphContainer object (managed externally)
 /// @param list: pointer to VertexEmbedList object (managed externally)
-SubDiagramGenerator::SubDiagramGenerator(GraphContainer *container, VertexEmbedList *list, CubicLattice *lattice) :
+SubDiagramGenerator::SubDiagramGenerator(const GraphContainer& container, const VertexEmbedList& list, CubicLattice *lattice) :
     OriginalContainer(container),
     OriginalList(list),
     MyCubicLattice(lattice),
-    SortedSubDiagramsWithMap(container->GetL(), std::vector<std::pair<int, GraphContainer>>())
+    SortedSubDiagramsWithMap(container.GetL(), std::vector<std::pair<int, GraphContainer>>())
 {
     /// check that the list has the same size as container
-    if (container->GetN()!=list->GetSize())
+    if (OriginalContainer.GetN()!=OriginalList.GetSize())
         throw std::invalid_argument("SubDiagramGenerator requires container and list to be of the same size!\n");
 
-    if (list->IsTwoPointFunction()) /// warn that the subdiagram VertexEmbedLists will not carry info about rooted/unrooted vertices (all unrooted)
+    if (OriginalList.IsTwoPointFunction()) /// warn that the subdiagram VertexEmbedLists will not carry info about rooted/unrooted vertices (all unrooted)
         std::cout << "WARNING: SubDiagramGenerator received a two-point funtion! Embeddings of subdiagrams will not contain info about rooted vertices!\n";
 
     this->GenerateSubDiagrams(); /// generate subdiagrams
     this->GenerateEmbedListsForSubDiagrams(); /// generate the embed list for the subdiagrams
     this->GenerateCanonicalSubDiagrams();
-    this->ComputeDisjointSets(); /// generate the pairwise disjoint sets of connected subgraphs
+    //this->ComputeDisjointSets(); /// generate the pairwise disjoint sets of connected subgraphs
 
 }
 
 /// generate a set of subdiagrams which are canonical wrt the cubic symmetries and labels
 /// each subgraph then maps to an element of the set of canonical subgraphs (i.e. more than one subgraph can map to a single element of the set)
+/// NOTE: SubgraphToCanonicalMap is in the same order as
 void SubDiagramGenerator::GenerateCanonicalSubDiagrams()
 {
     for (int i=0; i<this->NbrSubDiagrams; ++i) /// loop over all subdiagrams
     {
-        auto tempCanonical = this->ComputeCanonicalSubgraph(i); /// compute the canonical subgraph (labels and spatial symmetries)
+        auto tempCanonicalAndList = this->ComputeCanonicalSubgraphAndList(i); /// compute the canonical subgraph (labels and spatial symmetries)
+        this->EmbedListsCanonicalLabels.push_back(tempCanonicalAndList.second); /// add canonically labeled embed list (SORTED ORDER)
 #ifdef DEBUG
         std::cout << "DEBUG_CANONICAL_" << i << "\n";
-        std::cout << tempCanonical << "\n";
+        std::cout << tempCanonicalAndList.first << "\n";
 #endif
-        auto tempIt = std::find(this->CanonicalEmbedLists.begin(), this->CanonicalEmbedLists.end(), tempCanonical);
-        if (tempIt!=this->CanonicalEmbedLists.end()) /// if it already exists in the list find index and save in vector containing map
+        auto tempIt = std::find(this->CanonicalSubDiagramList.begin(), this->CanonicalSubDiagramList.end(), tempCanonicalAndList.first);
+        if (tempIt!=this->CanonicalSubDiagramList.end()) /// if it already exists in the list find index and save in vector containing map
         {
-            int tempIndex = std::distance(this->CanonicalEmbedLists.begin(), tempIt);
+            int tempIndex = std::distance(this->CanonicalSubDiagramList.begin(), tempIt);
 #ifdef DEBUG
             std::cout << "DEBUG_CANONICAL_FOUND element " << tempIndex << "\n";
-            std::cout << this->CanonicalEmbedLists[tempIndex] << "\n";
+            std::cout << this->CanonicalSubDiagramList[tempIndex] << "\n";
 #endif
             this->SubgraphToCanonicalMap.push_back(tempIndex);
         }
@@ -48,14 +50,14 @@ void SubDiagramGenerator::GenerateCanonicalSubDiagrams()
         {
 #ifdef DEBUG
             std::cout << "DEBUG_CANONICAL_ADD_NEW!\n";
-            std::cout << tempCanonical << "\n";
+            std::cout << tempCanonicalAndList.first << "\n";
 #endif
-            this->CanonicalEmbedLists.push_back(tempCanonical);
-            this->SubgraphToCanonicalMap.push_back(this->CanonicalEmbedLists.size()-1); /// corresponds to LAST index  (size-1)
+            this->CanonicalSubDiagramList.push_back(tempCanonicalAndList.first);
+            this->SubgraphToCanonicalMap.push_back(this->CanonicalSubDiagramList.size()-1); /// corresponds to LAST index  (size-1)
         }
     }
 #ifdef DEBUG
-    std::cout << "DEBUG_CANONICAL_TOTAL: " << this->CanonicalEmbedLists.size() << "\n";
+    std::cout << "DEBUG_CANONICAL_TOTAL: " << this->CanonicalSubDiagramList.size() << "\n";
 #endif
 
 }
@@ -108,7 +110,7 @@ bool SubDiagramGenerator::IsEdgeInVertexSet(const UndirectedEdge& edge, const st
 void SubDiagramGenerator::GenerateSubDiagrams()
 {
     /// create power set of E
-    auto powerE = this->GetPowerSet(this->OriginalContainer->GetAllEdges());
+    auto powerE = this->GetPowerSet(this->OriginalContainer.GetAllEdges());
 
     for (auto eSetIt=(powerE.begin()+1); eSetIt!=powerE.end(); ++eSetIt) /// loop over power sets of E (skip first element which is the empty set!)
     {
@@ -131,6 +133,7 @@ void SubDiagramGenerator::GenerateSubDiagrams()
 #endif
             this->AddToSortedSubdiagrams(subGraph, this->VerticesMap.size());
             this->VerticesMap.push_back(resultRelabelAndMap.second);
+            this->EmbeddedEdgeLists.push_back(this->ConvertUndirectedEdgesToUndirectedEmbeddedEdges(*eSetIt));
         }
 #ifdef DEBUG
         else
@@ -150,11 +153,12 @@ void SubDiagramGenerator::GenerateSubDiagrams()
 
 }
 
-/// compute the canonical subgraph for a given sorted index
+/// compute the canonical subgraph for a given sorted index and the map which takes us from canonical vertex labelings to original vertex labelings
+/// i.e. vertexMap_cg_to_original[i] contains the original vertex label which is mapped to canonical vertex label (i+1)
 /// canonicalize vertex labels with nauty then canonicalize wrt cubic symmetries
 /// what we return is a container for the canonical embedded subgraph which
 /// @param sortedIndex: linear sorted index for subgraph
-CanonicalSubDiagram SubDiagramGenerator::ComputeCanonicalSubgraph(int sortedIndex)
+std::pair<CanonicalSubDiagram, VertexEmbedList> SubDiagramGenerator::ComputeCanonicalSubgraphAndList(int sortedIndex)
 {
 #ifdef DEBUG
     std::cout << "Canonicalizing the following subgraph:\n";
@@ -175,6 +179,7 @@ CanonicalSubDiagram SubDiagramGenerator::ComputeCanonicalSubgraph(int sortedInde
 
     /// convert vertex labels on embedList (subgraph) from original to canonical relabeled
     VertexEmbedList canonicalList(embedList.GetMaxLength());
+    std::vector<int> vertexMapToCG(embedList.GetSize()); /// vertexMapToCG[i] contains original of vertex labeled i+1 after canonicalization
     for (auto it=embedList.begin(); it!=embedList.end(); ++it)
     {
         /// find initial relabeling (from original labels to 1,..,N_bsg, where N_bsg is the number of bonds in the subgraph)
@@ -196,15 +201,22 @@ CanonicalSubDiagram SubDiagramGenerator::ComputeCanonicalSubgraph(int sortedInde
         canonicalList.AddVertexEmbed(tempIndex2+1, it->Index); /// add to embed list
 #ifdef DEBUG
         std::cout << "DEBUG_CG_MAPPING: Vertex " << tempIndex1+1 << " maps to " << tempIndex2+1 << "\n";
+        std::cout << "DEBUG_ORIGINAL_TO_CG_MAPPING: Vertex " << it->Number << " maps to " << tempIndex2+1 << "\n";
 #endif
+        vertexMapToCG[tempIndex2] = it->Number;
     }
+
+    for (int i=0; i<vertexMapToCG.size(); ++i)
+        std::cout << "DEBUG_CG_TO_ORIGINAL: VERTEX " << i+1 << " maps to " << vertexMapToCG[i] << "\n";
+    std::cout << "DEBUG_CANONICAL_RELABEL_EMBED_LIST:\n";
+    std::cout << canonicalList;
 
     /// canonicalize with respect to cubic symmetries
     CubicLatticeCanonicalizor canonicalizor(&canGraphNew, this->MyCubicLattice, canonicalList);
 
     DYNFREE(lab, lab_sz); /// free label
 
-    return CanonicalSubDiagram(canonicalizor.GetCanonical(), canGraphNew);
+    return std::pair<CanonicalSubDiagram,VertexEmbedList>(CanonicalSubDiagram(canonicalizor.GetCanonical(), canGraphNew), canonicalList);
 
 }
 
@@ -218,7 +230,7 @@ void SubDiagramGenerator::GenerateEmbedListsForSubDiagrams()
 #endif
     for (int i=0; i<this->NbrSubDiagrams; ++i) /// loop over vertex maps
     {
-        VertexEmbedList tempList(this->OriginalList->GetMaxLength());
+        VertexEmbedList tempList(this->OriginalList.GetMaxLength());
         for (int j=0; j<this->VerticesMap[i].size(); ++j)
             tempList.AddVertexEmbed(this->VerticesMap[i][j], this->GetVertexSiteIndex(this->VerticesMap[i][j]));
         this->EmbedLists.push_back(tempList);
@@ -281,9 +293,9 @@ std::pair<std::vector<UndirectedEdge>, std::vector<int>> SubDiagramGenerator::Ge
 /// @param vertexLabel: vertex for which we want the lattice site index
 int SubDiagramGenerator::GetVertexSiteIndex(int vertexLabel) const
 {
-    if (vertexLabel < 1 || vertexLabel > this->OriginalContainer->GetN())
+    if (vertexLabel < 1 || vertexLabel > this->OriginalContainer.GetN())
         throw std::invalid_argument("ERROR: GetVertexSiteIndex requires 1 <= vertexLabel <= N!\n");
-    return this->OriginalList->GetVertexSiteIndex(vertexLabel);
+    return this->OriginalList.GetVertexSiteIndex(vertexLabel);
 }
 
 /// debugging routine
@@ -431,7 +443,7 @@ void SubDiagramGenerator::ComputeDisjointSets()
 /// @param indexToUnsorted: index in unsorted vector (VerticesMap, Embedlists)
 void SubDiagramGenerator::AddToSortedSubdiagrams(const GraphContainer& g, int indexToUnsorted)
 {
-    if (g.GetL()>this->OriginalContainer->GetL())
+    if (g.GetL()>this->OriginalContainer.GetL())
         throw std::invalid_argument("ERROR: AddToSortedSubdiagrams requires g to have number of bonds less than or equal to original graph!\n");
     this->SortedSubDiagramsWithMap[g.GetL()-1].push_back(std::pair<int, GraphContainer>(indexToUnsorted, g));
 }
@@ -458,12 +470,56 @@ GraphContainer SubDiagramGenerator::GetSubDiagram(int nbrBonds, int graphIndex) 
     return this->SortedSubDiagramsWithMap[nbrBonds-1][graphIndex].second;
 }
 
+/// accessor for the canonical subgraph corresponding to subgraph at element (nbrBonds, graphIndex)
+/// @param nbrBonds: number of bonds
+/// @param graphIndex: index for subdiagrams with given number of bonds
+GraphContainer SubDiagramGenerator::GetCanonicalSubDiagramContainer(int nbrBonds, int graphIndex) const
+{
+    if (nbrBonds < 1 || nbrBonds > this->SortedSubDiagramsWithMap.size())
+        throw std::invalid_argument("ERROR: GetCanonicalSubDiagram requires 1 <= nbrBonds <= N_bonds!\n");
+    if (graphIndex < 0 || graphIndex >= this->SortedSubDiagramsWithMap[nbrBonds-1].size())
+        throw std::invalid_argument("ERROR: GetCanonicalSubDiagram requires 0 <= graphIndex < N_graphs!\n");
+    return this->GetCanonicalSubDiagramContainer(this->GetSortedLinearIndex(nbrBonds, graphIndex)); /// convert to linear index
+}
+
+/// accessor for the canonical subgraph corresponding to subgraph at element (sorted linear index)
+/// @param sortedIndex: linear sorted index
+GraphContainer SubDiagramGenerator::GetCanonicalSubDiagramContainer(int sortedIndex) const
+{
+    if (sortedIndex<0 || sortedIndex >=this->NbrSubDiagrams)
+        throw std::invalid_argument("ERROR: GetCanonicalSubDiagram requires 0 <= index < N_sd!\n");
+    int canonicalIndex = this->SubgraphToCanonicalMap[sortedIndex];
+    return this->CanonicalSubDiagramList[canonicalIndex].GetCanonicalContainer();
+}
+
+/// accessor for the canonical embed list (wrt NAUTY AND cubic symmetries) corresponding to subgraph at element (nbrBonds, graphIndex)
+/// @param nbrBonds: number of bonds
+/// @param graphIndex: index for subdiagrams with given number of bonds
+VertexEmbedList SubDiagramGenerator::GetCanonicalSubDiagramEmbedList(int nbrBonds, int graphIndex) const
+{
+    if (nbrBonds < 1 || nbrBonds > this->SortedSubDiagramsWithMap.size())
+        throw std::invalid_argument("ERROR: GetCanonicalSubDiagramEmbedList requires 1 <= nbrBonds <= N_bonds!\n");
+    if (graphIndex < 0 || graphIndex >= this->SortedSubDiagramsWithMap[nbrBonds-1].size())
+        throw std::invalid_argument("ERROR: GetCanonicalSubDiagramEmbedList requires 0 <= graphIndex < N_graphs!\n");
+    return this->GetCanonicalSubDiagramEmbedList(this->GetSortedLinearIndex(nbrBonds, graphIndex)); /// convert to linear index
+}
+
+/// accessor for the canonical embed list (wrt NAUTY AND cubic symmetries) corresponding to subgraph at element (sorted linear index)
+/// @param sortedIndex: linear sorted index
+VertexEmbedList SubDiagramGenerator::GetCanonicalSubDiagramEmbedList(int sortedIndex) const
+{
+    if (sortedIndex<0 || sortedIndex >=this->NbrSubDiagrams)
+        throw std::invalid_argument("ERROR: GetCanonicalSubDiagramEmbedList requires 0 <= index < N_sd!\n");
+    int canonicalIndex = this->SubgraphToCanonicalMap[sortedIndex];
+    return this->CanonicalSubDiagramList[canonicalIndex].GetCanonicalList();
+}
+
 /// convert from linear SORTED index to (linkIndex, linkSubIndex) where linkIndex = NbrLinks-1 and linkSubIndex is the index within the set of subdiagrams with a given number of links
 /// @param index: linear SORTED index
 std::pair<int, int> SubDiagramGenerator::IndexConversionSorted(int sortedIndex) const
 {
     if (sortedIndex<0 || sortedIndex >=this->NbrSubDiagrams)
-        throw std::invalid_argument("ERROR: GetVertexMapIndexForSubDiagram requires 0 <= sortedIndex < N_sd!\n");
+        throw std::invalid_argument("ERROR: IndexConversionSorted requires 0 <= sortedIndex < N_sd!\n");
 
     int linkIndex = 0;
     for (int i=0; i<this->SortedSubDiagramsWithMap.size(); ++i)
@@ -478,6 +534,16 @@ std::pair<int, int> SubDiagramGenerator::IndexConversionSorted(int sortedIndex) 
             break;
     }
     return std::pair<int, int>(linkIndex, sortedIndex);
+}
+
+/// convert a vector of undirected edges to embedded edges using OriginalList (original VertexEmbedList)
+/// @param inputEdges: vector of undirected edges
+std::vector<UndirectedEmbeddedEdge> SubDiagramGenerator::ConvertUndirectedEdgesToUndirectedEmbeddedEdges(const std::vector<UndirectedEdge>& inputEdges)
+{
+    std::vector<UndirectedEmbeddedEdge> result;
+    for (auto it=inputEdges.begin(); it!=inputEdges.end(); ++it)
+        result.push_back(UndirectedEmbeddedEdge{this->OriginalList.GetVertexSiteIndex(it->FirstVertex), this->OriginalList.GetVertexSiteIndex(it->SecondVertex)});
+    return result;
 }
 
 /// get the UNSORTED index given the linear SORTED index!
@@ -513,9 +579,43 @@ std::vector<int> SubDiagramGenerator::GetVertexMap(int nbrBonds, int graphIndex)
     return this->VerticesMap[unsortedIndex];
 }
 
+std::vector<UndirectedEmbeddedEdge> SubDiagramGenerator::GetEmbeddedEdgeSet(int nbrBonds, int graphIndex) const
+{
+    if (nbrBonds < 1 || nbrBonds > this->SortedSubDiagramsWithMap.size())
+        throw std::invalid_argument("ERROR: GetEmbeddedEdgeSet requires 1 <= nbrBonds <= N_bonds!\n");
+    if (graphIndex < 0 || graphIndex >= this->SortedSubDiagramsWithMap[nbrBonds-1].size())
+        throw std::invalid_argument("ERROR: GetEmbeddedEdgeSet requires 0 <= graphIndex < N_graphs!\n");
+    int unsortedIndex = this->SortedSubDiagramsWithMap[nbrBonds-1][graphIndex].first;
+    return this->EmbeddedEdgeLists[unsortedIndex];
+}
+
+std::vector<UndirectedEmbeddedEdge> SubDiagramGenerator::GetEmbeddedEdgeSet(int sortedIndex) const
+{
+    if (sortedIndex<0 || sortedIndex >=this->NbrSubDiagrams)
+        throw std::invalid_argument("ERROR: GetEmbeddedEdgeSet requires 0 <= sortedIndex < N_sd!\n");
+    auto unsortedIndex = this->GetVertexMapIndexForSubDiagram(sortedIndex);
+    return this->EmbeddedEdgeLists[unsortedIndex];
+}
+
+VertexEmbedList SubDiagramGenerator::GetEmbedListCanonicalRelabel(int sortedIndex)
+{
+    if (sortedIndex<0 || sortedIndex >=this->NbrSubDiagrams)
+        throw std::invalid_argument("ERROR: GetEmbedListCanonicalRelabel requires 0 <= sortedIndex < N_sd!\n");
+    return this->EmbedListsCanonicalLabels[sortedIndex];
+}
+
+VertexEmbedList SubDiagramGenerator::GetEmbedListCanonicalRelabel(int nbrBonds, int graphIndex)
+{
+    if (nbrBonds < 1 || nbrBonds > this->SortedSubDiagramsWithMap.size())
+        throw std::invalid_argument("ERROR: GetEmbedListCanonicalRelabel requires 1 <= nbrBonds <= N_bonds!\n");
+    if (graphIndex < 0 || graphIndex >= this->SortedSubDiagramsWithMap[nbrBonds-1].size())
+        throw std::invalid_argument("ERROR: GetEmbedListCanonicalRelabel requires 0 <= graphIndex < N_graphs!\n");
+    return this->GetEmbedListCanonicalRelabel(this->GetSortedLinearIndex(nbrBonds, graphIndex));
+}
+
 /// accessor for EmbedLists using the linear SORTED index
 /// @param sortedIndex: linear SORTED index
-VertexEmbedList SubDiagramGenerator::GetEmbedList(int sortedIndex) const
+VertexEmbedList SubDiagramGenerator::GetEmbedList(int sortedIndex)
 {
     if (sortedIndex<0 || sortedIndex >=this->NbrSubDiagrams)
         throw std::invalid_argument("ERROR: GetEmbedList requires 0 <= sortedIndex < N_sd!\n");

@@ -37,7 +37,7 @@ int main()
     EmbedList.AddVertexEmbed(3, index3);
     EmbedList.AddVertexEmbed(4, index4);
 
-    ZClusterPureGauge MyCluster(&TestContainer, &EmbedList, &MyLattice);
+    ZClusterPureGauge MyCluster(TestContainer, EmbedList, &MyLattice);
     std::cout << "****SQUARE****\n";
     MyCluster.PrintZ();
 
@@ -72,7 +72,7 @@ int main()
     EmbedListLongHanlde.AddVertexEmbed(4, index4);
     EmbedListLongHanlde.AddVertexEmbed(5, index5);
 
-    ZClusterPureGauge MyClusterLongHandle(&TestContainerHandle, &EmbedListLongHanlde, &MyLattice);
+    ZClusterPureGauge MyClusterLongHandle(TestContainerHandle, EmbedListLongHanlde, &MyLattice);
     std::cout << "****LONG_HANDLE****\n";
     MyClusterLongHandle.PrintZ();
 
@@ -89,7 +89,7 @@ int main()
     EmbedListBentHanlde.AddVertexEmbed(5, index5);
     EmbedListBentHanlde.PrintList();
 
-    ZClusterPureGauge MyClusterBentHandle(&TestContainerHandle, &EmbedListBentHanlde, &MyLattice);
+    ZClusterPureGauge MyClusterBentHandle(TestContainerHandle, EmbedListBentHanlde, &MyLattice);
     std::cout << "****BENT_HANDLE****\n";
     MyClusterBentHandle.PrintZ();
 
@@ -106,7 +106,7 @@ int main()
     EmbedListNNNHandle.AddVertexEmbed(5, index5);
     EmbedListNNNHandle.PrintList();
 
-    ZClusterPureGaugeArbEmbedding MyClusterNNNHandle(&TestContainerHandle, &EmbedListNNNHandle, &MyLattice);
+    ZClusterPureGaugeArbEmbedding MyClusterNNNHandle(TestContainerHandle, EmbedListNNNHandle, &MyLattice);
     std::cout << "****NNN_HANDLE****\n";
     MyClusterNNNHandle.PrintZ();
 

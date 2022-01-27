@@ -87,13 +87,15 @@ private:
 
    void SetG6StringFromDenseNauty(graph *g);
 
+   void SetGraphFromDenseNauty(graph *g); /// adjacency matrix, bond counts, and vertex order counts from dense nauty graph (assumes N and MWords set!)
+
+   void ResetEdges();
+
 public: /// later make this private?
 
    void PrintVertexOrders() const;
 
 public:
-
-   GraphContainer(int n, int m, bool storeRooted=false, int nbrRooted=1); /// constructor with no graph (need a further call to set graph)
 
    GraphContainer(int n, int m, graph *g, bool storeRooted=false, int nbrRooted=1);
 
@@ -101,15 +103,11 @@ public:
 
    GraphContainer(int n, int m, const std::vector<UndirectedEdge>& edges, bool storeRooted=false, int nbrRooted=1);
 
-   void SetGraphFromDenseNauty(graph *g); /// adjacency matrix, bond counts, and vertex order counts from dense nauty graph (assumes N and MWords set!)
-
    void GetDenseNautyFromGraph(graph *g) const; /// adjacency matrix to dense nauty graph
 
    void ColoredCanonicalRelabeling(int *labCanon, int v1, int v2=-1);
 
    void CanonicalRelabeling(int *labCanon);
-
-   void RelabelVertices(const std::vector<int>& newLabels);
 
    bool GetElementAdjacencyMatrix(unsigned int v1, unsigned v2) const;
 

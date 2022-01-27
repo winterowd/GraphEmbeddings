@@ -78,7 +78,7 @@ int main()
     EmbedList.AddVertexEmbed(3, index3);
     EmbedList.AddVertexEmbed(4, index4);
 
-    SubDiagramGenerator MySubDiagrams(&TestContainer, &EmbedList, &MyLattice);
+    SubDiagramGenerator MySubDiagrams(TestContainer, EmbedList, &MyLattice);
     std::cout << "PRINTING_SUBDIAGRAMS!\n";
     MySubDiagrams.PrintSubDiagrams();
 

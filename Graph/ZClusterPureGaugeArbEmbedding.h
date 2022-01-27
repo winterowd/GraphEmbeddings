@@ -11,9 +11,9 @@ class ZClusterPureGaugeArbEmbedding
 {
 private:
     /**** private variables ****/
-    GraphContainer *ClusterContainer; /// container corresponding to the cluster
+    GraphContainer ClusterContainer; /// container corresponding to the cluster
 
-    VertexEmbedList *ClusterEmbedList; /// embed list corresponding to the cluster
+    VertexEmbedList ClusterEmbedList; /// embed list corresponding to the cluster
 
     CubicLattice *Lattice; /// lattice object
 
@@ -61,7 +61,7 @@ private:
     void EvaluateZ();
 
 public:
-    ZClusterPureGaugeArbEmbedding(GraphContainer *container, VertexEmbedList *clusterEmbedList, CubicLattice* lattice);
+    ZClusterPureGaugeArbEmbedding(const GraphContainer& container, const VertexEmbedList& clusterEmbedList, CubicLattice* lattice);
 
     /**** accessors ****/
     int GetNbrSquareDiagonal() const { return this->SquareDiagonal.size(); }

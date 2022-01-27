@@ -158,7 +158,7 @@ void GraphEmbedder::EmbedFromFile()
         throw std::invalid_argument("GraphEmbedder::Embed: Error opening "+this->Parameters.GetOutputFilename());
 
     /// read graphs in file
-    GraphContainer container(this->N, this->MWords);
+    //GraphContainer container(this->N, this->MWords);
     int count = 0;
     while (1)
     {
@@ -185,7 +185,8 @@ void GraphEmbedder::EmbedFromFile()
 #ifdef DEBUG
         std::cout << "Embed: Read config " << count << "!\n";
 #endif
-        container.SetGraphFromDenseNauty(g); /// setup container from nauty dense format
+        GraphContainer container(this->N, this->MWords, g); /// setup container from nauty dense format
+        //container.SetGraphFromDenseNauty(g); /// setup container from nauty dense format
 #ifdef DEBUG
         if (this->N != container.GetN()) /// check order!
             std::invalid_argument("Embed found that graph "+std::to_string(count)+" is not of order "+std::to_string(this->N)+"!\n");

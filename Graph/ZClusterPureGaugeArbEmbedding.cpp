@@ -1,10 +1,10 @@
 #include "ZClusterPureGaugeArbEmbedding.h"
 
-ZClusterPureGaugeArbEmbedding::ZClusterPureGaugeArbEmbedding(GraphContainer *container, VertexEmbedList *clusterEmbedList, CubicLattice* lattice) :
+ZClusterPureGaugeArbEmbedding::ZClusterPureGaugeArbEmbedding(const GraphContainer &container, const VertexEmbedList &clusterEmbedList, CubicLattice* lattice) :
     ClusterContainer(container),
     ClusterEmbedList(clusterEmbedList),
     Lattice(lattice)
-{
+{   
     /// set up variables by identifying each bond of embedding
     auto tempOneLink = [=](unsigned int index1, unsigned int index2) { return this->Lattice->AreNN(index1, index2); };
     this->FillBondType(this->OneLink, tempOneLink, "ONE_LINK");
@@ -86,15 +86,15 @@ int ZClusterPureGaugeArbEmbedding::PowersOfCouplingsToLinearIndex(const std::arr
 /// fill the vector with certain type of edges (defined by isEdgeValid)
 void ZClusterPureGaugeArbEmbedding::FillBondType(std::vector<UndirectedEdge>& result, std::function<bool(unsigned int, unsigned int)> isEdgeValid, std::string bondType)
 {
-    for (int i=0; i<this->ClusterContainer->GetL(); ++i)
+    for (int i=0; i<this->ClusterContainer.GetL(); ++i)
     {
-        auto tempEdge = this->ClusterContainer->GetEdge(i);
-        if (isEdgeValid(this->ClusterEmbedList->GetVertexSiteIndex(tempEdge.FirstVertex), this->ClusterEmbedList->GetVertexSiteIndex(tempEdge.SecondVertex)))
+        auto tempEdge = this->ClusterContainer.GetEdge(i);
+        if (isEdgeValid(this->ClusterEmbedList.GetVertexSiteIndex(tempEdge.FirstVertex), this->ClusterEmbedList.GetVertexSiteIndex(tempEdge.SecondVertex)))
         {
 #ifdef DEBUG
             std::vector<unsigned int> indices1(3), indices2(3);
-            this->Lattice->GetSiteCoordinates(this->ClusterEmbedList->GetVertexSiteIndex(tempEdge.FirstVertex), indices1);
-            this->Lattice->GetSiteCoordinates(this->ClusterEmbedList->GetVertexSiteIndex(tempEdge.SecondVertex), indices2);
+            this->Lattice->GetSiteCoordinates(this->ClusterEmbedList.GetVertexSiteIndex(tempEdge.FirstVertex), indices1);
+            this->Lattice->GetSiteCoordinates(this->ClusterEmbedList.GetVertexSiteIndex(tempEdge.SecondVertex), indices2);
             std::cout << "bond number " << i+1 << " found to be of type " << bondType << "!\n";
             std::cout << "Between vertex " << tempEdge.FirstVertex << " at ( ";
             for (int j=0; j<3; ++j)

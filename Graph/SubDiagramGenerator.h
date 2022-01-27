@@ -56,19 +56,71 @@ inline bool operator<(const SetOfSets<T>& lhs,  const SetOfSets<T>& rhs)
     return (lhs.GetN()<rhs.GetN());
 }
 
+/// data structure for an embedded undirected edge
+struct UndirectedEmbeddedEdge {
+    int index1; /// first lattice index
+    int index2; /// second lattice index
+};
+
+/// output edge
+inline std::ostream& operator<<(std::ostream& os, const UndirectedEmbeddedEdge& e)
+{
+    os << "(" << e.index1 << "," << e.index2 << ")";
+    return os;
+}
+
+/// equality and inequality operators for embedded edge
+inline bool operator==(const UndirectedEmbeddedEdge& lhs, const UndirectedEmbeddedEdge& rhs)
+{
+    return ((lhs.index1 == rhs.index1 && lhs.index2 == rhs.index2) || (lhs.index1 == rhs.index2 && lhs.index2 == rhs.index1));
+}
+
+inline bool operator!=(const UndirectedEmbeddedEdge& lhs, const UndirectedEmbeddedEdge& rhs)
+{
+    return !(lhs==rhs);
+}
+
+/// equality operator for two sets of embedded edges
+inline bool operator==(const std::vector<UndirectedEmbeddedEdge>& lhs, const std::vector<UndirectedEmbeddedEdge>& rhs)
+{
+    if (lhs.size()!=rhs.size())
+        return false;
+    for (auto it=lhs.begin(); it!=lhs.end(); ++it)
+        if (std::find(rhs.begin(), rhs.end(), *it) == rhs.end())
+            return false;
+    return true;
+}
+
+inline std::ostream& operator<<(std::ostream& os, const std::vector<UndirectedEmbeddedEdge>& edges)
+{
+    for (auto it=edges.begin(); it!=edges.end(); ++it)
+        std::cout << *it << " ";
+    return os;
+}
+
+/// equality for a vectors of edges (representing some embedded graphs)
+inline bool operator!=(const std::vector<UndirectedEmbeddedEdge>& lhs, const std::vector<UndirectedEmbeddedEdge>& rhs)
+{
+    return !(lhs==rhs);
+}
+
 /// helper class in order to distinguish canonical subgraphs
 class CanonicalSubDiagram
 {
 private:
     VertexEmbedList CanonicalList; /// canonical vertex embed list (output from CubicLatticeCanonicalizor)
 
-    GraphContainer CanonicalContainer; /// canonical container (connectivity)
+    GraphContainer CanonicalContainer; /// canonical container (output from NAUTY)
 public:
     CanonicalSubDiagram(const VertexEmbedList& list, const GraphContainer& container) : CanonicalList(list), CanonicalContainer(container) {}
 
     int GetN() const { return this->CanonicalContainer.GetN(); }
 
     int GetL() const { return this->CanonicalContainer.GetL(); }
+
+    GraphContainer GetCanonicalContainer() const { return this->CanonicalContainer; }
+
+    VertexEmbedList GetCanonicalList() const { return this->CanonicalList; }
 
     friend bool operator==(const CanonicalSubDiagram& lhs, const CanonicalSubDiagram& rhs);
     friend std::ostream& operator<< (std::ostream& stream, const CanonicalSubDiagram& can);
@@ -98,22 +150,32 @@ class SubDiagramGenerator
 {
 private:
     /***** private variables *****/
-    GraphContainer *OriginalContainer; /// pointer to original graph container
+    GraphContainer OriginalContainer; /// pointer to original graph container TODO: change this so that it has a copy
 
-    VertexEmbedList *OriginalList; /// pointer to original vertex embed list
+    VertexEmbedList OriginalList; /// pointer to original vertex embed list TODO: changes this so that it has a copy
 
     CubicLattice *MyCubicLattice; /// pointer to cubic lattice object
 
     std::vector<std::vector<std::pair<int, GraphContainer>>> SortedSubDiagramsWithMap; /// subdiagrams sorted by number of bonds together with (UNSORTED) index matching the vertex map
 
+    /// ith member of VerticesMap contains an array of length N_{v,sg_i}
+    /// where VerticesMap[i][k] contains the the ORIGINAL vertex label of the vertex RELABELED k+1 in the ith UNSORTED subgraph (k=0,1,...,N_{v,sg_i}-1)
     std::vector<std::vector<int>> VerticesMap; /// map of vertices of subgraphs (order differs with SortedSubDiagrams)
 
-    std::vector<VertexEmbedList> EmbedLists; ///  embed list for the subgraphs (same order as VerticesMap)
+    std::vector<VertexEmbedList> EmbedLists; ///  embed list for the subgraphs (same order as VerticesMap i.e. UNSORTED)
 
-    std::vector<int> SubgraphToCanonicalMap;
+    std::vector<VertexEmbedList> EmbedListsCanonicalLabels; /// embed list for the subgraphs with canonical vertex labels (SORTED)
+
+    std::vector<std::vector<UndirectedEmbeddedEdge>> EmbeddedEdgeLists; /// edge lits for the subgraphs (UNSORTED)
+
+    std::vector<int> SubgraphToCanonicalMap; /// element i contains index of element of CanonicalSubDiagramList to which subdiagram i corresponds to (SORTED)
+
+    //// ith member of CanonicalToOriginalMap contains an array of of length N_{v,sg_i}
+    /// where CanonicalToOriginalMap[i][k] contains the the ORIGINAL vertex label of the CANONICALLY labeled vertex k+1 in the ith SORTED subgraph (k=0,1,...,N_{v,sg_i}-1)
+    std::vector<std::vector<int>> CanonicalToOriginalMap; /// mapping between canonical and original labels
 
     /// TODO: add EmbedLists that are canonical with respect to NAUTY and the octohedral group! (cubic symmetry)
-    std::vector<CanonicalSubDiagram> CanonicalEmbedLists;
+    std::vector<CanonicalSubDiagram> CanonicalSubDiagramList;
 
     std::vector<SetOfSets<int>> DisjointSets; /// D_n: set of subsets represented by the index corresponding to ordering of subgraphs in SortedSubDiagramsWithMap
     int NbrSubDiagrams; /// total number of connected subdiagrams
@@ -121,7 +183,7 @@ private:
     /**** private methods ****/
 
     //// canonicalize with respect to NAUTY and cubic symmetries
-    CanonicalSubDiagram ComputeCanonicalSubgraph(int sortedIndex);
+    std::pair<CanonicalSubDiagram, VertexEmbedList> ComputeCanonicalSubgraphAndList(int sortedIndex);
 
     template<typename T>
     std::vector<std::vector<T>> GetPowerSet(const std::vector<T>& elements); /// generate a power set of a given type
@@ -144,8 +206,10 @@ private:
 
     std::pair<int, int> IndexConversionSorted(int sortedIndex) const; /// sorted linear index 0,1,...,N_sub-1 mapped to (bondIndex,subIndex)
 
+    std::vector<UndirectedEmbeddedEdge> ConvertUndirectedEdgesToUndirectedEmbeddedEdges(const std::vector<UndirectedEdge>& inputEdges); /// create embedded edges from edges
+
 public:
-    SubDiagramGenerator(GraphContainer *container, VertexEmbedList *list, CubicLattice *lattice);
+    SubDiagramGenerator(const GraphContainer& container, const VertexEmbedList& list, CubicLattice *lattice);
 
     void PrintSubDiagram(int index) const; /// print a given subdiagram
 
@@ -166,11 +230,27 @@ public:
 
     GraphContainer GetSubDiagram(int nbrBonds, int graphIndex) const;
 
+    GraphContainer GetCanonicalSubDiagramContainer(int nbrBonds, int graphIndex) const;
+
+    GraphContainer GetCanonicalSubDiagramContainer(int sortedIndex) const;
+
+    VertexEmbedList GetCanonicalSubDiagramEmbedList(int nbrBonds, int graphIndex) const;
+
+    VertexEmbedList GetCanonicalSubDiagramEmbedList(int sortedIndex) const;
+
     std::vector<int> GetVertexMap(int sortedIndex) const;
 
     std::vector<int> GetVertexMap(int nbrBonds, int graphIndex) const;
 
-    VertexEmbedList GetEmbedList(int sortedIndex) const;
+    std::vector<UndirectedEmbeddedEdge> GetEmbeddedEdgeSet(int sortedIndex) const;
+
+    std::vector<UndirectedEmbeddedEdge> GetEmbeddedEdgeSet(int nbrBonds, int graphIndex) const;
+
+    VertexEmbedList GetEmbedListCanonicalRelabel(int sortedIndex);
+
+    VertexEmbedList GetEmbedListCanonicalRelabel(int nbrBonds, int graphIndex);
+
+    VertexEmbedList GetEmbedList(int sortedIndex);
 
     VertexEmbedList GetEmbedList(int nbrBonds, int graphIndex) const;
 

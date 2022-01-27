@@ -6,13 +6,13 @@
 /// @param clusterContainer: pointer to a GraphContainer object for G (memory managed externally)
 /// @param clusterEmbedList: pointer to a VertexEmbedList object for G on the cubic lattice (memory managed externally)
 /// @param lattice: pointer to CubicLattice object
-ZClusterPureGauge::ZClusterPureGauge(GraphContainer *clusterContainer, VertexEmbedList *clusterEmbedList, CubicLattice *lattice) :
+ZClusterPureGauge::ZClusterPureGauge(const GraphContainer& clusterContainer, const VertexEmbedList& clusterEmbedList, CubicLattice *lattice) :
     ClusterContainer(clusterContainer),
     ClusterEmbedList(clusterEmbedList),
     Lattice(lattice),
     MySubDiagramGenerator(clusterContainer, clusterEmbedList, lattice)
 {
-    if (this->ClusterContainer->GetL()<2)
+    if (this->ClusterContainer.GetL()<2)
         std::cout << "WARNING: Cluster has no subgraphs with two bonds!\n";
 
     this->FillOneLink(); /// fill list of one-link subdiagrams
@@ -72,7 +72,7 @@ void ZClusterPureGauge::FillBondType(std::vector<InteractionSubDiagram> &result,
     if (validNbrVertices!=validNbrBonds+1)
         throw std::invalid_argument("ERROR: FillBondType requires validNbrVertices=validNbrBonds+1!\n");
 #endif
-    if (this->ClusterContainer->GetL()<2)
+    if (this->ClusterContainer.GetL()<2)
         return;
 
     std::set<InteractionSubDiagram> bondSet;

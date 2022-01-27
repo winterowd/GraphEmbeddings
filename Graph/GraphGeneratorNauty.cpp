@@ -126,7 +126,6 @@ void GraphGeneratorNauty::GenerateTwoRootedFixedOrderIterative(std::string input
 
     int *c = (int*)malloc(this->N * sizeof(int)); /// alloc C-style arrray for colors of vertices
 
-    GraphContainer refContainer(this->N, this->MWords, true, 2); /// container for graphs
     int count = 0; /// initialize counter
 
     while (1) /// read graphs in file (ASSUME THEY ARE ALL OF THE SAME ORDER N!)
@@ -140,7 +139,7 @@ void GraphGeneratorNauty::GenerateTwoRootedFixedOrderIterative(std::string input
 #endif
         std::vector<GraphContainer> rootedGraphList; /// holds the list of rooted graphs produced from a single connected graph (one line of file produced by geng)
 
-        refContainer.SetGraphFromDenseNauty(g); /// setup container from nauty dense format
+        GraphContainer refContainer(this->N, this->MWords, g, true, 2); /// container for graphs from nauty dense format
 
         /// check bonds and order!
         if (this->N != refContainer.GetN())
@@ -349,7 +348,6 @@ void GraphGeneratorNauty::GenerateTwoRootedFixedOrder(std::string inputFilename,
 
     int *c = (int*)malloc(this->N * sizeof(int)); /// alloc C-style arrray for colors of vertices
 
-    GraphContainer refContainer(this->N, this->MWords); /// container for graphs
     int count = 0; /// initialize counter
     while (1) /// read graphs in file (ASSUME THEY ARE ALL OF THE SAME ORDER N!)
     {
@@ -362,7 +360,7 @@ void GraphGeneratorNauty::GenerateTwoRootedFixedOrder(std::string inputFilename,
 #endif
         std::vector<GraphContainer> rootedGraphList; /// holds the list of rooted graphs produced from a single connected graph (one line of file produced by geng)
 
-        refContainer.SetGraphFromDenseNauty(g); /// setup container from nauty dense format
+        GraphContainer refContainer(this->N, this->MWords, g); /// container for graphs from nauty dense format
 
         /// check bonds and order!
         if (this->N != refContainer.GetN())

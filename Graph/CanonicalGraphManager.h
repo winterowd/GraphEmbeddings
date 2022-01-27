@@ -10,7 +10,7 @@
 #include <boost/program_options.hpp>
 namespace po = boost::program_options;
 
-/// TODO: takes in L_max and generates all connected graphs from L=1,..,L_Max (canonicalizes in the process)
+/// takes in L_max and generates all connected unrooted AND rooted graphs from L=1,..,L_Max (canonicalizes in the process)
 class CanonicalGraphManager
 {
 private:
@@ -53,9 +53,13 @@ public:
 
     int GetNbrRootedGraphs(int l) const;
 
-    GraphContainer GetGraph(int l, int index) const;
+    std::pair<int, int> GetGraphIndex(const GraphContainer& container);
 
-    GraphContainer GetRootedGraph(int l, int index) const;
+    std::pair<int, int> GetRootedGraphIndex(const GraphContainer& container);
+
+    GraphContainer GetGraph(int l, int graphIndex) const;
+
+    GraphContainer GetRootedGraph(int l, int graphIndex) const;
 
 };
 
