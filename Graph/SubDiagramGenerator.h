@@ -145,6 +145,11 @@ inline std::ostream& operator<< (std::ostream& stream, const CanonicalSubDiagram
     return stream;
 }
 
+/// TODO: think about how to deal with rooted graphs
+/// things to think about: some subgraphs will not be rooted, some will have one root, some two
+/// how to properly deal with canonicalization with rooted vertices
+/// keeping track of which original vertices were rooted
+
 /// generate all subgraphs of a given graph (embedded on a lattice i.e. cubic)
 class SubDiagramGenerator
 {
@@ -160,7 +165,7 @@ private:
 
     /// ith member of VerticesMap contains an array of length N_{v,sg_i}
     /// where VerticesMap[i][k] contains the the ORIGINAL vertex label of the vertex RELABELED k+1 in the ith UNSORTED subgraph (k=0,1,...,N_{v,sg_i}-1)
-    std::vector<std::vector<int>> VerticesMap; /// map of vertices of subgraphs (order differs with SortedSubDiagrams)
+    std::vector<std::vector<int>> VerticesMap; /// map of vertices of subgraphs (order differs with SortedSubDiagrams i.e. UNSORTED)
 
     std::vector<VertexEmbedList> EmbedLists; ///  embed list for the subgraphs (same order as VerticesMap i.e. UNSORTED)
 
@@ -183,6 +188,10 @@ private:
     /**** private methods ****/
 
     //// canonicalize with respect to NAUTY and cubic symmetries
+    std::pair<CanonicalSubDiagram, VertexEmbedList> ComputeCanonicalSubgraphAndListUnrooted(int sortedIndex);
+
+    std::pair<CanonicalSubDiagram, VertexEmbedList> ComputeCanonicalSubgraphAndListRooted(int sortedIndex);
+
     std::pair<CanonicalSubDiagram, VertexEmbedList> ComputeCanonicalSubgraphAndList(int sortedIndex);
 
     template<typename T>
@@ -196,6 +205,8 @@ private:
 
     void GenerateEmbedListsForSubDiagrams(); /// generate VertexEmbedList objects for each subgraph
 
+    GraphContainer CreateSubgraphContainerFromVertexMapAndEdges(const std::vector<UndirectedEdge>& edges, const std::vector<int>& map);
+
     int GetVertexSiteIndex(int vertexLabel) const; /// get lattice site index for a given vertex (through OriginalList)
 
     bool AreDisjoint(int index1, int index2); /// are two subgraphs, labeled by index1 and index2 disjoint
@@ -207,6 +218,8 @@ private:
     std::pair<int, int> IndexConversionSorted(int sortedIndex) const; /// sorted linear index 0,1,...,N_sub-1 mapped to (bondIndex,subIndex)
 
     std::vector<UndirectedEmbeddedEdge> ConvertUndirectedEdgesToUndirectedEmbeddedEdges(const std::vector<UndirectedEdge>& inputEdges); /// create embedded edges from edges
+
+    int GetSortedIndexFromUnsortedIndex(int unsortedIndex) const;
 
 public:
     SubDiagramGenerator(const GraphContainer& container, const VertexEmbedList& list, CubicLattice *lattice);

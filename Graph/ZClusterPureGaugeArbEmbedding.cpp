@@ -1,34 +1,48 @@
 #include "ZClusterPureGaugeArbEmbedding.h"
 
-ZClusterPureGaugeArbEmbedding::ZClusterPureGaugeArbEmbedding(const GraphContainer &container, const VertexEmbedList &clusterEmbedList, CubicLattice* lattice) :
+ZClusterPureGaugeArbEmbedding::ZClusterPureGaugeArbEmbedding(const GraphContainer &container, const VertexEmbedList &clusterEmbedList, CubicLattice* lattice, const std::vector<bool> &loopAtRooted) :
     ClusterContainer(container),
     ClusterEmbedList(clusterEmbedList),
-    Lattice(lattice)
+    Lattice(lattice),
+    PolyakovLoopAtRooted(loopAtRooted),
+    LinearIndexMax(1)
 {   
+    if (this->ClusterContainer.GetN()!=this->ClusterEmbedList.GetSize())
+        throw std::invalid_argument("ERROR: ZClusterPureGaugeArbEmbedding requires container and clusterEmbedList to have the same number of vertices!\n");
+
+    if (this->ClusterContainer.IsRooted()!=this->ClusterEmbedList.IsRooted())
+        throw std::invalid_argument("ERROR: ZClusterPureGaugeArbEmbedding requires container and clusterEmbedList to be both rooted or both unrooted!\n");
+
+    if (this->ClusterContainer.GetNbrRooted()!=this->ClusterEmbedList.GetNbrSetRootedVertices())
+        throw std::invalid_argument("ERROR: ZClusterPureGaugeArbEmbedding requires number of rooted vertices of container to equal the number of set rooted vertices of clusterEmbedList!\n");
+
+    //std::cout << "DEBUG_ZCLUSTER: " << this->ClusterEmbedList.GetNbrSetRootedVertices() << " "  <<
+    if (this->ClusterEmbedList.IsRooted() && !this->ClusterEmbedList.IsFixedVertexSet(0))
+        throw std::invalid_argument("ERROR: ZClusterPureGaugeArbEmbedding requires that if clusterEmbedList is rooted, then first fixed vertex must be set!\n");
+
+    if (this->ClusterContainer.IsRooted() && (this->PolyakovLoopAtRooted.size()!=this->ClusterContainer.GetNbrRooted()))
+        throw std::invalid_argument("ERROR: ZClusterPureGaugeArbEmbedding requires container, if rooted, to have the same number of rooted vertices as the size of loopAtRooted!\n");
+
     /// set up variables by identifying each bond of embedding
     auto tempOneLink = [=](unsigned int index1, unsigned int index2) { return this->Lattice->AreNN(index1, index2); };
     this->FillBondType(this->OneLink, tempOneLink, "ONE_LINK");
     this->AllTotalBondCountsPlusOne[0] = this->OneLink.size()+1; /// set size
-    if (this->OneLink.size()>0) /// add to list of non-zero sizes
-        this->LinearIndexMax *= this->AllTotalBondCountsPlusOne[1];
+    this->LinearIndexMax *= this->AllTotalBondCountsPlusOne[0];
 
     auto tempSquareDiagonal = [=](unsigned int index1, unsigned int index2) { return this->Lattice->AreNNN(index1, index2); };
     this->FillBondType(this->SquareDiagonal, tempSquareDiagonal, "SQUARE_DIAGONAL");
     this->AllTotalBondCountsPlusOne[1] = this->SquareDiagonal.size()+1; /// set size
-    if (this->SquareDiagonal.size()>0) /// add to list of non-zero sizes
-        this->LinearIndexMax *= this->AllTotalBondCountsPlusOne[1];
+    this->LinearIndexMax *= this->AllTotalBondCountsPlusOne[1];
 
     auto tempStraightTwoLink = [=](unsigned int index1, unsigned int index2) { return this->Lattice->AreThirdNN(index1, index2); };
     this->FillBondType(this->StraightTwoLink, tempStraightTwoLink, "STRAIGHT_TWO_LINK");
     this->AllTotalBondCountsPlusOne[2] = this->StraightTwoLink.size()+1; /// set size
-    if (this->StraightTwoLink.size()>0) /// add to list of non-zero sizes
-        this->LinearIndexMax *= this->AllTotalBondCountsPlusOne[2];
+    this->LinearIndexMax *= this->AllTotalBondCountsPlusOne[2];
 
     auto tempCubeDiagonal = [=](unsigned int index1, unsigned int index2) { return this->Lattice->AreFourthNN(index1, index2); };
     this->FillBondType(this->CubeDiagonal, tempCubeDiagonal, "CUBE_DIAGONAL");
     this->AllTotalBondCountsPlusOne[3] = this->CubeDiagonal.size()+1; /// set size
-    if (this->CubeDiagonal.size()>0) /// add to list of non-zero sizes
-        this->LinearIndexMax *= this->AllTotalBondCountsPlusOne[3];
+    this->LinearIndexMax *= this->AllTotalBondCountsPlusOne[3];
 
     this->TotalBondCounts = this->OneLink.size()+this->SquareDiagonal.size()+this->StraightTwoLink.size()+this->CubeDiagonal.size(); /// precompute total number of bonds (length of valid permutation)
     this->ZCoefficients.resize(this->LinearIndexMax); /// resize
@@ -140,6 +154,39 @@ void ZClusterPureGaugeArbEmbedding::GenerateTermsIntegrand(std::vector<bool>& tm
     return;
 }
 
+/// prepare the list of ExternalPolyakovLoop objects for the pure gauge weight object given a set of edges and the vertex map which tells us how the vertices are relabeled in the new container
+/// @param edges: list of undirected edges (ORIGINAL LABELS!)
+/// @param vertexMap: vertexMap[j] contains ORIGINAL label of RELABELED vertex j+1 (j starts at ZERO!)
+std::vector<ExternalPolyakovLoop> ZClusterPureGaugeArbEmbedding::PrepareRootedVerticesIntegrandTerm(const std::vector<UndirectedEdge>& edges, const std::vector<int>& vertexMap)
+{
+    std::vector<ExternalPolyakovLoop> result;
+
+    for (int i=0; i<this->ClusterContainer.GetNbrRooted(); ++i)
+    {
+        auto tempRooted = this->ClusterContainer.GetRootedVertex(i)+1;
+        /// all rooted vertices must appear as: \int dW L = \int dW L* = 0
+        if (std::find_if(edges.begin(), edges.end(), [tempRooted](const UndirectedEdge& e) { return (e.FirstVertex==tempRooted || e.SecondVertex==tempRooted); })==edges.end())
+        {
+#ifdef DEBUG
+            std::cout << "DEBUG_EVALUATEZ: Rooted vertex " << i+1 << " labeled " << tempRooted << " not contained in any edges!\n";
+#endif
+            return result;
+        }
+        auto tempIt = std::find(vertexMap.begin(), vertexMap.end(), tempRooted);
+#ifdef DEBUG
+        if (tempIt==vertexMap.end())
+            throw std::invalid_argument("ERROR: ZClusterPureGaugeArbEmbedding::PrepareRootedVerticesIntegrandTerm could not find new label of rooted vertex in vertexMap!\n");
+#endif
+        int tempIndex = std::distance(vertexMap.begin(), tempIt);
+        int newRootedLabel = tempIndex+1;
+#ifdef DEBUG
+        std::cout << "DEBUG_EVALUATEZ: rooted vertex " << i+1 << " originally labeled as " << tempRooted << " is relabeled as " << newRootedLabel << " with L? " << this->PolyakovLoopAtRooted[i] << "\n";
+#endif
+        result.push_back(ExternalPolyakovLoop{newRootedLabel, this->PolyakovLoopAtRooted[i]});
+    }
+    return result;
+}
+
 /// evaluate all of the terms in the partition function
 /// store results in ZCoefficients
 void ZClusterPureGaugeArbEmbedding::EvaluateZ()
@@ -149,24 +196,42 @@ void ZClusterPureGaugeArbEmbedding::EvaluateZ()
     for (int i=0; i<this->IntegrandTerms.size(); ++i)
     {
         auto edgesAndBondCount = this->ZIntegrandToUndirectedEdgesAndBondCounts(this->IntegrandTerms[i]); /// get edges and bond counts
-        auto relabeledEdgesAndVertexMap = SubDiagramGenerator::GetRelabeledEdgesAndVertexMap(edgesAndBondCount.first); /// relabeled edges and vertex map
-        GraphContainer tempContainer(relabeledEdgesAndVertexMap.second.size(), 1, relabeledEdgesAndVertexMap.first); /// graph container
-        PureGaugeWeight tempWeightObject(&tempContainer);
-        double weight = tempWeightObject.Weight(); /// calculate weight of graph
+
+        if (edgesAndBondCount.first.size()==0) /// no edges! (ONE TERM)
+        {
+            if (this->ClusterContainer.GetNbrRooted()==0) // normalized measure!
+                this->ZCoefficients[this->PowersOfCouplingsToLinearIndex(edgesAndBondCount.second)] = 1.;
+            else // single L or L* at each rooted vertex
+                this->ZCoefficients[this->PowersOfCouplingsToLinearIndex(edgesAndBondCount.second)] = 0.;
+        }
+        else
+        {
+            auto relabeledEdgesAndVertexMap = SubDiagramGenerator::GetRelabeledEdgesAndVertexMap(edgesAndBondCount.first); /// relabeled edges and vertex map
+
+            auto rootedVertices = this->PrepareRootedVerticesIntegrandTerm(edgesAndBondCount.first, relabeledEdgesAndVertexMap.second); /// get the new labels of rooted vertices and if they correspond to L or L*
+
+            if (rootedVertices.size()==this->ClusterContainer.GetNbrRooted()) /// all rooted vertices have to appear in bonds!
+            {
+                GraphContainer tempContainer(relabeledEdgesAndVertexMap.second.size(), 1, relabeledEdgesAndVertexMap.first); /// graph container
+                PureGaugeWeight tempWeightObject(tempContainer, rootedVertices);
+                double weight = tempWeightObject.Weight(); /// calculate weight of graph
 #ifdef DEBUG
-        //// print out i, bond counts, Container, VertexMap
-        std::cout << "**** DEBUG_EVALUATEZ ****\n";
-        std::cout << "term " << i << " with bond_count:";
-        for (int j=0; j<ZClusterPureGaugeArbEmbedding::NbrCouplings; ++j)
-            std::cout << " " << edgesAndBondCount.second[j];
-        std::cout << "\n";
-        std::cout << tempContainer;
-        for (int j=0; j<relabeledEdgesAndVertexMap.second.size(); ++j)
-            std::cout << "Vertex " << j+1 << " maps to original vertex " << relabeledEdgesAndVertexMap.second[j] << "\n";
-        std::cout << "Weight: " << weight << "\n";
-        std::cout << "**** DEBUG_EVALUATEZ ****\n";
+                //// print out i, bond counts, Container, VertexMap
+                std::cout << "**** DEBUG_EVALUATEZ ****\n";
+                std::cout << "term " << i << " with bond_count:";
+                for (int j=0; j<ZClusterPureGaugeArbEmbedding::NbrCouplings; ++j)
+                    std::cout << " " << edgesAndBondCount.second[j];
+                std::cout << "\n";
+                std::cout << tempContainer;
+                for (int j=0; j<relabeledEdgesAndVertexMap.second.size(); ++j)
+                    std::cout << "Vertex " << j+1 << " maps to original vertex " << relabeledEdgesAndVertexMap.second[j] << "\n";
+                std::cout << "Weight: " << weight << "\n";
+                std::cout << "**** DEBUG_EVALUATEZ ****\n";
 #endif
-        this->ZCoefficients[this->PowersOfCouplingsToLinearIndex(edgesAndBondCount.second)] += weight;
+                this->ZCoefficients[this->PowersOfCouplingsToLinearIndex(edgesAndBondCount.second)] += weight;
+                /// TODO: append to string containing expression
+            }
+        }
     }
 }
 
@@ -265,7 +330,8 @@ void ZClusterPureGaugeArbEmbedding::PrintContributionZFixedOrder(const std::arra
         {
             auto relabeledEdgesAndVertexMap = SubDiagramGenerator::GetRelabeledEdgesAndVertexMap(edgesAndBondCount.first); /// relabeled edges and vertex map
             GraphContainer tempContainer(relabeledEdgesAndVertexMap.second.size(), 1, relabeledEdgesAndVertexMap.first); /// graph container
-            PureGaugeWeight tempWeightObject(&tempContainer);
+            auto rootedVertices = this->PrepareRootedVerticesIntegrandTerm(edgesAndBondCount.first, relabeledEdgesAndVertexMap.second);
+            PureGaugeWeight tempWeightObject(tempContainer, rootedVertices);
             double weight = tempWeightObject.Weight(); /// calculate weight of graph
             std::cout << "term " << i << " with bond_count:";
             for (int j=0; j<ZClusterPureGaugeArbEmbedding::NbrCouplings; ++j)

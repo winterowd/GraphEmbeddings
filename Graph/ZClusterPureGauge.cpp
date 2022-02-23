@@ -160,7 +160,7 @@ void ZClusterPureGauge::EvaluateZ()
         auto edgesAndBondCount = this->ZIntegrandToUndirectedEdgesAndBondCounts(this->IntegrandTerms[i]); /// get edges and bond counts
         auto relabeledEdgesAndVertexMap = SubDiagramGenerator::GetRelabeledEdgesAndVertexMap(edgesAndBondCount.first); /// relabeled edges and vertex map
         GraphContainer tempContainer(relabeledEdgesAndVertexMap.second.size(), 1, relabeledEdgesAndVertexMap.first); /// graph container
-        PureGaugeWeight tempWeightObject(&tempContainer);
+        PureGaugeWeight tempWeightObject(tempContainer, std::vector<ExternalPolyakovLoop>(0));
         double weight = tempWeightObject.Weight(); /// calculate weight of graph
 #ifdef DEBUG
         //// print out i, bond counts, Container, VertexMap
@@ -221,7 +221,7 @@ void ZClusterPureGauge::PrintContributionZFixedOrder(const std::array<int, ZClus
         {
             auto relabeledEdgesAndVertexMap = SubDiagramGenerator::GetRelabeledEdgesAndVertexMap(edgesAndBondCount.first); /// relabeled edges and vertex map
             GraphContainer tempContainer(relabeledEdgesAndVertexMap.second.size(), 1, relabeledEdgesAndVertexMap.first); /// graph container
-            PureGaugeWeight tempWeightObject(&tempContainer);
+            PureGaugeWeight tempWeightObject(tempContainer, std::vector<ExternalPolyakovLoop>(0));
             double weight = tempWeightObject.Weight(); /// calculate weight of graph
             std::cout << "term " << i << " with bond_count:";
             for (int j=0; j<ZClusterPureGauge::NbrCouplings; ++j)

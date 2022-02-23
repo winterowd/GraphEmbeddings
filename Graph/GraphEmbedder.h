@@ -20,6 +20,7 @@
 #include "TriangularLattice.h"
 #include "VertexEmbedList.h"
 #include "CubicLatticeCanonicalizor.h"
+#include "AuxiliaryRoutinesForNauty.h"
 
 /// nauty headers
 #include "gtools.h"
@@ -161,6 +162,8 @@ private:
 
     std::set<VertexEmbedList> CreateInitialVertexEmbedListsNonRooted(const GraphContainer& container, const std::vector<int> &bondCombo);
 
+    std::set<VertexEmbedList> CreateInitialVertexEmbedListsNonRootedFunny(const GraphContainer& container, const std::vector<int> &bondCombo);
+
     std::unordered_set<int> GetRemainingVertices(const std::vector<VertexEmbed>& listUsedVertices);
 
     std::unordered_set<int> GetRemainingVertices(const VertexEmbedList& listUsedVertices);
@@ -244,7 +247,7 @@ public:
     /// TODO: routine which takes a single partition and container returns all VertexEmbedLists
 
     /// routine which outputs vector of canonical graphs and counts for embeddings (all NN links)
-    std::tuple<GraphContainer, std::vector<VertexEmbedList>, std::vector<int>> GetCanonicalGraphsAndCounts(); /// uses the graph provided as a g6 string by the user (command line arguments sent to constructor)
+    std::tuple<GraphContainer, std::vector<VertexEmbedList>, std::vector<int> > ComputeCanonicalEmbeddingsAndCountsNN(const GraphContainer& container); /// uses the graph provided as a g6 string by the user (command line arguments sent to constructor)
 
     std::pair<GraphContainer, VertexEmbedList> ContainerAndSampleCubicEmbeddingFromG6(); /// return a pair consisting of a container and a VertexEmbedList for a given g6 string input by the user (for debugging purposes)
 

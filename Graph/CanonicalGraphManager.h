@@ -19,47 +19,55 @@ private:
 
     int NbrGraphs; /// total number of unrooted graphs
 
-    int NbrRootedGraphs; /// total number of rooted graphs
+    std::vector<int> NbrRootedGraphs; /// total number of rooted graphs (one and two roots)
 
     std::vector<std::vector<GraphContainer>> CanonicalGraphs; /// container for unrooted graphs
 
-    std::vector<std::vector<GraphContainer>> CanonicalRootedGraphs; /// container for rooted graphs
+    std::vector<std::vector<GraphContainer>> CanonicalOneRootedGraphs; /// container for one-rooted graphs
+
+    std::vector<std::vector<GraphContainer>> CanonicalTwoRootedGraphs; /// container for two-rooted graphs
 
     /**** private methods ****/
     void GenerateCanonicalGraphs();
 
     void GetGraphsNauty(int n, int l);
 
-    void ImportFromFileAndCanonicalize(int n, int l, std::string filenameUnrooted, std::string filenameRooted);
+    void ImportUnrootedFromFileAndCanonicalize(int n, int l, std::string filenameUnrooted);
+
+    void ImportRootedFromFileAndCanonicalize(int n, int l, std::string filenameRooted, int nbrRoots);
 
     void AddCanonicalGraph(const GraphContainer& g);
 
-    void AddCanonicalRootedGraph(const GraphContainer& g);
+    void AddCanonicalRootedGraph(const GraphContainer& g, int nbrRoots);
 
     bool FileExists(const std::string& name);
+
+    GraphContainer GetOneRootedGraph(int l, int graphIndex) const;
+
+    GraphContainer GetTwoRootedGraph(int l, int graphIndex) const;
 
 public:
     CanonicalGraphManager(int lMax);
 
-    /**** accessors ****/
+    /**** public accessors ****/
 
     int GetLMax() const { return this->LMax; }
 
     int GetTotalNbrGraphs() const { return this->NbrGraphs; }
 
-    int GetTotalNbrRootedGraphs() const { return this->NbrRootedGraphs; }
+    int GetTotalNbrRootedGraphs(int nbrRoots) const;
 
     int GetNbrGraphs(int l) const;
 
-    int GetNbrRootedGraphs(int l) const;
+    int GetNbrRootedGraphs(int l, int nbrRoots) const;
 
     std::pair<int, int> GetGraphIndex(const GraphContainer& container);
 
-    std::pair<int, int> GetRootedGraphIndex(const GraphContainer& container);
+    std::pair<int, int> GetRootedGraphIndex(const GraphContainer& container, int nbrRoots);
 
     GraphContainer GetGraph(int l, int graphIndex) const;
 
-    GraphContainer GetRootedGraph(int l, int graphIndex) const;
+    GraphContainer GetRootedGraph(int l, int graphIndex, int nbrRoots) const;
 
 };
 

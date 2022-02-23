@@ -44,7 +44,7 @@ private:
 
     int L; // number of bonds
 
-    bool StoreRooted; /// flag to store rooted vertices
+    bool Rooted; /// flag to see if graph rooted
 
     int NbrRooted; /// number of rooted vertices
 
@@ -97,15 +97,18 @@ public: /// later make this private?
 
 public:
 
-   GraphContainer(int n, int m, graph *g, bool storeRooted=false, int nbrRooted=1);
+   GraphContainer(int n, int m, graph *g, int nbrRooted=0);
 
-   GraphContainer(int n, int m, const std::string& g6String, bool storeRooted=false, int nbrRooted=1);
+   GraphContainer(int n, int m, const std::string& g6String, int nbrRooted=0);
 
-   GraphContainer(int n, int m, const std::vector<UndirectedEdge>& edges, bool storeRooted=false, int nbrRooted=1);
+   GraphContainer(int n, int m, const std::vector<UndirectedEdge>& edges, int nbrRooted=0);
 
    void GetDenseNautyFromGraph(graph *g) const; /// adjacency matrix to dense nauty graph
 
    void ColoredCanonicalRelabeling(int *labCanon, int v1, int v2=-1);
+
+   /// new routine (TEST!)
+   void ColoredCanonicalRelabeling(int *labCanon, const std::vector<int>& rootedVertices);
 
    void CanonicalRelabeling(int *labCanon);
 
@@ -115,7 +118,7 @@ public:
 
    int ComputeCurrentKey() const;
 
-   bool StoringRooted() const { return this->StoreRooted; }
+   bool IsRooted() const { return this->Rooted; }
 
    int GetNbrRooted() const;
 
@@ -124,6 +127,8 @@ public:
    void SetRootedVertex(int index, int label);
 
    int GetRootedVertex(int index) const;
+
+   std::vector<int> GetRootedVertices() const;
 
    int GetN() const { return this->N; }
 

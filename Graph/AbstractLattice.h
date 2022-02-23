@@ -17,6 +17,22 @@ enum MaxInteractionLength
     NbrInteractions
 };
 
+inline std::string StringFromMaxInteractionLength(MaxInteractionLength l)
+{
+    std::string result;
+    if (l==MaxInteractionLength::NearestNeighbor)
+        result = "NN";
+    else if (l==MaxInteractionLength::NextNearestNeighbor)
+        result = "NNN";
+    else if (l==MaxInteractionLength::ThirdNearestNeighbor)
+        result = "3NN";
+    else if (l==MaxInteractionLength::FourthNearestNeighbor)
+        result = "4NN";
+    else
+        throw std::invalid_argument("StringFromMaxInteractionLength requires a valid l!\n");
+    return result;
+}
+
 inline std::istream& operator>>(std::istream &in, MaxInteractionLength& l)
 {
     std::string token;

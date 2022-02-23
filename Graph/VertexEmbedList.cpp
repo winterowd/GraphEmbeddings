@@ -5,7 +5,8 @@
 VertexEmbedList::VertexEmbedList(MaxInteractionLength maxEmbeddingLength, MaxInteractionLength correlatorDistance) :
     NbrChoicesForFirstBond(1),
     MaxLength(maxEmbeddingLength),
-    TwoPointFunction(true),
+    Rooted(true),
+    RootedVerticesSet(2, false),
     FixedVertices(2, VertexEmbed{-1,-1}),
     CorrelatorDistance(correlatorDistance)
 {
@@ -36,7 +37,8 @@ VertexEmbedList::VertexEmbedList(MaxInteractionLength maxEmbeddingLength, MaxInt
 /// takes in what the max interaction length will be
 VertexEmbedList::VertexEmbedList(MaxInteractionLength maxEmbeddingLength) :
     MaxLength(maxEmbeddingLength),
-    TwoPointFunction(false),
+    Rooted(false),
+    RootedVerticesSet(2, false),
     FixedVertices(2, VertexEmbed{-1,-1})
 {
 #ifdef DEBUG
@@ -67,7 +69,7 @@ void VertexEmbedList::AddVertexEmbed(const VertexEmbed& v)
 {
 #ifdef DEBUG
     for (auto it=this->List.begin(); it!=this->List.end(); ++it)
-        if ((v.Number==it->Number) !=  (v.Index==it->Index))
+        if ((v.Number==it->Number) ||  (v.Index==it->Index))
             std::cout << "WARNING: AddVertexEmbed attempting to add VertexEmbed object with previously occupied site or previously used vertex label!\n";
 #endif
     this->List.insert(v);
@@ -82,28 +84,31 @@ void VertexEmbedList::AddVertexEmbed(int number, int index)
 /// set both fixed vertices (add entries to member variable List as well!)
 void VertexEmbedList::AddFixedVerticesEmbed(const std::vector<VertexEmbed> &embed)
 {
+    if (!this->Rooted)
+        throw std::logic_error("ERROR: AddFixedVertexEmbed called but TwoPointFunction flag set to false!\n");
     if (embed.size() != 2)
         throw std::invalid_argument("AddFixedVerticesEmbed requires a vector of size 2!\n");
-    if (this->FixedVertices[0].Index!=-1 || this->FixedVertices[1].Index!=-1)
-        std::cerr << "WARNING: AddFixedVerticesEmbed fixed vertices already set!\n";
-    if (!this->TwoPointFunction)
-        std::cerr << "WARNING: AddFixedVerticesEmbed called but TwoPointFunction flag set to false!\n";
+    if (this->RootedVerticesSet[0] || this->RootedVerticesSet[1])
+        throw std::logic_error("ERROR: AddFixedVertexEmbed fixed vertices already set!\n");
     this->FixedVertices = embed;
     this->List.insert(embed[0]);
     this->List.insert(embed[1]);
+    this->RootedVerticesSet[0] = true;
+    this->RootedVerticesSet[1] = true;
 }
 
 /// set fixed vertex labeled by fixedNbr (0 or 1) (add to member variable List as well!)
 void VertexEmbedList::AddFixedVertexEmbed(int fixedNbr, const VertexEmbed& embed)
 {
+    if (!this->Rooted)
+        throw std::logic_error("ERROR: AddFixedVertexEmbed called but TwoPointFunction flag set to false!\n");
     if (fixedNbr != 0 && fixedNbr != 1)
         throw std::invalid_argument("AddFixedVertexEmbed requires fixedNbr to be 0 or 1!\n");
-    if (this->FixedVertices[fixedNbr].Index!=-1)
-        std::cerr << "WARNING: AddFixedVertexEmbed fixed vertices already set!\n";
-    if (!this->TwoPointFunction)
-        std::cerr << "WARNING: AddFixedVertexEmbed called but TwoPointFunction flag set to false!\n";
+    if (this->RootedVerticesSet[fixedNbr])
+        throw std::logic_error("ERROR: AddFixedVertexEmbed fixed vertex already set!\n");
     this->FixedVertices[fixedNbr] = embed;
     this->List.insert(embed);
+    this->RootedVerticesSet[fixedNbr] = true;
 }
 
 /// set fixed vertex labeled by fixedNbr (overload)
@@ -147,13 +152,25 @@ bool VertexEmbedList::HasRepeatedSites() const
     return false;
 }
 
+/// check if fixed (rooted) vertex has been set
+bool VertexEmbedList::IsFixedVertexSet(int index) const
+{
+    if (!this->IsRooted())
+        throw std::logic_error("IsFixedVertexSet called for unrooted graph!\n");
+    if (index !=0 && index != 1)
+        throw std::invalid_argument("IsFixedVertexSet requires index to be 0 or 1!\n");
+    return this->RootedVerticesSet[index];
+}
+
 /// accessor for fixed vertices
 VertexEmbed VertexEmbedList::GetFixedVertex(int index) const
 {
-    if (!this->IsTwoPointFunction())
+    if (!this->IsRooted())
         throw std::logic_error("GetFixedVertex called for unrooted graph!\n");
     if (index !=0 && index != 1)
         throw std::invalid_argument("GetFixedVertex requires index to be 0 or 1!\n");
+    if (!this->RootedVerticesSet[index])
+        std::cerr << "ERROR: In GetFixedVertex accessing a FixedVertex which has not been set!\n";
     return this->FixedVertices[index];
 }
 
@@ -169,7 +186,7 @@ int VertexEmbedList::GetVertexColor(int number) const
     if (it==this->end())
         std::cout << "ERR: GetVertexColor given a vertex number which is not in the list!\n";
 #endif
-    if (!this->IsTwoPointFunction())
+    if (!this->IsRooted())
         return 2;
     if (number==this->FixedVertices[0])
         return 0;
@@ -195,11 +212,20 @@ int VertexEmbedList::GetVertexSiteIndex(int vertexLabel) const
     return it->Index;
 }
 
+/// get the number of rooted vertices set
+int VertexEmbedList::GetNbrSetRootedVertices() const
+{
+    int count =0;
+    for (int i=0; i<2; ++i)
+        if (this->RootedVerticesSet[i])
+            count++;
+    return count;
+}
+
 /// equality operator for VertexEmbedList
 bool operator==(const VertexEmbedList& lhs, const VertexEmbedList& rhs)
 {
-
-    if (lhs.IsTwoPointFunction()!=rhs.IsTwoPointFunction()) /// check if they are of the same type (rooted or unrooted)
+    if (lhs.IsRooted()!=rhs.IsRooted()) /// check if they are of the same type (rooted or unrooted)
         return false;
 
     if (lhs.GetSize()!=rhs.GetSize()) /// check that they are the same size
@@ -212,9 +238,17 @@ bool operator==(const VertexEmbedList& lhs, const VertexEmbedList& rhs)
         if (lhs.GetBondCount(i)!=rhs.GetBondCount(i))
             return false;
 
-    if (lhs.IsTwoPointFunction()) /// compare fixed vertices if we have a two-point function (order matters!)
-        if ((lhs.GetFixedVertex(0) != rhs.GetFixedVertex(0)) || (lhs.GetFixedVertex(1) != rhs.GetFixedVertex(1)))
-            return false;
+    if (lhs.IsRooted()) /// compare fixed vertices if we have a two-point function (order matters!)
+    {
+        for (int i=0; i<2; ++i)
+        {
+            if (lhs.IsFixedVertexSet(i)!=rhs.IsFixedVertexSet(i))
+                return false;
+            if (lhs.IsFixedVertexSet(i))
+                if (lhs.GetFixedVertex(i)!=rhs.GetFixedVertex(i))
+                    return false;
+        }
+    }
 
     for (auto it1 = lhs.begin(), it2 = rhs.begin(); it1!=lhs.end() && it2!=rhs.end(); ++it1, ++it2) /// compare all of the embedded vertices (ordered)
     {
@@ -250,7 +284,7 @@ std::ostream& operator<<(std::ostream& os, const VertexEmbedList& list)
         os << "BondDegree " << i << " with count " << list.GetBondCount(i) << "\n";
     for (auto it=list.begin(); it!=list.end(); ++it)
         os << "Vertex " << *it << "\n";
-    if (list.IsTwoPointFunction())
+    if (list.IsRooted())
     {
         for (auto it=list.FixedVertices.begin(); it!=list.FixedVertices.end(); ++it)
             os << "ROOTED: " << *it << "\n";

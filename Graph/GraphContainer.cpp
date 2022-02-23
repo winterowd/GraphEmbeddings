@@ -1,11 +1,10 @@
 #include "GraphContainer.h"
 
 /// constructor from set of undirected edges (sets adjacency matrix from edges)
-GraphContainer::GraphContainer(int n, int m, const std::vector<UndirectedEdge>& edges, bool storeRooted, int nbrRooted) :
+GraphContainer::GraphContainer(int n, int m, const std::vector<UndirectedEdge>& edges, int nbrRooted) :
     N(n),
     MWords(m),
     L(edges.size()),
-    StoreRooted(storeRooted),
     NbrRooted(nbrRooted),
     RootedVertices(nbrRooted,-1),
     NTimesNMinusOneDiv2(n*(n-1)/2),
@@ -20,8 +19,10 @@ GraphContainer::GraphContainer(int n, int m, const std::vector<UndirectedEdge>& 
     if (this->L>this->NTimesNMinusOneDiv2)
         throw std::invalid_argument("ERROR: In GraphContainer the size of edges is required to be less than or equal to N(N-1)/2!\n");
 
-    if (storeRooted && (nbrRooted<0 || nbrRooted>2))
+    if (nbrRooted<0 || nbrRooted>2)
         throw std::invalid_argument("GraphContainer constructor needs 0 < nbrRooted <= 2 if storeRooted is true!\n");
+
+    this->Rooted = (this->NbrRooted!=0);
 
     this->SetRowAndColMapping();
 
@@ -49,11 +50,10 @@ GraphContainer::GraphContainer(int n, int m, const std::vector<UndirectedEdge>& 
 }
 
 // construtor from g6String
-GraphContainer::GraphContainer(int n, int m, const std::string& g6String, bool storeRooted, int nbrRooted) :
+GraphContainer::GraphContainer(int n, int m, const std::string& g6String, int nbrRooted) :
     N(n),
     MWords(m),
     L(0),
-    StoreRooted(storeRooted),
     NbrRooted(nbrRooted),
     RootedVertices(nbrRooted,-1),
     NTimesNMinusOneDiv2(n*(n-1)/2),
@@ -64,8 +64,10 @@ GraphContainer::GraphContainer(int n, int m, const std::string& g6String, bool s
     G6String(g6String),
     SymmFactor(-1)
 {
-    if (storeRooted && (nbrRooted<0 || nbrRooted>2))
+    if (nbrRooted<0 || nbrRooted>2)
         throw std::invalid_argument("GraphContainer constructor needs 0 < nbrRooted <= 2 if storeRooted is true!\n");
+
+    this->Rooted = (this->NbrRooted!=0);
 
     this->SetRowAndColMapping();
 
@@ -189,11 +191,10 @@ void GraphContainer::SetGraphFromDenseNauty(graph *g)
 }
 
 /// constructor from dense nauty data structure
-GraphContainer::GraphContainer(int n, int m, graph *g, bool storeRooted, int nbrRooted) :
+GraphContainer::GraphContainer(int n, int m, graph *g, int nbrRooted) :
     N(n),
     MWords(m),
     L(0),
-    StoreRooted(storeRooted),
     NbrRooted(nbrRooted),
     RootedVertices(nbrRooted,-1),
     NTimesNMinusOneDiv2(n*(n-1)/2),
@@ -204,8 +205,10 @@ GraphContainer::GraphContainer(int n, int m, graph *g, bool storeRooted, int nbr
     G6String(""),
     SymmFactor(-1)
 {
-    if (storeRooted && (nbrRooted<0 || nbrRooted>2))
+    if (nbrRooted<0 || nbrRooted>2)
         throw std::invalid_argument("GraphContainer constructor needs 0 < nbrRooted <= 2 if storeRooted is true!\n");
+
+    this->Rooted = (this->NbrRooted!=0);
 
     this->SetRowAndColMapping();
 
@@ -231,18 +234,68 @@ void GraphContainer::ResetEdges()
     }
 }
 
-/// for two-rooted (colored) graphs, after calling densenauty to get the canonical form
+/// for one- and two-rooted (colored) graphs, after calling densenauty to get the canonical form
+/// @param labCanon: N element array giving the mapping to the canonical graph i.e. vertex labCanon[i] is relabeled as vertex i
+/// @param rootedVerticesToChange: vector with rooted vertices; size is less than or equal to number of rooted vertices and greater than 0! (map must take rootedVerticesToChange[i] to i and match with RootedVertices[i])
+void GraphContainer::ColoredCanonicalRelabeling(int *labCanon, const std::vector<int>& rootedVerticesToChange)
+{
+    if (rootedVerticesToChange.size()==0 || rootedVerticesToChange.size()>this->NbrRooted)
+        throw std::invalid_argument("ERROR: ColoredCanonicalRelabeling requires rootedVerticesToChange to be of size greater than zero and less than or equal to NbrRooted!\n");
+
+    for (int i=0; i<rootedVerticesToChange.size(); ++i)
+        if (labCanon[i]!=rootedVerticesToChange[i])
+            throw std::invalid_argument("ERROR: ColoredCanonicalRelabeling labCanon[i] must equal rootedVerticesToChange[i]!\n");
+
+    std::vector<std::vector<bool>> newM(N, std::vector<bool>(this->N, false));
+    for (int i=0; i<this->N; ++i)
+    {
+        for (int j=i+1; j<this->N; ++j)
+        {
+            newM[i][j] = this->GetElementAdjacencyMatrix(labCanon[i]+1,labCanon[j]+1);  /// RowM and ColM start at 1 and alpha at 0!!!!
+            newM[j][i] = newM[i][j]; /// symmetrize
+        }
+    }
+
+    this->M = newM; /// copy adjacency matrix
+    /// set the vertex orders
+    for (unsigned int v=1; v<=this->N; ++v)
+        this->SetVertexOrder(v, this->ComputeVertexOrder(v));
+
+    /// relabel edges
+    this->ResetEdges();
+
+    for (int i=0; i<rootedVerticesToChange.size(); ++i)
+    {
+        if (rootedVerticesToChange[i]!=this->RootedVertices[i])
+            throw std::invalid_argument("ColoredCanonicalRelabeling requires this->RootedVertices[i] to equal rootedVerticesToChange[i]!\n");
+        this->RootedVertices[i] = i; /// ith rooted vertex (color) is always labeled i (REMEMBER: starts from 0!)
+    }
+
+#ifdef DEBUG
+    std::cout << "AFTER_COLORED_CANONICAL_RELABELING:\n";
+    std::cout << *this;
+    this->PrintVertexOrders();
+#endif
+
+}
+
+/// for one- and two-rooted (colored) graphs, after calling densenauty to get the canonical form
 /// @param labCanon: N element array giving the mapping to the canonical graph i.e. vertex labCanon[i] is relabeled as vertex i
 /// @param v1: label of first rooted vertex (starts at zero!) (map must take v1 to 0 and match with RootedVertices[0])
-/// @param v2: label of second rooted vertex (starts at zero!) (map must take v2 to 1 and match with RootedVertices[1])
+/// @param v2 (optional): label of second rooted vertex (starts at zero!) (map must take v2 to 1 and match with RootedVertices[1])
 void GraphContainer::ColoredCanonicalRelabeling(int *labCanon, int v1, int v2)
 {
+    if (!this->Rooted)
+        throw std::logic_error("ERROR: ColoredCanonicalRelabeling called for unrooted graph!\n");
 
     if (labCanon[0]!=v1)
-        throw std::invalid_argument("ColoredCanonicalRelabeling labCanon[0] must equal v1!\n");
+        throw std::invalid_argument("ERROR: ColoredCanonicalRelabeling labCanon[0] must equal v1!\n");
 
     if (v2!=-1 && labCanon[1]!=v2)
-        throw std::invalid_argument("ColoredCanonicalRelabeling labCanon[1] must equal v2!\n");
+        throw std::invalid_argument("ERROR: ColoredCanonicalRelabeling labCanon[1] must equal v2!\n");
+
+    if (v2!=-1 && this->NbrRooted==1)
+        throw std::invalid_argument("ERROR: ColoredCanonicalRelabeling cannot relabel second rooted vertex if NbrRooted not equal to 2!\n");
 
 #ifdef DEBUG
         for (int i=0; i<this->N; ++i)
@@ -267,11 +320,11 @@ void GraphContainer::ColoredCanonicalRelabeling(int *labCanon, int v1, int v2)
     /// relabel edges
     this->ResetEdges();
 
-    if (this->StoreRooted)
+    if (v1!=this->RootedVertices[0])
+        throw std::invalid_argument("ColoredCanonicalRelabeling requires RootedVertices[0] to equal v1!\n");
+    this->RootedVertices[0] = 0; /// first rooted vertex is always labeled zero
+    if (this->NbrRooted==2)
     {
-        if (v1!=this->RootedVertices[0])
-            throw std::invalid_argument("ColoredCanonicalRelabeling requires RootedVertices[0] to equal v1!\n");
-        this->RootedVertices[0] = 0; /// first rooted vertex is always labeled zero
         if (v2!=-1 && v2!=this->RootedVertices[1])
             throw std::invalid_argument("ColoredCanonicalRelabeling requires RootedVertices[1] to equal v2!\n");
         if (v2!=-1) /// check if second vertex is set
@@ -290,6 +343,9 @@ void GraphContainer::ColoredCanonicalRelabeling(int *labCanon, int v1, int v2)
 /// @param labCanon: N element array giving the mapping to the canonical graph i.e. vertex labCanon[i] is relabeled as vertex i
 void GraphContainer::CanonicalRelabeling(int *labCanon)
 {
+    if (this->Rooted)
+        throw std::logic_error("ERROR: CanonicalRelabeling called for rooted graph!\n");
+
 #ifdef DEBUG
         for (int i=0; i<this->N; ++i)
             std::cout << "labCanon maps vertex " << labCanon[i]+1 << " to vertex " << i+1 << "\n";
@@ -446,8 +502,8 @@ void GraphContainer::SetVertexOrder(unsigned int v, int order)
 /// @param label: label of given rooted vertex (starts at zero and goes to N-1)
 void GraphContainer::SetRootedVertex(int index, int label)
 {
-    if (!this->StoreRooted)
-        std::cerr << "ERROR: SetRootedVertex called when StoreRooted flag is false!\n";
+    if (!this->Rooted)
+        std::cerr << "ERROR: SetRootedVertex called for unrooted graph!\n";
     if (index<0 || index>=this->NbrRooted)
         throw std::invalid_argument("SetRootedVertex requires 0 <= index < NbrRooted!\n");
     if (label<0 || label>=this->N)
@@ -459,18 +515,24 @@ void GraphContainer::SetRootedVertex(int index, int label)
 /// return vertex label (starts at 0 and goes to N-1)
 int GraphContainer::GetRootedVertex(int index) const
 {
-    if (!this->StoreRooted)
-        std::cerr << "ERROR: GetRootedVertex called when StoreRooted flag is false!\n";
+    if (!this->Rooted)
+        std::cerr << "ERROR: GetRootedVertex called for unrooted graph!\n";
     if (index<0 || index>=this->NbrRooted)
         throw std::invalid_argument("GetRootedVertex requires 0 <= index < NbrRooted!\n");
     return this->RootedVertices[index];
 }
 
+/// return the rooted vertices as a vector
+std::vector<int> GraphContainer::GetRootedVertices() const
+{
+    if (!this->Rooted)
+        std::cerr << "ERROR: GetRootedVertex called for unrooted graph!\n";
+    return this->RootedVertices;
+}
+
 /// accessor for number of rooted vertices
 int GraphContainer::GetNbrRooted() const
 {
-    if (!this->StoreRooted)
-        std::cerr << "ERROR: GetNbrRooted called when StoreRooted flag is false!\n";
     return this->NbrRooted;
 }
 
@@ -551,10 +613,10 @@ UndirectedEdge GraphContainer::GetEdge(int index)
 /// compare number of vertices, number of bonds and finally adjacency matrices
 bool operator==(const GraphContainer& lhs, const GraphContainer& rhs)
 {
-    if (lhs.StoringRooted()!=rhs.StoringRooted())
+    if (lhs.IsRooted()!=rhs.IsRooted())
         throw std::invalid_argument("ERROR: Comparing two containers and find that one is storing rooted vertices and the other is not!\n");
 
-    if (lhs.StoringRooted())
+    if (lhs.IsRooted())
     {
         if (lhs.GetNbrRooted()!=rhs.GetNbrRooted())
             return false;
@@ -589,10 +651,18 @@ bool operator<(const GraphContainer& lhs, const GraphContainer& rhs)
     return lhs.ComputeCurrentKey() < rhs.ComputeCurrentKey();
 }
 
-/// output adjacency matrix
+/// output adjacency matrix, g6 string, and rooted vertices (if they are stored)
 std::ostream& operator<< (std::ostream& stream, const GraphContainer& can)
 {
+    stream << "G6: " << can.G6String << "\n";
     for (int i=0; i<can.NTimesNMinusOneDiv2; ++i)
         stream << "M: " << i << " " << can.RowM[i] << " " << can.ColM[i] << " " << can.GetElementAdjacencyMatrix(can.RowM[i], can.ColM[i]) << "\n";
+    if (can.IsRooted())
+    {
+        stream << "ROOTED_VERTICES: ";
+        for (int i=0; i<can.GetNbrRooted(); ++i)
+            stream << "(" << i << "," << can.GetRootedVertex(i)+1 << ") ";
+        stream << "\n";
+    }
     return stream;
 }

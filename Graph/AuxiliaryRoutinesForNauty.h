@@ -18,6 +18,7 @@ void SetVertexColors(int *c, const std::vector<int>& rootedVertices, int n, bool
 GraphContainer GetCanonicalColoredGraphNauty(int n, const std::string& g6String, const std::vector<int>& rootedVertices, int* labOutput=NULL); /// returns canonical colored graph
 GraphContainer GetCanonicalGraphNauty(int n, const std::string& g6String, int* labOutput=NULL); /// returns canonical graph (and possibly relabeling)
 GraphContainer GetCanonicalGraphNauty(int n, graph *g, int* labOutput=NULL); /// returns canonical graph
+int ExtractSymmFactor(statsblk status);
 }
 
 #endif // AUXILIARYROUTINESFORNAUTY_H

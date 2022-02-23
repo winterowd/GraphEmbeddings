@@ -63,6 +63,9 @@ inline bool operator<(const VertexEmbed& lhs,  const VertexEmbed& rhs)
         return (lhs.Index < rhs.Index);
 }
 
+/// TODO: do we need to keep type of correlator? How best to distinguish rooted and non-rooted embeddings?
+/// TODO: what do we do to distinguish one- and two-rooted graphs? Currently works well with two-rooted but is there an easy fix?
+
 /// class to hold lists for embedding
 /// when including next nearest neighbors and so on need to keep track of number of number of types of links used
 /// getters and setters mostly. What other types of routines? any other data fields?
@@ -77,7 +80,9 @@ private:
 
     MaxInteractionLength MaxLength; /// save this
 
-    bool TwoPointFunction; /// flag for two-point function (rooted graph)
+    bool Rooted; /// flag for two-point function (rooted graph)
+
+    std::vector<bool> RootedVerticesSet; /// flag for rooted vertices
 
      /// NOTE: when making canonical form, first vertex corresponds to color 1 and second vertex to color 2 (equality operator will distinguish them)
     std::vector<VertexEmbed> FixedVertices; /// for two-point functions (rooted graph)
@@ -108,6 +113,8 @@ public:
 
     int GetBondCount(int dIndex) const;
 
+    bool IsFixedVertexSet(int index) const;
+
     VertexEmbed GetFixedVertex(int index) const;
 
     int GetVertexColor(int number) const;
@@ -117,7 +124,7 @@ public:
 
     int GetNbrBondTypes() const { return this->BondCounts.size(); }
 
-    bool IsTwoPointFunction() const { return this->TwoPointFunction; }
+    bool IsRooted() const { return this->Rooted; }
 
     MaxInteractionLength GetCorrelatorDistance() const { return this->CorrelatorDistance; }
 
@@ -132,6 +139,8 @@ public:
     int GetNbrChoicesForFirstBond() const { return this->NbrChoicesForFirstBond; }
 
     int GetVertexSiteIndex(int vertexLabel) const;
+
+    int GetNbrSetRootedVertices() const;
 
     VertexEmbedList GetSublist(const std::vector<int>& vertices) const; /// TODO write this function which takes in a set of vertex labels and returns a subset of VertexEmbed objects
 

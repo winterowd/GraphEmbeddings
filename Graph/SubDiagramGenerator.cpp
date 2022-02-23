@@ -13,8 +13,12 @@ SubDiagramGenerator::SubDiagramGenerator(const GraphContainer& container, const 
     if (OriginalContainer.GetN()!=OriginalList.GetSize())
         throw std::invalid_argument("SubDiagramGenerator requires container and list to be of the same size!\n");
 
-    if (OriginalList.IsTwoPointFunction()) /// warn that the subdiagram VertexEmbedLists will not carry info about rooted/unrooted vertices (all unrooted)
+    if (OriginalList.IsRooted()) /// warn that the subdiagram VertexEmbedLists will not carry info about rooted/unrooted vertices (all unrooted)
         std::cout << "WARNING: SubDiagramGenerator received a two-point funtion! Embeddings of subdiagrams will not contain info about rooted vertices!\n";
+
+     /// check if both container and list are rooted/unrooted
+     if (this->OriginalContainer.IsRooted()!=this->OriginalList.IsRooted())
+         throw std::invalid_argument("SubDiagramGenerator requires container and list to be both rooted or both unrooted!\n");
 
     this->GenerateSubDiagrams(); /// generate subdiagrams
     this->GenerateEmbedListsForSubDiagrams(); /// generate the embed list for the subdiagrams
@@ -23,7 +27,7 @@ SubDiagramGenerator::SubDiagramGenerator(const GraphContainer& container, const 
 
 }
 
-/// generate a set of subdiagrams which are canonical wrt the cubic symmetries and labels
+/// generate a set of subdiagrams (containers and lists) which are canonical wrt the cubic symmetries and labels
 /// each subgraph then maps to an element of the set of canonical subgraphs (i.e. more than one subgraph can map to a single element of the set)
 /// NOTE: SubgraphToCanonicalMap is in the same order as
 void SubDiagramGenerator::GenerateCanonicalSubDiagrams()
@@ -125,11 +129,15 @@ void SubDiagramGenerator::GenerateSubDiagrams()
         /// create an edge set that we can send to the constructor of GraphContainer and a valid vertex map
         auto resultRelabelAndMap = this->GetRelabeledEdgesAndVertexMap(*eSetIt);
 
-        GraphContainer subGraph(resultRelabelAndMap.second.size(), 1, resultRelabelAndMap.first);
+        /// create the subgraph (rooted or unrooted)
+        auto subGraph = this->CreateSubgraphContainerFromVertexMapAndEdges(resultRelabelAndMap.first, resultRelabelAndMap.second);
+
         if (subGraph.IsConnected())
         {
 #ifdef DEBUG
             std::cout << "GRAPH IS CONNECTED!\n";
+            std::cout << "DEBUG_ADDING_GRAPH_TO_SUBDIAGRAMS!\n";
+            std::cout << subGraph;
 #endif
             this->AddToSortedSubdiagrams(subGraph, this->VerticesMap.size());
             this->VerticesMap.push_back(resultRelabelAndMap.second);
@@ -153,15 +161,24 @@ void SubDiagramGenerator::GenerateSubDiagrams()
 
 }
 
+/// TODO: add comments here
+std::pair<CanonicalSubDiagram, VertexEmbedList> SubDiagramGenerator::ComputeCanonicalSubgraphAndList(int sortedIndex)
+{
+    if (this->GetSubDiagram(sortedIndex).IsRooted())
+        return this->ComputeCanonicalSubgraphAndListRooted(sortedIndex);
+    else
+        return this->ComputeCanonicalSubgraphAndListUnrooted(sortedIndex);
+}
+
 /// compute the canonical subgraph for a given sorted index and the map which takes us from canonical vertex labelings to original vertex labelings
 /// i.e. vertexMap_cg_to_original[i] contains the original vertex label which is mapped to canonical vertex label (i+1)
 /// canonicalize vertex labels with nauty then canonicalize wrt cubic symmetries
 /// what we return is a container for the canonical embedded subgraph which
 /// @param sortedIndex: linear sorted index for subgraph
-std::pair<CanonicalSubDiagram, VertexEmbedList> SubDiagramGenerator::ComputeCanonicalSubgraphAndList(int sortedIndex)
+std::pair<CanonicalSubDiagram, VertexEmbedList> SubDiagramGenerator::ComputeCanonicalSubgraphAndListUnrooted(int sortedIndex)
 {
 #ifdef DEBUG
-    std::cout << "Canonicalizing the following subgraph:\n";
+    std::cout << "Canonicalizing the following unrooted subgraph:\n";
     this->PrintSubDiagram(sortedIndex);
 #endif
     GraphContainer subgraph = this->GetSubDiagram(sortedIndex);
@@ -174,7 +191,7 @@ std::pair<CanonicalSubDiagram, VertexEmbedList> SubDiagramGenerator::ComputeCano
     DYNALLSTAT(int, lab, lab_sz); /// label
     DYNALLOC2(int, lab, lab_sz, n, m, "malloc");
 
-    /// TODO: remember this only works with unrooted graphs! Need to eventually update this to have rooted awareness and maybe more? (sources?)
+    /// get canonical unrooted grpah
     GraphContainer canGraphNew = AuxiliaryRoutinesForNauty::GetCanonicalGraphNauty(subgraph.GetN(), subgraph.GetG6String(), lab);
 
     /// convert vertex labels on embedList (subgraph) from original to canonical relabeled
@@ -220,6 +237,81 @@ std::pair<CanonicalSubDiagram, VertexEmbedList> SubDiagramGenerator::ComputeCano
 
 }
 
+/// compute the canonical subgraph for a given sorted index and the map which takes us from canonical vertex labelings to original vertex labelings
+/// i.e. vertexMap_cg_to_original[i] contains the original vertex label which is mapped to canonical vertex label (i+1)
+/// canonicalize vertex labels with nauty then canonicalize wrt cubic symmetries
+/// what we return is a container for the canonical embedded subgraph which
+/// @param sortedIndex: linear sorted index for subgraph
+std::pair<CanonicalSubDiagram, VertexEmbedList> SubDiagramGenerator::ComputeCanonicalSubgraphAndListRooted(int sortedIndex)
+{
+#ifdef DEBUG
+    std::cout << "Canonicalizing the following rooted subgraph:\n";
+    this->PrintSubDiagram(sortedIndex);
+#endif
+    GraphContainer subgraph = this->GetSubDiagram(sortedIndex);
+    auto vertexMap = this->GetVertexMap(sortedIndex);
+    VertexEmbedList embedList = this->GetEmbedList(sortedIndex);
+
+    int n = subgraph.GetN();
+    int m = SETWORDSNEEDED(n);
+
+    DYNALLSTAT(int, lab, lab_sz); /// label
+    DYNALLOC2(int, lab, lab_sz, n, m, "malloc");
+
+    /// TODO: remember this only works with unrooted graphs! Need to eventually update this to have rooted awareness and maybe more? (sources?)
+    GraphContainer canGraphNew = AuxiliaryRoutinesForNauty::GetCanonicalColoredGraphNauty(subgraph.GetN(), subgraph.GetG6String(), subgraph.GetRootedVertices(), lab);
+
+#ifdef DEBUG
+    if (canGraphNew.GetNbrRooted()!=subgraph.GetNbrRooted())
+        throw std::logic_error("ERROR: canonical and original graphs have different number of rooted vertices!\n");
+#endif
+
+    /// convert vertex labels on embedList (subgraph) from original to canonical relabeled
+    VertexEmbedList canonicalList(embedList.GetMaxLength(), embedList.GetCorrelatorDistance());
+    std::vector<int> vertexMapToCG(embedList.GetSize()); /// vertexMapToCG[i] contains original of vertex labeled i+1 after canonicalization
+    for (auto it=embedList.begin(); it!=embedList.end(); ++it)
+    {
+        /// find initial relabeling (from original labels to 1,..,N_bsg, where N_bsg is the number of bonds in the subgraph)
+        auto tempIt = std::find(vertexMap.begin(), vertexMap.end(), it->Number);
+        int tempIndex1 = std::distance(vertexMap.begin(), tempIt);
+#ifdef DEBUG
+        std::cout << "DEBUG_INVERSE_MAPPING: Vertex " << it->Number << " maps to " << tempIndex1+1 << "\n";
+#endif
+        /// find canonical relabeling
+        int tempIndex2 = -1;
+        for (int i=0; i<n; ++i)
+        {
+            if (lab[i]==tempIndex1)
+            {
+                tempIndex2 = i;
+                break;
+            }
+        }
+        if (tempIndex2<canGraphNew.GetNbrRooted()) /// adding a rooted vertex (NAUTY canonicalization so that rooted/colored vertices are relabeled 0 and 1 (1 and 2 if "starting from 1 convention")
+            canonicalList.AddFixedVertexEmbed(tempIndex2, tempIndex2+1, it->Index);
+        else /// adding an unrooted vertex
+            canonicalList.AddVertexEmbed(tempIndex2+1, it->Index); /// add to embed list
+#ifdef DEBUG
+        std::cout << "DEBUG_CG_MAPPING: Vertex " << tempIndex1+1 << " maps to " << tempIndex2+1 << "\n";
+        std::cout << "DEBUG_ORIGINAL_TO_CG_MAPPING: Vertex " << it->Number << " maps to " << tempIndex2+1 << "\n";
+#endif
+        vertexMapToCG[tempIndex2] = it->Number;
+    }
+
+    for (int i=0; i<vertexMapToCG.size(); ++i)
+        std::cout << "DEBUG_CG_TO_ORIGINAL: VERTEX " << i+1 << " maps to " << vertexMapToCG[i] << "\n";
+    std::cout << "DEBUG_CANONICAL_RELABEL_EMBED_LIST:\n";
+    std::cout << canonicalList;
+
+    /// canonicalize with respect to cubic symmetries
+    CubicLatticeCanonicalizor canonicalizor(&canGraphNew, this->MyCubicLattice, canonicalList);
+
+    DYNFREE(lab, lab_sz); /// free label
+
+    return std::pair<CanonicalSubDiagram,VertexEmbedList>(CanonicalSubDiagram(canonicalizor.GetCanonical(), canGraphNew), canonicalList);
+
+}
+
 /// create a VertexEmbedList object for each subdiagram using ORIGINAL labels
 /// NOTE: EmbedList has same order as VerticesMap
 void SubDiagramGenerator::GenerateEmbedListsForSubDiagrams()
@@ -230,11 +322,56 @@ void SubDiagramGenerator::GenerateEmbedListsForSubDiagrams()
 #endif
     for (int i=0; i<this->NbrSubDiagrams; ++i) /// loop over vertex maps
     {
-        VertexEmbedList tempList(this->OriginalList.GetMaxLength());
-        for (int j=0; j<this->VerticesMap[i].size(); ++j)
-            tempList.AddVertexEmbed(this->VerticesMap[i][j], this->GetVertexSiteIndex(this->VerticesMap[i][j]));
-        this->EmbedLists.push_back(tempList);
+        /// get subgraph corresponding to i-th embed list (UNSORTED) to see which vertices are rooted
+        auto subGraphContainer = this->GetSubDiagram(this->GetSortedIndexFromUnsortedIndex(i));
+        std::cout << "CREATING_EMBEDLIST_FOR_SUBDIAGRAM " << i << "\n";
+        if (subGraphContainer.IsRooted())
+        {
+            VertexEmbedList tempList(this->OriginalList.GetMaxLength(), this->OriginalList.GetCorrelatorDistance());
+            /// add rooted vertices
+            for (int j=0; j<subGraphContainer.GetNbrRooted(); j++)
+            {
+                std::cout << "ROOTED_" << j << ": vertex labeled " << subGraphContainer.GetRootedVertex(j)+1 << " which maps to original vertex labeled " << this->VerticesMap[i][subGraphContainer.GetRootedVertex(j)] << "\n";
+                tempList.AddFixedVertexEmbed(j, this->VerticesMap[i][subGraphContainer.GetRootedVertex(j)], this->GetVertexSiteIndex(this->VerticesMap[i][subGraphContainer.GetRootedVertex(j)]));
+            }
+            /// add unrooted
+            for (int j=0; j<this->VerticesMap[i].size(); ++j)
+            {
+                tempList.AddVertexEmbed(this->VerticesMap[i][j], this->GetVertexSiteIndex(this->VerticesMap[i][j]));
+            }
+            this->EmbedLists.push_back(tempList);
+        }
+        else
+        {
+            VertexEmbedList tempList(this->OriginalList.GetMaxLength());
+            for (int j=0; j<this->VerticesMap[i].size(); ++j)
+                tempList.AddVertexEmbed(this->VerticesMap[i][j], this->GetVertexSiteIndex(this->VerticesMap[i][j]));
+            this->EmbedLists.push_back(tempList);
+        }
+        std::cout << "ADDED_EMBED_LIST: " << i << "\n";
+        std::cout << this->EmbedLists[i];
     }
+}
+
+/// create container given a set of edges and vertex map
+/// takes care of rooted vertices; in subgraph COULD have different color i.e. rooted vertex index 1 could become rooted vertex index 0
+/// @param edges: vector of undirected edges
+/// @param map: vertex map for relabeling
+GraphContainer SubDiagramGenerator::CreateSubgraphContainerFromVertexMapAndEdges(const std::vector<UndirectedEdge>& edges, const std::vector<int>& map)
+{
+    std::vector<int> rootedNewLabels; /// new labels of rooted vertices (start at 0!)
+    for (int i=0; i<this->OriginalContainer.GetNbrRooted(); ++i) /// loop through rooted vertices (0, 1, or 2 rooted vertices)
+    {
+        auto rootedLabel = this->OriginalContainer.GetRootedVertex(i)+1; /// add one as starts at zero!
+        /// find if rootedLabel is in map and if it is, at what index
+        auto tempIt = std::find(map.begin(), map.end(), rootedLabel);
+        if (tempIt!=map.end())
+            rootedNewLabels.push_back(std::distance(map.begin(), tempIt)); /// label from 0,..,N_sb-1
+    }
+    GraphContainer result(map.size(), 1, edges, rootedNewLabels.size());
+    for (int i=0; i<rootedNewLabels.size(); ++i)
+        result.SetRootedVertex(i, rootedNewLabels[i]);
+    return result;
 }
 
 /// given a set of edges relabel vertices such that they go from 1,...,V_{sub} where V_{sub} is the number of vertices in the subgraph
@@ -544,6 +681,19 @@ std::vector<UndirectedEmbeddedEdge> SubDiagramGenerator::ConvertUndirectedEdgesT
     for (auto it=inputEdges.begin(); it!=inputEdges.end(); ++it)
         result.push_back(UndirectedEmbeddedEdge{this->OriginalList.GetVertexSiteIndex(it->FirstVertex), this->OriginalList.GetVertexSiteIndex(it->SecondVertex)});
     return result;
+}
+
+/// convert UNSORTED index to linear SORTED index
+/// @param unsortedIndex: unsorted index (i.e. embedded lists and vertex maps)
+int SubDiagramGenerator::GetSortedIndexFromUnsortedIndex(int unsortedIndex) const
+{
+    if (unsortedIndex<0 || unsortedIndex >=this->NbrSubDiagrams)
+        throw std::invalid_argument("ERROR: GetSortedIndexFromUnsortedIndex requires 0 <= sortedIndex < N_sd!\n");
+    for (int l=0; l<this->SortedSubDiagramsWithMap.size(); ++l) /// find at what index (l, i) of SortedSubDiagramsWithMap where unsortedIndex is stored
+        for (int i=0; i<this->SortedSubDiagramsWithMap[l].size(); ++i)
+            if (unsortedIndex==this->SortedSubDiagramsWithMap[l][i].first)
+                return this->GetSortedLinearIndex(l+1, i); /// convert (l, i) to linear index (SORTED)
+    throw std::invalid_argument("ERROR: In GetSortedIndexFromUnsortedIndex could not convert unsorted index to sorted index!\n");
 }
 
 /// get the UNSORTED index given the linear SORTED index!

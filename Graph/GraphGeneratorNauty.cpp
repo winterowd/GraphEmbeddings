@@ -30,7 +30,7 @@ bool GraphGeneratorNauty::IsCanonical(graph *g)
 }
 
 /// Set up geng argument list.  The 0-th argument is the command name. There must be a NULL at the end.
-void GraphGeneratorNauty::Generate(bool useIterativeRooted)
+void GraphGeneratorNauty::Generate()
 {
 
     if (!this->AreGraphParametersOK()) /// check N and L
@@ -56,12 +56,7 @@ void GraphGeneratorNauty::Generate(bool useIterativeRooted)
 
     /// call routine which reads in graphs in filename and then generates rooted graphs
     if (this->Parameters.GenerateTwoRooted())
-    {
-        if (useIterativeRooted)
-            this->GenerateTwoRootedFixedOrderIterative(filename, this->Parameters.IsVerbose(), true);
-        else
-            this->GenerateTwoRootedFixedOrder(filename, this->Parameters.IsVerbose(), true);
-    }
+        this->GenerateTwoRootedFixedOrderIterative(filename, this->Parameters.IsVerbose(), true);
     else /// otherwise generate connected graphs
         GENG_MAIN(argv.size()-1,argv.data());
 
@@ -96,14 +91,17 @@ void GraphGeneratorNauty::GenerateTwoRootedFixedOrderIterative(std::string input
     else
         throw std::invalid_argument("GenerateTwoRootedFixedOrder: Error opening "+inputFilename);
 
-    //// output file stream for rooted graphs
-    std::string outputFilename = this->GetOutputFilenameFixedOrder(true); //"test_iterative_graphs_g6_rooted_connected_N_"+std::to_string(this->N)+"_L_"+std::to_string(this->L)+".dat";
-    FILE *fpg6 = fopen(outputFilename.c_str(), "w");
+    //// output file streams for rooted graphs (one- and two-rooted graphs)
+    std::string outputFilenameOneRooted = this->GetOutputFilenameFixedOrder(true, 1);
+    FILE *fpOneRootedg6 = fopen(outputFilenameOneRooted.c_str(), "w");
+
+    std::string outputFilenameTwoRooted = this->GetOutputFilenameFixedOrder(true, 2);
+    FILE *fpTwoRootedg6 = fopen(outputFilenameTwoRooted.c_str(), "w");
 
     FILE *fpg6sorted;
     if (outputSorted)
     {
-        std::string outputSortedFilename = "sorted_test_iterative_graphs_g6_rooted_connected_N_"+std::to_string(this->N)+"_L_"+std::to_string(this->L)+".dat";
+        std::string outputSortedFilename = "sorted_test_iterative_graphs_g6_rooted_2_connected_N_"+std::to_string(this->N)+"_L_"+std::to_string(this->L)+".dat";
         fpg6sorted = fopen(outputSortedFilename.c_str(), "w");
     }
 
@@ -139,7 +137,7 @@ void GraphGeneratorNauty::GenerateTwoRootedFixedOrderIterative(std::string input
 #endif
         std::vector<GraphContainer> rootedGraphList; /// holds the list of rooted graphs produced from a single connected graph (one line of file produced by geng)
 
-        GraphContainer refContainer(this->N, this->MWords, g, true, 2); /// container for graphs from nauty dense format
+        GraphContainer refContainer(this->N, this->MWords, g, 2); /// container for graphs from nauty dense format
 
         /// check bonds and order!
         if (this->N != refContainer.GetN())
@@ -164,9 +162,9 @@ void GraphGeneratorNauty::GenerateTwoRootedFixedOrderIterative(std::string input
             /// call densenauty
             densenauty(g, lab, ptn, orbits, &options, &stats, this->MWords, this->N, cg1);
 
-            tempGraph.ColoredCanonicalRelabeling(lab, i); /// relabel according to canonical labeling returned from densenauty (first rooted vertex only)
+            tempGraph.ColoredCanonicalRelabeling(lab, std::vector<int>{i}); /// relabel according to canonical labeling returned from densenauty (first rooted vertex only)
 #ifdef DEBUG
-            GraphContainer testGraphFromDenseCG(this->N, this->MWords, cg1, true, 2);
+            GraphContainer testGraphFromDenseCG(this->N, this->MWords, cg1, 2);
             testGraphFromDenseCG.SetRootedVertex(0,0); /// label starts at zero
             if (testGraphFromDenseCG!=tempGraph)
                 throw std::invalid_argument("In GenerateTwoRootedFixedOrderIterative relabeled graph does not equal graph created from canonical dense NAUTY graph afer first rooted vertex placed!\n");
@@ -180,8 +178,12 @@ void GraphGeneratorNauty::GenerateTwoRootedFixedOrderIterative(std::string input
                 {
                     countComparison += rootedGraphList.size();
                     countComparisonIndividual += rootedGraphList.size();
-                    std::cout << "ADDING ROOTED GRAPH TO LIST (FIRST ROOTED VERTEX)!\n";
                 }
+                /// output cg to file
+                char *s = ntog6(cg1,this->MWords,this->N);
+                fprintf(fpOneRootedg6, "%.*s ", static_cast<int>(strlen(s)-1), s); /// g6 string to file without newline character
+                writegroupsize(fpOneRootedg6,stats.grpsize1,stats.grpsize2); /// write group size (symmetry factor) to file
+                fprintf(fpOneRootedg6,"\n");
             }
             else
             {
@@ -213,9 +215,10 @@ void GraphGeneratorNauty::GenerateTwoRootedFixedOrderIterative(std::string input
                 /// call densenauty
                 densenauty(cg1, lab, ptn, orbits, &options, &stats, this->MWords, this->N, cg2);
 
-                tempGraph.ColoredCanonicalRelabeling(lab, 0, j); /// relabel according to canonical labeling returned from densenauty
+                tempGraph.ColoredCanonicalRelabeling(lab, tempRootedList); /// relabel according to canonical labeling returned from densenauty
+
 #ifdef DEBUG
-                GraphContainer testGraphFromDenseCG(this->N, this->MWords, cg2, true, 2);
+                GraphContainer testGraphFromDenseCG(this->N, this->MWords, cg2, 2);
                 testGraphFromDenseCG.SetRootedVertex(0,0);
                 testGraphFromDenseCG.SetRootedVertex(1,1);
                 if (testGraphFromDenseCG!=tempGraph)
@@ -234,9 +237,9 @@ void GraphGeneratorNauty::GenerateTwoRootedFixedOrderIterative(std::string input
                     }
                     /// output cg to file
                     char *s = ntog6(cg2,this->MWords,this->N);
-                    fprintf(fpg6, "%.*s ", static_cast<int>(strlen(s)-1), s); /// g6 string to file without newline character
-                    writegroupsize(fpg6,stats.grpsize1,stats.grpsize2); /// write group size (symmetry factor) to file
-                    fprintf(fpg6,"\n");
+                    fprintf(fpTwoRootedg6, "%.*s ", static_cast<int>(strlen(s)-1), s); /// g6 string to file without newline character
+                    writegroupsize(fpTwoRootedg6,stats.grpsize1,stats.grpsize2); /// write group size (symmetry factor) to file
+                    fprintf(fpTwoRootedg6,"\n");
                 }
                 else
                     if (verbose)
@@ -282,7 +285,8 @@ void GraphGeneratorNauty::GenerateTwoRootedFixedOrderIterative(std::string input
 
     free(c); /// free vertex colors
 
-    fclose(fpg6); /// close output file
+    fclose(fpOneRootedg6); /// close output files
+    fclose(fpTwoRootedg6);
     if (outputSorted)
         fclose(fpg6sorted);
     fclose(fp); /// close input file
@@ -382,7 +386,7 @@ void GraphGeneratorNauty::GenerateTwoRootedFixedOrder(std::string inputFilename,
             /// call densenauty
             densenauty(g, lab, ptn, orbits, &options, &stats, this->MWords, this->N, cg);
 
-            tempGraph.ColoredCanonicalRelabeling(lab, this->RootedVertexNumbers[i][0], this->RootedVertexNumbers[i][1]); /// relabel according to canonical labeling returned from densenauty
+            tempGraph.ColoredCanonicalRelabeling(lab, std::vector<int>{this->RootedVertexNumbers[i][0], this->RootedVertexNumbers[i][1]}); /// relabel according to canonical labeling returned from densenauty
 #ifdef DEBUG
             GraphContainer testGraphFromDenseCG(this->N, this->MWords, cg);
             if (testGraphFromDenseCG!=tempGraph)

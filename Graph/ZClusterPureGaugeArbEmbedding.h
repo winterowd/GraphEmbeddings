@@ -17,6 +17,10 @@ private:
 
     CubicLattice *Lattice; /// lattice object
 
+    /// length: number of rooted vertices; each entry tells us whether we place L or L* at each rooted vertex
+    /// NOTE: this is due to the fact that due to conventions, it could be that a one-rooted subgraph has its rooted vertex corresponding to a L* in the parent graph!
+    std::vector<bool> PolyakovLoopAtRooted;
+
     /// all permutations of a string of bools of length \sum_i N_i
     std::vector<std::vector<bool>> IntegrandTerms; /// terms in the integrand of Z expressed as strings of booleans
 
@@ -57,11 +61,14 @@ private:
     /// generate all "terms" i.e. permutations recursively
     void GenerateTermsIntegrand(std::vector<bool>& tmp, int nbrBondsRemaining);
 
+    /// for a given term in the integrand, prepare the rooted vertices for the gauge weight object
+    std::vector<ExternalPolyakovLoop> PrepareRootedVerticesIntegrandTerm(const std::vector<UndirectedEdge>& edges, const std::vector<int>& vertexMap);
+
     /// evalute the partition function
     void EvaluateZ();
 
 public:
-    ZClusterPureGaugeArbEmbedding(const GraphContainer& container, const VertexEmbedList& clusterEmbedList, CubicLattice* lattice);
+    ZClusterPureGaugeArbEmbedding(const GraphContainer& container, const VertexEmbedList& clusterEmbedList, CubicLattice* lattice, const std::vector<bool>& loopAtRooted);
 
     /**** accessors ****/
     int GetNbrSquareDiagonal() const { return this->SquareDiagonal.size(); }

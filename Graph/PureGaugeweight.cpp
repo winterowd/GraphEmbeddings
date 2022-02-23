@@ -2,12 +2,19 @@
 
 /// constructor
 /// @arg container: pointer to GraphContainer object describing the graph we are interested in
-PureGaugeWeight::PureGaugeWeight(GraphContainer *container) :
-    Container(container)
+PureGaugeWeight::PureGaugeWeight(const GraphContainer &container, const std::vector<ExternalPolyakovLoop>& externalVertices) :
+    Container(container),
+    ExternalVertices(externalVertices)
 {
-    for (int i=this->Container->GetNTimesNMinusOneDiv2()-1; i>=0; --i)
-        if (this->Container->GetElementAdjacencyMatrix(this->Container->GetRowM(i),this->Container->GetColM(i)))
-            this->Edges.push_back(UndirectedEdge(this->Container->GetRowM(i),this->Container->GetColM(i)));
+    if (this->ExternalVertices.size()>2)
+        throw std::invalid_argument("ERROR: PureGaugeWeight requires externalVertices to be of size 2 or less!\n");
+
+    if (std::find_if(this->ExternalVertices.begin(), this->ExternalVertices.end(), [this](const ExternalPolyakovLoop& x) { return (x.Label>this->Container.GetN() || x.Label<1); })!=this->ExternalVertices.end())
+        throw std::invalid_argument("ERROR: PureGaugeWeight requires ExternalVertices to have labels between 1 and N!\n");
+
+    for (int i=this->Container.GetNTimesNMinusOneDiv2()-1; i>=0; --i)
+        if (this->Container.GetElementAdjacencyMatrix(this->Container.GetRowM(i),this->Container.GetColM(i)))
+            this->Edges.push_back(UndirectedEdge(this->Container.GetRowM(i),this->Container.GetColM(i)));
 }
 
 /// for a fixed set of directions for the edges of the graph, compute the weight \prod_i W_i, i=1,2,...,N_V where N_V is the number of vertices
@@ -113,6 +120,7 @@ void PureGaugeWeight::GetAllWeights(std::vector<bool>& tmp, int nbrBondsRemainin
 }
 
 /// from a set of directed edges, get the counts of incoming and outcoming edges for each vertex
+/// factor in external sites!
 /// returns a vector of SiteCount objects of length N_V
 /// @arg directedEdges: vector of bool variables of size N_B containing the edge direction
 std::vector<SiteCount> PureGaugeWeight::GetSiteCountsForDirectedEdges(const std::vector<bool> &directedEdges)
@@ -120,12 +128,12 @@ std::vector<SiteCount> PureGaugeWeight::GetSiteCountsForDirectedEdges(const std:
     if (directedEdges.size() != this->Edges.size())
         throw std::invalid_argument("PureGaugeWeight::GetSiteInformationGivenDirectedEdges requires directedEdges to be of the same size as Edges!\n");
 
-    std::vector<SiteCount> result(this->Container->GetN(), {0,0});
+    std::vector<SiteCount> result(this->Container.GetN(), {0,0});
 
     for (int i=0; i<directedEdges.size(); ++i)
     {
 #ifdef DEBUG
-        if (1 > this->Edges[i].FirstVertex || this->Edges[i].FirstVertex > this->Container->GetN() || 1 > this->Edges[i].SecondVertex || this->Edges[i].SecondVertex > this->Container->GetN())
+        if (1 > this->Edges[i].FirstVertex || this->Edges[i].FirstVertex > this->Container.GetN() || 1 > this->Edges[i].SecondVertex || this->Edges[i].SecondVertex > this->Container.GetN())
             throw std::invalid_argument("PureGaugeWeight::GetSiteInformationGivenDirectedEdges requires Edges to connect vertices ranging from 1 to N!\n");
 #endif
         if (directedEdges[i])
@@ -145,6 +153,16 @@ std::vector<SiteCount> PureGaugeWeight::GetSiteCountsForDirectedEdges(const std:
 #endif
         }
     }
+
+    /// loop over external vertices and add to in/out counts
+    for (auto it=this->ExternalVertices.begin(); it!=this->ExternalVertices.end(); ++it)
+    {
+        if (it->Fundamental) /// add L
+            result[it->Label-1].NbrIn++;
+        else /// add L*
+            result[it->Label-1].NbrOut++;
+    }
+
 #ifdef DEBUG
     for (int i=0; i<result.size(); ++i)
         std::cout << "Vertex " << i+1 << " has " << result[i].NbrIn << " vertices incoming and " << result[i].NbrOut << " outgoing!\n";

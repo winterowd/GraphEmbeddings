@@ -37,7 +37,11 @@ private:
     VertexEmbedList OriginalList; /// original embedded list
 
     /******** private functions ********/
+    CartesianVertex FindMinimum(const std::vector<CartesianVertex>& vec);
+
     void ComputeCOMandShift(); /// compute COM vector and shift coordinates of vertices to COM frame
+
+    void ComputeCOMandShiftFunny();
 
     void AccumulateCartesianVector(CartesianCoords& a, const CartesianCoords& b); /// a += b
 
@@ -100,6 +104,7 @@ public:
 
 /// output of list of coorindates
 std::ostream& operator<<(std::ostream& os, const CubicLatticeCanonicalizor::CartesianCoords& list);
+std::ostream& operator<<(std::ostream& os, const CubicLatticeCanonicalizor::CartesianVertex& list);
 
 /// relational operators for CartesianCoords
 bool operator<(const CubicLatticeCanonicalizor::CartesianCoords& lhs, const CubicLatticeCanonicalizor::CartesianCoords& rhs);

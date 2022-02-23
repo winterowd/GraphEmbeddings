@@ -23,41 +23,20 @@ int main(int argc, char *argv[])
 
     GraphContainer WeightContainer(n, m, g); /// container from densenauty
 
-    PureGaugeWeight MyWeightObject(&WeightContainer);
+    std::vector<ExternalPolyakovLoop> rootedVertices1{ExternalPolyakovLoop{1,true}, ExternalPolyakovLoop{2,false}};
+    PureGaugeWeight MyWeightObject1(WeightContainer, rootedVertices1);
+    auto result = MyWeightObject1.Weight();
+    std::cout << "TOTAL_WEIGHT1: " << result << "\n";
 
-    auto result = MyWeightObject.Weight();
-    std::cout << "TOTAL_WEIGHT: " << result << "\n";
+    std::vector<ExternalPolyakovLoop> rootedVertices2{ExternalPolyakovLoop{1,true}};
+    PureGaugeWeight MyWeightObject2(WeightContainer, rootedVertices2);
+    result = MyWeightObject2.Weight();
+    std::cout << "TOTAL_WEIGHT2: " << result << "\n";
 
-    DYNFREE(g, g_sz); /// free graph
-
-    n = 5;
-    m = SETWORDSNEEDED(n);
-
-    DYNALLOC2(graph, g, g_sz, n, m, "malloc"); /// allocate graph
-
-    std::string inputFilename = "graphs_g6_connected_order_5.dat";
-
-    FILE *fp = fopen(inputFilename.c_str(), "r"); /// open file containing graphs of a fixed order from which we will generate two-rooted graphs
-    if (fp!=NULL)
-        std::cout << "TestGraphWeight: Successfully opened " << inputFilename << std::endl;
-    else
-        throw std::invalid_argument("TestGraphWeight: Error opening "+inputFilename);
-
-    //GraphContainer refContainer(n, m);
-    while (1) /// read graphs in file (ASSUME THEY ARE ALL OF THE SAME ORDER N!)
-    {
-        graph *g1 = readg(fp,g,0,&m,&n);
-        if (g1 == NULL)
-            break;
-
-        GraphContainer refContainer(n, m, g);
-        //refContainer.SetGraphFromDenseNauty(g);
-        std::cout << refContainer;
-        PureGaugeWeight weight(&refContainer);
-        result = weight.Weight();
-        std::cout << "TOTAL_WEIGHT: " << result << "\n";
-
-    }
+    std::vector<ExternalPolyakovLoop> rootedVertices3{ExternalPolyakovLoop{2,false}};
+    PureGaugeWeight MyWeightObject3(WeightContainer, rootedVertices3);
+    result = MyWeightObject3.Weight();
+    std::cout << "TOTAL_WEIGHT3: " << result << "\n";
 
     DYNFREE(g, g_sz); /// free graph
 

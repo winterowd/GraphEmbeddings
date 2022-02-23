@@ -186,7 +186,6 @@ void GraphEmbedder::EmbedFromFile()
         std::cout << "Embed: Read config " << count << "!\n";
 #endif
         GraphContainer container(this->N, this->MWords, g); /// setup container from nauty dense format
-        //container.SetGraphFromDenseNauty(g); /// setup container from nauty dense format
 #ifdef DEBUG
         if (this->N != container.GetN()) /// check order!
             std::invalid_argument("Embed found that graph "+std::to_string(count)+" is not of order "+std::to_string(this->N)+"!\n");
@@ -619,7 +618,8 @@ void GraphEmbedder::ComputeEmbeddingNumbers(const GraphContainer& container, gra
 /// @param bondCombo: counts of types of bonds (NN, NNN, etc)
 std::pair<std::vector<VertexEmbedList>, std::vector<int>> GraphEmbedder::ComputeCanonicalGraphsAndEmbeddingNumbers(GraphContainer container, const std::vector<int>& bondCombo)
 {
-    std::vector<VertexEmbedList> canonicalList; /// canonical list to return
+    std::vector<VertexEmbedList> canonicalList; /// canonical list
+    std::vector<VertexEmbedList> exampleList; /// one example from each canonical graph (return)
     std::vector<int> counts; /// counts of canonical lists to return
 
 #ifdef DEBUG
@@ -641,15 +641,29 @@ std::pair<std::vector<VertexEmbedList>, std::vector<int>> GraphEmbedder::Compute
         CubicLatticeCanonicalizor tempCanonicalizor(&container, this->Lattice, *it); /// get canonical graph wrt octahedral group
         auto tempCanonical = tempCanonicalizor.GetCanonical();
         tempCanonical.SetNbrChoicesForFirstBond(it->GetNbrChoicesForFirstBond()); /// need to add this by hand to canonical!
+        auto tempCanonicalOld = tempCanonicalizor.GetCanonicalOld();
+#ifdef DEBUG
+        if (tempCanonical!=tempCanonicalOld)
+        {
+            std::cout << "ERROR: OLD_AND_NEW_CANONICAL_DO_NOT_MATCH! " << container.GetG6String() << "\n";
+            std::cout << "ORIGINAL:\n";
+            std::cout << *it;
+            std::cout << "NEW_CANONICAL:\n";
+            std::cout << tempCanonical;
+            std::cout << "OLD_CANONICAL:\n";
+            std::cout << tempCanonicalOld;
+        }
+#endif
         auto tempIt = std::find(canonicalList.begin(), canonicalList.end(), tempCanonical);
         if (tempIt!=canonicalList.end()) /// if it is already in the list get index and increment counts
         {
             int tempIndex = std::distance(canonicalList.begin(), tempIt);
             counts[tempIndex]++;
         }
-        else /// if it is not already in the list add to canonicalList and add entry to counts
+        else /// if it is not already in the list add canonical variant to canonicalList, original to exampleList, and add entry to counts
         {
             canonicalList.push_back(tempCanonical);
+            exampleList.push_back(*it);
             counts.push_back(1);
         }
     }
@@ -674,7 +688,7 @@ std::pair<std::vector<VertexEmbedList>, std::vector<int>> GraphEmbedder::Compute
         throw std::logic_error("ComputeEmbeddingNumbersAndCanonicalGraphs requires the sum of the embedding numbers to equal the total!\n");
 #endif
 
-    return std::pair<std::vector<VertexEmbedList>, std::vector<int>>(canonicalList, counts);
+    return std::pair<std::vector<VertexEmbedList>, std::vector<int>>(exampleList, counts);
 
 }
 
@@ -1147,7 +1161,8 @@ std::set<VertexEmbedList> GraphEmbedder::CreateInitialVertexEmbedLists(const Gra
     if (this->Parameters.EmbedCorrelator())
         return CreateInitialVertexEmbedListsRooted(container, bondCombo);
     else
-        return CreateInitialVertexEmbedListsNonRooted(container, bondCombo);
+        return CreateInitialVertexEmbedListsNonRootedFunny(container, bondCombo);
+        //return CreateInitialVertexEmbedListsNonRooted(container, bondCombo);
 }
 
 /// creates initial list of embedded vertices for rooted graphs
@@ -1236,26 +1251,39 @@ std::set<VertexEmbedList> GraphEmbedder::CreateInitialVertexEmbedListsNonRooted(
     return result;
 }
 
+/// DEBUGGING WITH CANONICAL EMBEDDINGS OF GRAPH "Bo"
+std::set<VertexEmbedList> GraphEmbedder::CreateInitialVertexEmbedListsNonRootedFunny(const GraphContainer& container, const std::vector<int> &bondCombo)
+{
+    std::set<VertexEmbedList> result;
+
+    std::vector<unsigned int> indices(this->Lattice->GetDim(), this->Lattice->GetN()/2); /// spatial indices for first vertex
+    auto tempIndex = this->Lattice->GetSiteIndex(indices); /// index for first vertex
+    VertexEmbedList tempList(this->Parameters.GetMaxEmbeddingLength());
+    tempList.AddVertexEmbed(VertexEmbed{1,tempIndex});
+    tempList.AddVertexEmbed(VertexEmbed{2,this->GetNeighbor(0,tempIndex,1)});
+    tempList.SetNbrChoicesForFirstBond(1);
+    result.insert(tempList);
+    return result;
+}
+
 /// from g6 string in command line arguments, compute the canonical embeddings (NN only) on the cubic lattice and their counts
-std::tuple<GraphContainer, std::vector<VertexEmbedList>, std::vector<int> > GraphEmbedder::GetCanonicalGraphsAndCounts()
+/// container: graph container consistent with g6 string given to parameters (this should come from CanonicalGraphManager!!!!!)
+std::tuple<GraphContainer, std::vector<VertexEmbedList>, std::vector<int>> GraphEmbedder::ComputeCanonicalEmbeddingsAndCountsNN(const GraphContainer &container)
 {
     if (this->Parameters.GetG6().empty())
-        throw std::invalid_argument("GraphEmbedder::GetCanonicalGraphsAndCounts requires the user to input a g6 string!\n");
+        throw std::invalid_argument("GraphEmbedder::ComputeCanonicalGraphsAndCountsNN requires the user to input a g6 string!\n");
 
     if (this->ResolveLatticeType(this->Parameters.GetLatticeType())!=GraphEmbedder::LatticeType::Cubic)
-        throw std::invalid_argument("GraphEmbedder::GetCanonicalGraphsAndCounts requires the cubic lattice!\n");
+        throw std::invalid_argument("GraphEmbedder::ComputeCanonicalGraphsAndCountsNN requires the cubic lattice!\n");
 
-    DYNALLSTAT(graph, g, g_sz); /// declare graph
-    DYNALLOC2(graph, g, g_sz, this->N, this->MWords, "malloc"); /// allocate graph
+    if (container.GetG6String()!=this->Parameters.GetG6()) /// make sure things are consistent
+        throw std::invalid_argument("GraphEmbedder::ComputeCanonicalGraphsAndCountsNN requires container to be consistent with g6 string!\n");
 
-    this->DenseNautyFromString(this->G6String, g); /// get graph in dense nauty format
+    if (this->Parameters.EmbedCorrelator() && container.GetNbrRooted()!=2) /// check consistency
+        throw std::invalid_argument("GraphEmbedder::ComputeCanonicalGraphsAndCountsNN requires container to be two-rooted if embedding a correlators!\n");
 
-    GraphContainer container(this->N, this->MWords, g); /// container from densenauty
-
-    container.SetSymmFactor(this->GetSymmFactor(g)); /// set symmetry factor
-#ifdef DEBUG
-    std::cout << "DEBUG_SYMMFACTOR: " << container.GetSymmFactor() << "\n";
-#endif
+    if (!this->Parameters.EmbedCorrelator() && container.GetNbrRooted()!=0) /// check consistency
+        throw std::invalid_argument("GraphEmbedder::ComputeCanonicalGraphsAndCountsNN requires container to be unrooted if not embedding a correlator!\n");
 
     /// all bonds are NN i.e. true embedding on cubic lattice
     std::vector<int> bondCombo(this->MaxDegreeNeighbor, 0);
@@ -1271,7 +1299,6 @@ std::tuple<GraphContainer, std::vector<VertexEmbedList>, std::vector<int> > Grap
         std::cout << canonicalListAndCounts.first[i] << "\n";
     }
 #endif
-    DYNFREE(g, g_sz);
 
     /// combine container with graphs and counts
     return std::tuple<GraphContainer, std::vector<VertexEmbedList>, std::vector<int>>(container, canonicalListAndCounts.first, canonicalListAndCounts.second);
@@ -1331,7 +1358,7 @@ void GraphEmbedder::DenseNautyFromString(const std::string& g6String, graph *g)
     delete[] tempg6;
 }
 
-/// get the symmetry factor from a given graph
+/// get the symmetry factor from a given unrooted graph
 /// g: pointer to allocated graph of size N
 int GraphEmbedder::GetSymmFactor(graph *g)
 {
@@ -1398,7 +1425,7 @@ bool GraphEmbedderParametersNauty::ProcessCommandLine(int argc, char *argv[])
         po::options_description desc("Allowed options");
         desc.add_options()
                 ("help,h", "Produce help message")
-                ("order,n", po::value<unsigned int>(&this->N), "Vertex order")
+                ("order,n", po::value<unsigned int>(&this->N)->required(), "Vertex order")
                 ("input,i", po::value<std::string>(&this->InputFilename), "Input filename")
                 ("output,o", po::value<std::string>(&this->OutputFilename), "Output filename")
                 ("g6,g", po::value<std::string>(&this->G6)->default_value(""), "Embed  single graph from g6 string")
@@ -1418,7 +1445,6 @@ bool GraphEmbedderParametersNauty::ProcessCommandLine(int argc, char *argv[])
             return false;
         }
 
-        this->RequiredOptionWhenOtherOptionMissing(vm, "order", "g6");
         this->RequiredOptionWhenOtherOptionMissing(vm, "input", "g6");
         this->RequiredOptionWhenOtherOptionMissing(vm, "output", "g6");
 

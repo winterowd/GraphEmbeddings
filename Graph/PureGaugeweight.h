@@ -5,12 +5,21 @@
 #include <math.h>
 #include <iostream>
 
+struct ExternalPolyakovLoop {
+    int Label; /// vertex label
+    bool Fundamental; /// fundamental (L) or antifundamental (L*)?
+};
+
+/// TODO: add capability to include external vertices (vertex label and whether it is L or L*)
+
 class PureGaugeWeight
 {
 private:
-    GraphContainer *Container; /// pointer to graph container
+    GraphContainer Container; /// pointer to graph container
 
     std::vector<UndirectedEdge> Edges; /// list of (undirected) edges
+
+    std::vector<ExternalPolyakovLoop> ExternalVertices; /// list of vertices where external L or L* is placed
 
     double TotalWeight; /// total weight of graph using all possible combinations of directed bonds
 
@@ -27,7 +36,7 @@ private:
     double Factorial(int n);
 
 public:
-    PureGaugeWeight(GraphContainer *container);
+    PureGaugeWeight(const GraphContainer& container, const std::vector<ExternalPolyakovLoop>& externalVertices);
 
     double Weight(); /// routine called by user (interface)
 };

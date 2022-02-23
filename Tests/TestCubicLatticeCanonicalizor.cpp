@@ -7,16 +7,11 @@
 
 int main(int argc, char *argv[])
 {
+
     GraphEmbedder MyEmbedder(argc, argv);
-    auto resultCanonicalGraphsAndCounts = MyEmbedder.GetCanonicalGraphsAndCounts(); /// test this routine! (plaquette with handle!)
-    for (int i=0; i<std::get<1>(resultCanonicalGraphsAndCounts).size(); ++i)
-    {
-        std::cout << "embedding " << i << " with counts " << std::get<2>(resultCanonicalGraphsAndCounts)[i] << "\n";
-        std::cout << std::get<1>(resultCanonicalGraphsAndCounts)[i] << "\n";
-    }
+    CubicLattice MyLattice(100);
     auto resultPair = MyEmbedder.ContainerAndSampleCubicEmbeddingFromG6();
 
-    CubicLattice MyLattice(100);
     CubicLatticeCanonicalizor MyCubicLatticeCanonicalizor1(&resultPair.first, &MyLattice, resultPair.second);
     CubicLatticeCanonicalizor MyCubicLatticeCanonicalizor2(&resultPair.first, &MyLattice, resultPair.second);
 
@@ -41,6 +36,7 @@ int main(int argc, char *argv[])
     else
         std::cout << "Failure! Explicit rotations and permutations do NOT agree!\n";
 
+
     /********** test **********/
 
     int n = 3;
@@ -58,6 +54,7 @@ int main(int argc, char *argv[])
     delete[] tempg6;
 
     GraphContainer TestContainer(n, m, g); /// container from densenauty
+
 
     std::vector<unsigned int> indicesCenter(MyLattice.GetDim(), MyLattice.GetN()/2); /// spatial indices for first vertex
     auto index1 = MyLattice.GetSiteIndex(indicesCenter); /// index for vertex 1

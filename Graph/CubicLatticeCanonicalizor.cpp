@@ -24,8 +24,14 @@ CubicLatticeCanonicalizor::CubicLatticeCanonicalizor(GraphContainer *container, 
     if (embedList.HasRepeatedVertices())
         throw std::invalid_argument("CubicLatticeCanonicalizor requires embedList to not have repeated vertices!\n");
 
-    if (embedList.IsTwoPointFunction() && ((embedList.GetFixedVertex(0).Number<=0 || embedList.GetFixedVertex(0).Number>container->GetN()) || (embedList.GetFixedVertex(1).Number<=0 || embedList.GetFixedVertex(1).Number>container->GetN())))
-        throw std::invalid_argument("CubicLatticeCanonicalizor requires embedList to have fixed vertices in the range 1,2,..,N!\n");
+    if (embedList.IsRooted())
+    {
+        if (!embedList.IsFixedVertexSet(0))
+            throw std::invalid_argument("CubicLatticeCanonicalizor requires embedList atleast one fixed vertex to be set for rooted graphs!!\n");
+        for (int i=0; i<2; ++i)
+            if (embedList.IsFixedVertexSet(i) && (embedList.GetFixedVertex(i).Number<=0 || embedList.GetFixedVertex(i).Number>container->GetN()))
+                throw std::invalid_argument("CubicLatticeCanonicalizor requires embedList to have fixed vertices in the range 1,2,..,N!\n");
+    }
 
     std::vector<unsigned int> indices(3, 0);
     for (auto it=embedList.begin(); it!=embedList.end(); ++it)
@@ -97,10 +103,42 @@ double CubicLatticeCanonicalizor::NormCartesianVector(const CartesianCoords& a)
     return std::sqrt(this->NormSqCartesianVector(a));
 }
 
+CubicLatticeCanonicalizor::CartesianVertex CubicLatticeCanonicalizor::FindMinimum(const std::vector<CartesianVertex>& vec)
+{
+    CartesianVertex result = vec[0];
+    std::cout << "FINDMIN_INITIAL: " << result << "\n";
+    for (int i=1; i<vec.size(); ++i)
+    {
+       if (vec[i]<result)
+       {
+           result = vec[i];
+           std::cout << "FINDMIN_NEW: " << result << "\n";
+       }
+    }
+    return result;
+}
+
+/// compute the COM vector and then shift vertices such that COM lies at the origin
+/// COM vector = \sum_v_i \vec{v}_i / |V|
+/// result put into VerticesCartesianCOM
+void CubicLatticeCanonicalizor::ComputeCOMandShift()
+{
+    this->VerticesCartesianCOM = this->VerticesCartesian; /// copy vertices into COM
+
+    this->COM = {0,0,0}; /// clear COM vector
+    for (int i=0; i<this->VerticesCartesian.size(); ++i)
+        this->AccumulateCartesianVector(this->COM, this->VerticesCartesian[i]);
+    this->ScalarMultCartesianVector(this->COM, 1./this->VerticesCartesian.size());
+
+    /// subtract the vector corresponding to the COM in the old coordinate system
+    for (int i=0; i<this->VerticesCartesian.size(); ++i)
+        this->AccumulateCartesianVectorNeg(this->VerticesCartesianCOM[i], this->COM);
+}
+
 /// compute the COM vector and then shift vertices such that COM lies at the origin
 /// COM vector = (\sum_v_i \vec{v}_i + \frac{1}{2} \sum_E_i ( \vec{i}(E_i) + \vec{f}(E_i) ) )/(|V| + |E|)
 /// result put into VerticesCartesianCOM
-void CubicLatticeCanonicalizor::ComputeCOMandShift()
+void CubicLatticeCanonicalizor::ComputeCOMandShiftFunny()
 {
 
     this->VerticesCartesianCOM = this->VerticesCartesian; /// copy vertices into COM
@@ -124,7 +162,7 @@ void CubicLatticeCanonicalizor::ComputeCOMandShift()
         this->AccumulateCartesianVector(this->COM, this->VerticesCartesian[i]);
     this->ScalarMultCartesianVector(this->COM, 1./(this->VerticesCartesian.size()+this->Container->GetL()));
 
-    /// subtract the vector corresponding to the the COM in the old coordinate system
+    /// subtract the vector corresponding to the COM in the old coordinate system
     for (int i=0; i<this->VerticesCartesian.size(); ++i)
         this->AccumulateCartesianVectorNeg(this->VerticesCartesianCOM[i], this->COM);
 }
@@ -357,19 +395,21 @@ VertexEmbedList CubicLatticeCanonicalizor::GetCanonicalOld()
 
     this->ComputeCOMandShift();
 
+    auto tempLambda = [](const std::vector<CartesianVertex>& x, const std::vector<CartesianVertex>& y) { return x<y; };
+
     auto resultTwoFold = this->ApplyRotationsTwoFoldAxisOnGraph(origin, this->VerticesCartesianCOM);
-    std::vector<CartesianVertex> canonical = *std::min_element(resultTwoFold.begin(), resultTwoFold.end());
+    std::vector<CubicLatticeCanonicalizor::CartesianVertex> canonical = *std::min_element(resultTwoFold.begin(), resultTwoFold.end(), tempLambda);
 
     auto resultThreeFold = this->ApplyRotationsThreeFoldAxisOnGraph(origin, this->VerticesCartesianCOM);
-    if (*std::min_element(resultThreeFold.begin(), resultThreeFold.end()) < canonical)
+    if (*std::min_element(resultThreeFold.begin(), resultThreeFold.end(), tempLambda) < canonical)
         canonical = *std::min_element(resultThreeFold.begin(), resultThreeFold.end());
 
     auto resultFourFold = this->ApplyRotationsFourFoldAxisOnGraph(origin, this->VerticesCartesianCOM);
-    if (*std::min_element(resultFourFold.begin(), resultFourFold.end()) < canonical)
+    if (*std::min_element(resultFourFold.begin(), resultFourFold.end(), tempLambda) < canonical)
         canonical = *std::min_element(resultFourFold.begin(), resultFourFold.end());
 
     /// we now have the canonical graph. now need to get position of smallest lexicographical vertex
-    CartesianCoords minVector = (*std::min_element(canonical.begin(), canonical.end())).second;
+    CartesianCoords minVector = (*std::min_element(canonical.begin(), canonical.end(), [](const CartesianVertex& x, const CartesianVertex& y) { return x<y; })).second;
 
     CartesianCoords midpoint{this->Lattice->GetN()/2., this->Lattice->GetN()/2., this->Lattice->GetN()/2.};
 
@@ -389,12 +429,12 @@ VertexEmbedList CubicLatticeCanonicalizor::GetCanonical()
 {
     this->ComputeCOMandShift(); /// shift to COM
 
-    auto resultPermuations = this->PermutationsOnAllVertices(this->VerticesCartesianCOM); /// apply permutations (should be equivalent to rotations)
+    auto resultPermutations = this->PermutationsOnAllVertices(this->VerticesCartesianCOM); /// apply permutations (should be equivalent to rotations)
 
-    std::vector<CartesianVertex> canonical = *std::min_element(resultPermuations.begin(), resultPermuations.end()); /// find canonical embedding
+    std::vector<CartesianVertex> canonical = *std::min_element(resultPermutations.begin(), resultPermutations.end(), [](const std::vector<CartesianVertex>& x, const std::vector<CartesianVertex>& y) { return x<y; }); /// find canonical embedding
 
     /// we now have the canonical graph. now need to get position of smallest lexicographical vertex
-    CartesianCoords minVector = (*std::min_element(canonical.begin(), canonical.end())).second;
+    CartesianCoords minVector = (*std::min_element(canonical.begin(), canonical.end(), [](const CartesianVertex& x, const CartesianVertex& y) { return x<y; })).second;
 
     CartesianCoords midpoint{this->Lattice->GetN()/2., this->Lattice->GetN()/2., this->Lattice->GetN()/2.}; /// midpoint of lattice
 
@@ -411,11 +451,14 @@ VertexEmbedList CubicLatticeCanonicalizor::GetCanonical()
 /// convert the vector of CartesianCoordinates into a VertexEmbedList object
 VertexEmbedList CubicLatticeCanonicalizor::ConvertCartesianCoordsVectorToVertexEmbedList(const std::vector<CartesianCoords>& vec)
 {
-    VertexEmbedList result = this->OriginalList.IsTwoPointFunction() ? VertexEmbedList(this->OriginalList.GetMaxLength(), this->OriginalList.GetCorrelatorDistance()) : VertexEmbedList(this->OriginalList.GetMaxLength());
+    VertexEmbedList result = this->OriginalList.IsRooted() ? VertexEmbedList(this->OriginalList.GetMaxLength(), this->OriginalList.GetCorrelatorDistance()) : VertexEmbedList(this->OriginalList.GetMaxLength());
 
-    if (this->OriginalList.IsTwoPointFunction()) /// correlator
+    if (this->OriginalList.IsRooted()) /// rooted
     {
-        std::vector<int> fixedVertexNumbers{this->OriginalList.GetFixedVertex(0).Number,this->OriginalList.GetFixedVertex(1).Number}; /// NOTE: vertex numbers range from 1,...,N
+        std::vector<int> fixedVertexNumbers; /// NOTE: vertex numbers range from 1,...,N
+        for (int i=0; i<2; ++i)
+            if (this->OriginalList.IsFixedVertexSet(i))
+                fixedVertexNumbers.push_back(this->OriginalList.GetFixedVertex(i).Number);
         for (int i=0; i<vec.size(); ++i)
         {
             std::vector<unsigned int> indicesFromDouble(3);
@@ -425,13 +468,19 @@ VertexEmbedList CubicLatticeCanonicalizor::ConvertCartesianCoordsVectorToVertexE
                     throw std::invalid_argument("CubicLatticeCanonicalizor::ConvertCartesianVectorToVertexEmbedList converting from double to unsigned int using imaginary values!\n");
                 indicesFromDouble[j] = vec[i][j];
             }
-            auto index = this->Lattice->GetSiteIndex(indicesFromDouble);
+            auto index = this->Lattice->GetSiteIndex(indicesFromDouble); /// linearized lattice index
             auto vertexNumber = i+1; /// careful with index! for-loop starts at 0 but vertex numbers start at 1!
-            if (vertexNumber==fixedVertexNumbers[0])
-                result.AddFixedVertexEmbed(0,vertexNumber,index);
-            else if (vertexNumber==fixedVertexNumbers[1])
-                result.AddFixedVertexEmbed(1,vertexNumber,index);
-            else
+
+            bool isFixed = false;
+            for (int j=0; j<fixedVertexNumbers.size(); ++j)
+            {
+                if (vertexNumber==fixedVertexNumbers[j])
+                {
+                    result.AddFixedVertexEmbed(j, vertexNumber, index);
+                    isFixed = true;
+                }
+            }
+            if (!isFixed)
                 result.AddVertexEmbed(vertexNumber,index);
         }
     }
@@ -528,6 +577,12 @@ bool operator!=(const std::vector<CubicLatticeCanonicalizor::CartesianCoords>& l
 std::ostream& operator<<(std::ostream& os, const CubicLatticeCanonicalizor::CartesianCoords &list)
 {
     os << "(" << list[0] << "," << list[1] << "," << list[2] << ")";
+    return os;
+}
+
+std::ostream& operator<<(std::ostream& os, const CubicLatticeCanonicalizor::CartesianVertex &list)
+{
+    os << list.first << " " << list.second;
     return os;
 }
 

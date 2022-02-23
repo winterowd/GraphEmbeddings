@@ -94,12 +94,10 @@ public:
 
     GraphGeneratorNauty(int argc, char *argv[]); /// constructor
 
-    void Generate(bool useIterativeRooted=true); /// interface for generating graphs
-
-    std::vector<GraphContainer> GetColoredGraphsFromContainer(const GraphContainer& container); /// TODO: write this using GenerateTwoRootedFixedOrderIterative or GenerateTwoRootedFixedOrder
+    void Generate(); /// interface for generating graphs
 
     /// get hardcoded filename for result of geng
-    std::string GetOutputFilenameFixedOrder(bool rooted=false) const { if (rooted) return "graphs_g6_rooted_connected_N_"+std::to_string(this->N)+"_L_"+std::to_string(this->L)+".dat"; else return "graphs_g6_connected_N_"+std::to_string(this->N)+"_L_"+std::to_string(this->L)+".dat"; }
+    std::string GetOutputFilenameFixedOrder(bool rooted=false, int nbrRoots=2) const { if (rooted) return "graphs_g6_rooted_"+std::to_string(nbrRoots)+"_connected_N_"+std::to_string(this->N)+"_L_"+std::to_string(this->L)+".dat"; else return "graphs_g6_connected_N_"+std::to_string(this->N)+"_L_"+std::to_string(this->L)+".dat"; }
 };
 
 #endif // GRAPHGENERATORNAUTY_H

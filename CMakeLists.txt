@@ -59,7 +59,7 @@ add_executable(TestGraphWeight Tests/TestGraphWeight.cpp)
 target_link_libraries(TestGraphWeight ${PROJECT_LIBS} nauty)
 
 add_executable(TestZCluster Tests/TestZCluster.cpp)
-target_link_libraries(TestZCluster ${PROJECT_LIBS} nauty)
+target_link_libraries(TestZCluster ${PROJECT_LIBS} ${LIBS} nauty)
 
 add_executable(TestPowerSet Tests/TestPowerSet.cpp)
 target_link_libraries(TestPowerSet ${PROJECT_LIBS} nauty)
