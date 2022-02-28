@@ -4,18 +4,18 @@
 /// @input container: pointer to GraphContainer object which describes connectivity etc
 /// @input lattice: pointer to CubicLattice object (not AbstractLattice)
 /// @input embedList: copy of VertexEmbedList so we can know where the vertices are on the lattice
-CubicLatticeCanonicalizor::CubicLatticeCanonicalizor(GraphContainer *container, AbstractLattice *lattice, const VertexEmbedList &embedList) :
+CubicLatticeCanonicalizor::CubicLatticeCanonicalizor(const GraphContainer &container, AbstractLattice *lattice, const VertexEmbedList &embedList) :
     Container(container),
     Lattice(lattice),
-    VerticesCartesian(container->GetN(), {0,0,0}),
-    VerticesCartesianCOM(container->GetN(), {0,0,0}),
+    VerticesCartesian(container.GetN(), {0,0,0}),
+    VerticesCartesianCOM(container.GetN(), {0,0,0}),
     COM({0,0,0}),
     OriginalList(embedList)
 {
     if (this->Lattice->GetName()!="Cubic")
         throw std::invalid_argument("CubicLatticeCanonicalizor requires a CubicLattice object!\n");
 
-    if (embedList.GetSize()!=container->GetN())
+    if (embedList.GetSize()!=container.GetN())
         throw std::invalid_argument("CubicLatticeCanonicalizor requires embedList to be of the same size as container!\n");
 
     if (embedList.HasRepeatedSites())
@@ -29,7 +29,7 @@ CubicLatticeCanonicalizor::CubicLatticeCanonicalizor(GraphContainer *container, 
         if (!embedList.IsFixedVertexSet(0))
             throw std::invalid_argument("CubicLatticeCanonicalizor requires embedList atleast one fixed vertex to be set for rooted graphs!!\n");
         for (int i=0; i<2; ++i)
-            if (embedList.IsFixedVertexSet(i) && (embedList.GetFixedVertex(i).Number<=0 || embedList.GetFixedVertex(i).Number>container->GetN()))
+            if (embedList.IsFixedVertexSet(i) && (embedList.GetFixedVertex(i).Number<=0 || embedList.GetFixedVertex(i).Number>container.GetN()))
                 throw std::invalid_argument("CubicLatticeCanonicalizor requires embedList to have fixed vertices in the range 1,2,..,N!\n");
     }
 
@@ -37,7 +37,7 @@ CubicLatticeCanonicalizor::CubicLatticeCanonicalizor(GraphContainer *container, 
     for (auto it=embedList.begin(); it!=embedList.end(); ++it)
     {
         this->Lattice->GetSiteCoordinates(it->Index, indices);
-        if (it->Number<=0 || it->Number>container->GetN()) /// check range and make sure it is 1 based!
+        if (it->Number<=0 || it->Number>container.GetN()) /// check range and make sure it is 1 based!
             throw std::invalid_argument("CubicLatticeCanonicalizor expects VertexEmbedList object to have vertices ranging from 1 to N!\n");
         /// NOTE: assume that vertex numbers start at 1 in VertexEmbedList so need to shift!
         this->VerticesCartesian[it->Number-1] = CartesianCoords{double(indices[0]), double(indices[1]), double(indices[2])};
@@ -48,7 +48,7 @@ CubicLatticeCanonicalizor::CubicLatticeCanonicalizor(GraphContainer *container, 
 /// interface accessor which checks range of vertex number!
 int CubicLatticeCanonicalizor::GetVertexColor(int number) const
 {
-    if (number<=0 || number > this->Container->GetN())
+    if (number<=0 || number > this->Container.GetN())
         throw std::invalid_argument("CubicLatticeCanonicalizor::GetVertexColor requires 1 <= number <= N!\n");
     return this->OriginalList.GetVertexColor(number);
 }
@@ -103,21 +103,6 @@ double CubicLatticeCanonicalizor::NormCartesianVector(const CartesianCoords& a)
     return std::sqrt(this->NormSqCartesianVector(a));
 }
 
-CubicLatticeCanonicalizor::CartesianVertex CubicLatticeCanonicalizor::FindMinimum(const std::vector<CartesianVertex>& vec)
-{
-    CartesianVertex result = vec[0];
-    std::cout << "FINDMIN_INITIAL: " << result << "\n";
-    for (int i=1; i<vec.size(); ++i)
-    {
-       if (vec[i]<result)
-       {
-           result = vec[i];
-           std::cout << "FINDMIN_NEW: " << result << "\n";
-       }
-    }
-    return result;
-}
-
 /// compute the COM vector and then shift vertices such that COM lies at the origin
 /// COM vector = \sum_v_i \vec{v}_i / |V|
 /// result put into VerticesCartesianCOM
@@ -147,20 +132,20 @@ void CubicLatticeCanonicalizor::ComputeCOMandShiftFunny()
 
     /// compute the COM vector
     CartesianCoords temp{0,0,0};
-    for (int i=this->Container->GetNTimesNMinusOneDiv2()-1; i>=0; --i)
+    for (int i=this->Container.GetNTimesNMinusOneDiv2()-1; i>=0; --i)
     {
-        if (this->Container->GetElementAdjacencyMatrix(this->Container->GetRowM(i),this->Container->GetColM(i)))
+        if (this->Container.GetElementAdjacencyMatrix(this->Container.GetRowM(i),this->Container.GetColM(i)))
         {
             /// NOTE: vertex numbers start at 1 in GraphContainer so need to shift index!
-            this->AccumulateCartesianVector(temp,this->VerticesCartesian[this->Container->GetRowM(i)-1]);
-            this->AccumulateCartesianVector(temp,this->VerticesCartesian[this->Container->GetColM(i)-1]);
+            this->AccumulateCartesianVector(temp,this->VerticesCartesian[this->Container.GetRowM(i)-1]);
+            this->AccumulateCartesianVector(temp,this->VerticesCartesian[this->Container.GetColM(i)-1]);
         }
     }
     this->ScalarMultCartesianVector(temp, 0.5);
     this->AccumulateCartesianVector(this->COM, temp);
     for (int i=0; i<this->VerticesCartesian.size(); ++i)
         this->AccumulateCartesianVector(this->COM, this->VerticesCartesian[i]);
-    this->ScalarMultCartesianVector(this->COM, 1./(this->VerticesCartesian.size()+this->Container->GetL()));
+    this->ScalarMultCartesianVector(this->COM, 1./(this->VerticesCartesian.size()+this->Container.GetL()));
 
     /// subtract the vector corresponding to the COM in the old coordinate system
     for (int i=0; i<this->VerticesCartesian.size(); ++i)

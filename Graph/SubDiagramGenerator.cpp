@@ -23,7 +23,6 @@ SubDiagramGenerator::SubDiagramGenerator(const GraphContainer& container, const 
     this->GenerateSubDiagrams(); /// generate subdiagrams
     this->GenerateEmbedListsForSubDiagrams(); /// generate the embed list for the subdiagrams
     this->GenerateCanonicalSubDiagrams();
-    //this->ComputeDisjointSets(); /// generate the pairwise disjoint sets of connected subgraphs
 
 }
 
@@ -177,10 +176,6 @@ std::pair<CanonicalSubDiagram, VertexEmbedList> SubDiagramGenerator::ComputeCano
 /// @param sortedIndex: linear sorted index for subgraph
 std::pair<CanonicalSubDiagram, VertexEmbedList> SubDiagramGenerator::ComputeCanonicalSubgraphAndListUnrooted(int sortedIndex)
 {
-#ifdef DEBUG
-    std::cout << "Canonicalizing the following unrooted subgraph:\n";
-    this->PrintSubDiagram(sortedIndex);
-#endif
     GraphContainer subgraph = this->GetSubDiagram(sortedIndex);
     auto vertexMap = this->GetVertexMap(sortedIndex);
     VertexEmbedList embedList = this->GetEmbedList(sortedIndex);
@@ -229,7 +224,7 @@ std::pair<CanonicalSubDiagram, VertexEmbedList> SubDiagramGenerator::ComputeCano
     std::cout << canonicalList;
 
     /// canonicalize with respect to cubic symmetries
-    CubicLatticeCanonicalizor canonicalizor(&canGraphNew, this->MyCubicLattice, canonicalList);
+    CubicLatticeCanonicalizor canonicalizor(canGraphNew, this->MyCubicLattice, canonicalList);
 
     DYNFREE(lab, lab_sz); /// free label
 
@@ -244,10 +239,6 @@ std::pair<CanonicalSubDiagram, VertexEmbedList> SubDiagramGenerator::ComputeCano
 /// @param sortedIndex: linear sorted index for subgraph
 std::pair<CanonicalSubDiagram, VertexEmbedList> SubDiagramGenerator::ComputeCanonicalSubgraphAndListRooted(int sortedIndex)
 {
-#ifdef DEBUG
-    std::cout << "Canonicalizing the following rooted subgraph:\n";
-    this->PrintSubDiagram(sortedIndex);
-#endif
     GraphContainer subgraph = this->GetSubDiagram(sortedIndex);
     auto vertexMap = this->GetVertexMap(sortedIndex);
     VertexEmbedList embedList = this->GetEmbedList(sortedIndex);
@@ -258,7 +249,7 @@ std::pair<CanonicalSubDiagram, VertexEmbedList> SubDiagramGenerator::ComputeCano
     DYNALLSTAT(int, lab, lab_sz); /// label
     DYNALLOC2(int, lab, lab_sz, n, m, "malloc");
 
-    /// TODO: remember this only works with unrooted graphs! Need to eventually update this to have rooted awareness and maybe more? (sources?)
+    /// canonicalize colored graph (NAUTY)
     GraphContainer canGraphNew = AuxiliaryRoutinesForNauty::GetCanonicalColoredGraphNauty(subgraph.GetN(), subgraph.GetG6String(), subgraph.GetRootedVertices(), lab);
 
 #ifdef DEBUG
@@ -304,7 +295,7 @@ std::pair<CanonicalSubDiagram, VertexEmbedList> SubDiagramGenerator::ComputeCano
     std::cout << canonicalList;
 
     /// canonicalize with respect to cubic symmetries
-    CubicLatticeCanonicalizor canonicalizor(&canGraphNew, this->MyCubicLattice, canonicalList);
+    CubicLatticeCanonicalizor canonicalizor(canGraphNew, this->MyCubicLattice, canonicalList);
 
     DYNFREE(lab, lab_sz); /// free label
 
@@ -451,8 +442,14 @@ void SubDiagramGenerator::PrintSubDiagram(int index) const
     for (int j=0; j<this->VerticesMap[vertexMapIndex].size(); ++j)
         std::cout << "Vertex " << j+1 << " maps to original vertex " << this->VerticesMap[vertexMapIndex][j] << "\n";
     std::cout << "VertexEmbedList:\n";
-    std::cout << this->EmbedLists[vertexMapIndex] << "\n";
+    std::cout << this->EmbedLists[vertexMapIndex];
+    std::cout << "Container:\n";
     std::cout << this->SortedSubDiagramsWithMap[convertedIndex.first][convertedIndex.second].second;
+    /// TODO: print out canonical container and list
+    std::cout << "CanonicalContainer:\n";
+    std::cout << this->GetCanonicalSubDiagramContainer(index);
+    std::cout << "CanonicalEmbedList:\n";
+    std::cout << this->GetCanonicalSubDiagramEmbedList(index);
 }
 
 /// see if two subgraphs are disjoint i.e. do not contain a single common vertex (using ORIGINAL labels to search!)

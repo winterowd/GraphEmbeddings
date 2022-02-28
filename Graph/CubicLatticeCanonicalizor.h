@@ -24,7 +24,7 @@ public:
     typedef std::pair<int, CartesianCoords> CartesianVertex;
 private:
      /******** private variables ********/
-    GraphContainer *Container; /// pointer to container object (memory owned externally!)
+    GraphContainer Container; /// pointer to container object
 
     AbstractLattice *Lattice; /// pointer to lattice object (CUBIC!) (memory owned externally!)
 
@@ -37,8 +37,6 @@ private:
     VertexEmbedList OriginalList; /// original embedded list
 
     /******** private functions ********/
-    CartesianVertex FindMinimum(const std::vector<CartesianVertex>& vec);
-
     void ComputeCOMandShift(); /// compute COM vector and shift coordinates of vertices to COM frame
 
     void ComputeCOMandShiftFunny();
@@ -90,7 +88,7 @@ private:
     int GetVertexColor(int number) const;
 
 public:
-    CubicLatticeCanonicalizor(GraphContainer *container, AbstractLattice *lattice, const VertexEmbedList& embedList); /// constructor
+    CubicLatticeCanonicalizor(const GraphContainer& container, AbstractLattice *lattice, const VertexEmbedList& embedList); /// constructor
 
     VertexEmbedList GetCanonical(); /// get the canonical graph (main interface routine)
 

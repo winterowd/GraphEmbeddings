@@ -16,7 +16,6 @@ ZClusterPureGaugeArbEmbedding::ZClusterPureGaugeArbEmbedding(const GraphContaine
     if (this->ClusterContainer.GetNbrRooted()!=this->ClusterEmbedList.GetNbrSetRootedVertices())
         throw std::invalid_argument("ERROR: ZClusterPureGaugeArbEmbedding requires number of rooted vertices of container to equal the number of set rooted vertices of clusterEmbedList!\n");
 
-    //std::cout << "DEBUG_ZCLUSTER: " << this->ClusterEmbedList.GetNbrSetRootedVertices() << " "  <<
     if (this->ClusterEmbedList.IsRooted() && !this->ClusterEmbedList.IsFixedVertexSet(0))
         throw std::invalid_argument("ERROR: ZClusterPureGaugeArbEmbedding requires that if clusterEmbedList is rooted, then first fixed vertex must be set!\n");
 

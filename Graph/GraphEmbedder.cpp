@@ -638,7 +638,7 @@ std::pair<std::vector<VertexEmbedList>, std::vector<int>> GraphEmbedder::Compute
     /// now in EmbedLists we have the data that we need to get the list of canonical graphs and their counts
     for (auto it=this->EmbedLists.begin(); it!=this->EmbedLists.end(); ++it)
     {
-        CubicLatticeCanonicalizor tempCanonicalizor(&container, this->Lattice, *it); /// get canonical graph wrt octahedral group
+        CubicLatticeCanonicalizor tempCanonicalizor(container, this->Lattice, *it); /// get canonical graph wrt octahedral group
         auto tempCanonical = tempCanonicalizor.GetCanonical();
         tempCanonical.SetNbrChoicesForFirstBond(it->GetNbrChoicesForFirstBond()); /// need to add this by hand to canonical!
         auto tempCanonicalOld = tempCanonicalizor.GetCanonicalOld();
@@ -1161,8 +1161,7 @@ std::set<VertexEmbedList> GraphEmbedder::CreateInitialVertexEmbedLists(const Gra
     if (this->Parameters.EmbedCorrelator())
         return CreateInitialVertexEmbedListsRooted(container, bondCombo);
     else
-        return CreateInitialVertexEmbedListsNonRootedFunny(container, bondCombo);
-        //return CreateInitialVertexEmbedListsNonRooted(container, bondCombo);
+        return CreateInitialVertexEmbedListsNonRooted(container, bondCombo);
 }
 
 /// creates initial list of embedded vertices for rooted graphs
@@ -1248,21 +1247,6 @@ std::set<VertexEmbedList> GraphEmbedder::CreateInitialVertexEmbedListsNonRooted(
             break;
         }
     }
-    return result;
-}
-
-/// DEBUGGING WITH CANONICAL EMBEDDINGS OF GRAPH "Bo"
-std::set<VertexEmbedList> GraphEmbedder::CreateInitialVertexEmbedListsNonRootedFunny(const GraphContainer& container, const std::vector<int> &bondCombo)
-{
-    std::set<VertexEmbedList> result;
-
-    std::vector<unsigned int> indices(this->Lattice->GetDim(), this->Lattice->GetN()/2); /// spatial indices for first vertex
-    auto tempIndex = this->Lattice->GetSiteIndex(indices); /// index for first vertex
-    VertexEmbedList tempList(this->Parameters.GetMaxEmbeddingLength());
-    tempList.AddVertexEmbed(VertexEmbed{1,tempIndex});
-    tempList.AddVertexEmbed(VertexEmbed{2,this->GetNeighbor(0,tempIndex,1)});
-    tempList.SetNbrChoicesForFirstBond(1);
-    result.insert(tempList);
     return result;
 }
 

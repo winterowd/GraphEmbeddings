@@ -207,13 +207,25 @@ int CanonicalGraphManager::GetNbrRootedGraphs(int l, int nbrRoots) const
         return this->CanonicalTwoRootedGraphs[l-1].size();
 }
 
-/// get the 2D index of a given unrooted graph: (L, graphIndex)
+/// public accessor for graphs (rooted AND unrooted)
 /// NOTE: expects container to be already canonical with respect to vertex labels (produced by NAUTY)
-/// @param container: GraphContainer containing the graph whose index we want
+/// @param container: the graph whose index we want
 std::pair<int, int> CanonicalGraphManager::GetGraphIndex(const GraphContainer& container)
 {
     if (container.GetL() > this->LMax)
         throw std::invalid_argument("GetGraphIndex requires container's number of bonds to satisfy 1 <= L <= LMax!\n");
+
+    if (container.GetNbrRooted()==0)
+        return this->GetUnrootedGraphIndex(container);
+    else
+        return this->GetRootedGraphIndex(container, container.GetNbrRooted());
+}
+
+/// get the 2D index of a given unrooted graph: (L, graphIndex)
+/// NOTE: expects container to be already canonical with respect to vertex labels (produced by NAUTY)
+/// @param container: GraphContainer containing the graph whose index we want
+std::pair<int, int> CanonicalGraphManager::GetUnrootedGraphIndex(const GraphContainer& container)
+{
     for (int i=0; i<this->GetNbrGraphs(container.GetL()); ++i)
     {
         if (container==this->CanonicalGraphs[container.GetL()-1][i])

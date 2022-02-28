@@ -1,29 +1,39 @@
-#ifndef XIRECURSION_H
-#define XIRECURSION_H
+#ifndef XIRECURSIONROOTED_H
+#define XIRECURSIONROOTED_H
 
 #include "CanonicalGraphManager.h"
 #include "SubDiagramGenerator.h"
+#include "TwoPointCorrelator.h"
 
 /// auxiliary class for the finite-cluster method
 /// uniquely identifies terms which stand for log Z(g), which is the partition function on a given cluster g
-class XiExpansionUnrootedTerm
+class XiExpansionRootedTerm
 {
 private:
-    std::pair<int,int> CanonicalCoordinates; /// coordinates for canonical container (unrooted): (bonds, index)
+    std::pair<int,int> CanonicalCoordinates; /// coordinates for canonical container (rooted): (bonds, index)
 
     std::vector<UndirectedEmbeddedEdge> EmbeddedVertices; /// embedded vertices (lattice indices only)
 
     VertexEmbedList FullyCanonicalEmbedList; /// canonical embed list (wrt to nauty AND cubic symmetries)
 
+    VertexEmbedList EmbedListOriginal; /// embed list where rooted vertices reside at ORIGINAL location
+
     int Coefficient; /// coefficient
 
 public:
-    XiExpansionUnrootedTerm(const std::pair<int,int>& coordinates, const std::vector<UndirectedEmbeddedEdge>& embeddedVertices, const VertexEmbedList& fullyCanonicalEmbedList, int coefficient) :
+    XiExpansionRootedTerm(const std::pair<int,int>& coordinates, const std::vector<UndirectedEmbeddedEdge>& embeddedVertices, const VertexEmbedList& fullyCanonicalEmbedList, const VertexEmbedList& originalEmbedList, int coefficient) :
         CanonicalCoordinates(coordinates),
         EmbeddedVertices(embeddedVertices),
         FullyCanonicalEmbedList(fullyCanonicalEmbedList),
+        EmbedListOriginal(originalEmbedList),
         Coefficient(coefficient)
-    {}
+    {
+        if (FullyCanonicalEmbedList.GetNbrSetRootedVertices()!=2)
+            throw std::invalid_argument("Error: XiExpansionRootedTerm requires fullyCanonicalEmbedList to have two rooted vertices!\n");
+
+        if (EmbedListOriginal.GetNbrSetRootedVertices()!=2)
+            throw std::invalid_argument("Error: XiExpansionRootedTerm requires originalEmbedList to have two rooted vertices!\n");
+    }
 
     /***** public accessors *****/
 
@@ -39,39 +49,40 @@ public:
     void CombineCoefficients(int coefficientToAdd) { this->Coefficient+=coefficientToAdd; }
 
     // user-defined operators
-    friend std::ostream& operator<< (std::ostream& stream, const XiExpansionUnrootedTerm& can);
-    friend bool operator==(const XiExpansionUnrootedTerm& lhs, const XiExpansionUnrootedTerm& rhs);
+    friend std::ostream& operator<< (std::ostream& stream, const XiExpansionRootedTerm& can);
+    friend bool operator==(const XiExpansionRootedTerm& lhs, const XiExpansionRootedTerm& rhs);
 
 };
 
 /// output (debugging purposes)
-inline std::ostream& operator<<(std::ostream& stream, const XiExpansionUnrootedTerm& xi)
+inline std::ostream& operator<<(std::ostream& stream, const XiExpansionRootedTerm& xi)
 {
     stream << "XI_TERM:\n";
     stream << "(" << xi.CanonicalCoordinates.first << "," << xi.CanonicalCoordinates.second << ")\n";
     stream << xi.EmbeddedVertices << "\n";
     stream << xi.FullyCanonicalEmbedList;
+    stream << xi.EmbedListOriginal;
     stream << "COEFFICIENT: " << xi.Coefficient << "\n";
     return stream;
 }
 
 /// equality and inequality operator for the terms in the xi expansion
-inline bool operator==(const XiExpansionUnrootedTerm& lhs, const XiExpansionUnrootedTerm& rhs)
+inline bool operator==(const XiExpansionRootedTerm& lhs, const XiExpansionRootedTerm& rhs)
 {
     /// first check the canonical coordinates (easy check so that we do not need to always compare edges)
     if (!((lhs.CanonicalCoordinates.first == rhs.CanonicalCoordinates.first) && (lhs.CanonicalCoordinates.second == rhs.CanonicalCoordinates.second)))
         return false;
+    /// TODO: do we also compare FullyCanonicalEmbedList?
     /// if they are equal then we compare embedded edges
     return (lhs.EmbeddedVertices==rhs.EmbeddedVertices);
 }
 
-inline bool operator!=(const XiExpansionUnrootedTerm& lhs, const XiExpansionUnrootedTerm& rhs)
+inline bool operator!=(const XiExpansionRootedTerm& lhs, const XiExpansionRootedTerm& rhs)
 {
     return !(lhs==rhs);
 }
 
-/// class which performs the Xi recursion given a graph and it's embedding (unrooted)
-class XiRecursionUnrooted
+class XiRecursionRooted
 {
 private:
     CanonicalGraphManager *GraphManager; /// pointer to look-up table object with canonical graphs (rooted and unrooted)
@@ -84,23 +95,22 @@ private:
 
     int EmbeddingNumber; /// embedding number
 
-    std::vector<XiExpansionUnrootedTerm> XiTerms; /// list of terms in the expansion for xi
+    std::vector<XiExpansionRootedTerm> XiTerms; /// list of terms in the expansion for xi
+
+    std::vector<TwoPointCorrelator> CorrelatorTerms;
 
     void ComputeXiTerms(GraphContainer container, VertexEmbedList embedList, int sign); /// recursive method for computing xi
 
-    void AddXiTerm(const XiExpansionUnrootedTerm& newTerm); /// add term to list
+    void AddXiTerm(const XiExpansionRootedTerm& newTerm); /// add term to list
 
 public:
-    XiRecursionUnrooted(CanonicalGraphManager* manager, const GraphContainer& container, const VertexEmbedList& embedList, CubicLattice *lattice, int embeddingNumber=1);
-
-    VertexEmbedList RestoreOriginalLabels(const VertexEmbedList& embedList); /// restore original vertex labels
+    XiRecursionRooted(CanonicalGraphManager* manager, const GraphContainer& container, const VertexEmbedList& embedList, CubicLattice *lattice, int embeddingNumber=1);
 
     /**** public accessors ****/
 
     int GetNbrXiTerms() const { return this->XiTerms.size(); }
 
-    XiExpansionUnrootedTerm GetXiTerm(int index) const;
-
+    XiExpansionRootedTerm GetXiTerm(int index) const;
 };
 
-#endif // XIRECURSION_H
+#endif // XIRECURSIONROOTED_H

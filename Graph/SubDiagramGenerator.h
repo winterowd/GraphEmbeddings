@@ -145,11 +145,6 @@ inline std::ostream& operator<< (std::ostream& stream, const CanonicalSubDiagram
     return stream;
 }
 
-/// TODO: think about how to deal with rooted graphs
-/// things to think about: some subgraphs will not be rooted, some will have one root, some two
-/// how to properly deal with canonicalization with rooted vertices
-/// keeping track of which original vertices were rooted
-
 /// generate all subgraphs of a given graph (embedded on a lattice i.e. cubic)
 class SubDiagramGenerator
 {

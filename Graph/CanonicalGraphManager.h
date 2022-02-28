@@ -46,6 +46,10 @@ private:
 
     GraphContainer GetTwoRootedGraph(int l, int graphIndex) const;
 
+    std::pair<int, int> GetUnrootedGraphIndex(const GraphContainer& container);
+
+    std::pair<int, int> GetRootedGraphIndex(const GraphContainer& container, int nbrRoots);
+
 public:
     CanonicalGraphManager(int lMax);
 
@@ -62,8 +66,6 @@ public:
     int GetNbrRootedGraphs(int l, int nbrRoots) const;
 
     std::pair<int, int> GetGraphIndex(const GraphContainer& container);
-
-    std::pair<int, int> GetRootedGraphIndex(const GraphContainer& container, int nbrRoots);
 
     GraphContainer GetGraph(int l, int graphIndex) const;
 

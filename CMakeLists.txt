@@ -7,12 +7,16 @@ set(CMAKE_CXX_STANDARD 11)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall")
 
+message(STATUS "CMAKE_SOURCE_DIR: ${CMAKE_SOURCE_DIR}")
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
+message(STATUS "CMAKE_MODULE_PATH: ${CMAKE_MODULE_PATH}")
+
 ###### options ######
 
 option(USE_DEBUG "Enter debug mode" OFF)
 if (USE_DEBUG)
-   add_definitions( -DDEBUG)
-   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g")
+    add_definitions( -DDEBUG)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g")
 endif()
 
 ###### External Libraries ######
@@ -21,6 +25,22 @@ endif()
 find_package(Boost COMPONENTS program_options REQUIRED)
 include_directories(${Boost_INCLUDE_DIRS})
 set(LIBS ${LIBS} ${Boost_LIBRARIES})
+
+# CLN
+find_package(CLN COMPONENTS program_options REQUIRED)
+include_directories(${CLN_INCLUDE_DIRS})
+set(LIBS ${LIBS} ${CLN_LIBRARIES})
+
+# GiNaC (by hand from user)
+if (DEFINED GINAC_DIR)
+    message(STATUS "GiNaC located at ${GINAC_DIR}!")
+else()
+    set(GINAC_DIR "/usr/local")
+    message(STATUS "GiNaC directory not supplied by user! (default used: ${GINAC_DIR})")
+endif()
+add_library(ginac STATIC IMPORTED)
+set_target_properties(ginac PROPERTIES IMPORTED_LOCATION ${GINAC_DIR}/lib/libginac.a)
+include_directories(${GINAC_DIR}/include/ginac/)
 
 # Nauty (by hand from user)
 if (DEFINED NAUTY_DIR)

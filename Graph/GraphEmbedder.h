@@ -162,8 +162,6 @@ private:
 
     std::set<VertexEmbedList> CreateInitialVertexEmbedListsNonRooted(const GraphContainer& container, const std::vector<int> &bondCombo);
 
-    std::set<VertexEmbedList> CreateInitialVertexEmbedListsNonRootedFunny(const GraphContainer& container, const std::vector<int> &bondCombo);
-
     std::unordered_set<int> GetRemainingVertices(const std::vector<VertexEmbed>& listUsedVertices);
 
     std::unordered_set<int> GetRemainingVertices(const VertexEmbedList& listUsedVertices);
