@@ -174,7 +174,7 @@ private:
     /// where CanonicalToOriginalMap[i][k] contains the the ORIGINAL vertex label of the CANONICALLY labeled vertex k+1 in the ith SORTED subgraph (k=0,1,...,N_{v,sg_i}-1)
     std::vector<std::vector<int>> CanonicalToOriginalMap; /// mapping between canonical and original labels
 
-    /// TODO: add EmbedLists that are canonical with respect to NAUTY and the octohedral group! (cubic symmetry)
+    /// objects which contain container and lists which are canonical with respect to NAUTY and the octohedral group! (cubic symmetry)
     std::vector<CanonicalSubDiagram> CanonicalSubDiagramList;
 
     std::vector<SetOfSets<int>> DisjointSets; /// D_n: set of subsets represented by the index corresponding to ordering of subgraphs in SortedSubDiagramsWithMap

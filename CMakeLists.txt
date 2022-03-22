@@ -79,7 +79,7 @@ add_executable(TestGraphWeight Tests/TestGraphWeight.cpp)
 target_link_libraries(TestGraphWeight ${PROJECT_LIBS} nauty)
 
 add_executable(TestZCluster Tests/TestZCluster.cpp)
-target_link_libraries(TestZCluster ${PROJECT_LIBS} ${LIBS} nauty)
+target_link_libraries(TestZCluster ${PROJECT_LIBS} ${LIBS} nauty ginac)
 
 add_executable(TestPowerSet Tests/TestPowerSet.cpp)
 target_link_libraries(TestPowerSet ${PROJECT_LIBS} nauty)
@@ -88,4 +88,7 @@ add_executable(TestDenseNauty Tests/TestDenseNauty.cpp)
 target_link_libraries(TestDenseNauty ${PROJECT_LIBS} nauty)
 
 add_executable(TestRecursionXi Tests/TestRecursionXi.cpp)
-target_link_libraries(TestRecursionXi ${PROJECT_LIBS} ${LIBS} nauty)
+target_link_libraries(TestRecursionXi ${PROJECT_LIBS} ${LIBS} nauty ginac)
+
+add_executable(TestGinacPolynomial Tests/TestGinacPolynomial.cpp)
+target_link_libraries(TestGinacPolynomial ${PROJECT_LIBS} ${LIBS} nauty ginac)

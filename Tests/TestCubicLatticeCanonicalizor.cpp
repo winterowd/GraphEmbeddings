@@ -12,8 +12,8 @@ int main(int argc, char *argv[])
     CubicLattice MyLattice(100);
     auto resultPair = MyEmbedder.ContainerAndSampleCubicEmbeddingFromG6();
 
-    CubicLatticeCanonicalizor MyCubicLatticeCanonicalizor1(&resultPair.first, &MyLattice, resultPair.second);
-    CubicLatticeCanonicalizor MyCubicLatticeCanonicalizor2(&resultPair.first, &MyLattice, resultPair.second);
+    CubicLatticeCanonicalizor MyCubicLatticeCanonicalizor1(resultPair.first, &MyLattice, resultPair.second);
+    CubicLatticeCanonicalizor MyCubicLatticeCanonicalizor2(resultPair.first, &MyLattice, resultPair.second);
 
     auto start = std::chrono::high_resolution_clock::now();
     auto resultOld = MyCubicLatticeCanonicalizor1.GetCanonicalOld();
@@ -68,7 +68,7 @@ int main(int argc, char *argv[])
     EmbedList1.AddVertexEmbed(3, index3);
     EmbedList1.AddVertexEmbed(2, index2);
 
-    CubicLatticeCanonicalizor TestCanonicalizor1(&TestContainer, &MyLattice, EmbedList1);
+    CubicLatticeCanonicalizor TestCanonicalizor1(TestContainer, &MyLattice, EmbedList1);
 
     auto result1 = TestCanonicalizor1.GetCanonical();
     std::cout << "RESULT1: " << result1 << "\n";
@@ -80,7 +80,7 @@ int main(int argc, char *argv[])
     EmbedList2.AddVertexEmbed(3, index3);
     EmbedList2.AddVertexEmbed(2, index2);
 
-    CubicLatticeCanonicalizor TestCanonicalizor2(&TestContainer, &MyLattice, EmbedList2);
+    CubicLatticeCanonicalizor TestCanonicalizor2(TestContainer, &MyLattice, EmbedList2);
 
     auto result2 = TestCanonicalizor2.GetCanonical();
     std::cout << "RESULT2: " << result2 << "\n";
@@ -97,7 +97,7 @@ int main(int argc, char *argv[])
     EmbedList3.AddVertexEmbed(3, index3);
     EmbedList3.AddVertexEmbed(2, index2);
 
-    CubicLatticeCanonicalizor TestCanonicalizor3(&TestContainer, &MyLattice, EmbedList3);
+    CubicLatticeCanonicalizor TestCanonicalizor3(TestContainer, &MyLattice, EmbedList3);
 
     auto result3 = TestCanonicalizor3.GetCanonical();
     std::cout << "RESULT3: " << result3 << "\n";
@@ -109,7 +109,7 @@ int main(int argc, char *argv[])
     EmbedList4.AddVertexEmbed(3, index3);
     EmbedList4.AddVertexEmbed(2, index2);
 
-    CubicLatticeCanonicalizor TestCanonicalizor4(&TestContainer, &MyLattice, EmbedList4);
+    CubicLatticeCanonicalizor TestCanonicalizor4(TestContainer, &MyLattice, EmbedList4);
 
     auto result4 = TestCanonicalizor4.GetCanonical();
     std::cout << "RESULT4: " << result4 << "\n";
@@ -121,7 +121,7 @@ int main(int argc, char *argv[])
     EmbedList5.AddVertexEmbed(3, index3);
     EmbedList5.AddVertexEmbed(2, index2);
 
-    CubicLatticeCanonicalizor TestCanonicalizor5(&TestContainer, &MyLattice, EmbedList5);
+    CubicLatticeCanonicalizor TestCanonicalizor5(TestContainer, &MyLattice, EmbedList5);
 
     auto result5 = TestCanonicalizor5.GetCanonical();
     std::cout << "RESULT5: " << result5 << "\n";
@@ -134,7 +134,7 @@ int main(int argc, char *argv[])
     EmbedList6.AddVertexEmbed(3, index3);
     EmbedList6.AddVertexEmbed(2, index2);
 
-    CubicLatticeCanonicalizor TestCanonicalizor6(&TestContainer, &MyLattice, EmbedList6);
+    CubicLatticeCanonicalizor TestCanonicalizor6(TestContainer, &MyLattice, EmbedList6);
 
     auto result6 = TestCanonicalizor6.GetCanonical();
     std::cout << "RESULT6: " << result6 << "\n";
@@ -170,7 +170,7 @@ int main(int argc, char *argv[])
     EmbedListColor1Embed1.AddFixedVertexEmbed(1 /*fixedNbr (color)*/, 2 /* vertexNbr (always 2 after NAUTY does canonicalization) */, index2);
     EmbedListColor1Embed1.AddVertexEmbed(3, index3);
 
-    CubicLatticeCanonicalizor TestCanonicalizorColor1Embed1(&rooted1, &MyLattice, EmbedListColor1Embed1);
+    CubicLatticeCanonicalizor TestCanonicalizorColor1Embed1(rooted1, &MyLattice, EmbedListColor1Embed1);
 
     auto resultColor1Embed1 = TestCanonicalizorColor1Embed1.GetCanonical();
     std::cout << "RESULT_COLOR1_EMBED1: " << resultColor1Embed1 << "\n";
@@ -181,7 +181,7 @@ int main(int argc, char *argv[])
     EmbedListColor1Embed2.AddFixedVertexEmbed(1 /*fixedNbr (color)*/, 2 /* vertexNbr (always 2 after NAUTY does canonicalization) */, index2);
     EmbedListColor1Embed2.AddVertexEmbed(3, index3);
 
-    CubicLatticeCanonicalizor TestCanonicalizorColor1Embed2(&rooted1, &MyLattice, EmbedListColor1Embed2);
+    CubicLatticeCanonicalizor TestCanonicalizorColor1Embed2(rooted1, &MyLattice, EmbedListColor1Embed2);
 
     auto resultColor1Embed2 = TestCanonicalizorColor1Embed2.GetCanonical();
     std::cout << "RESULT_COLOR1_EMBED2: " << resultColor1Embed2 << "\n";
@@ -192,7 +192,7 @@ int main(int argc, char *argv[])
     EmbedListColor1Embed3.AddFixedVertexEmbed(1 /*fixedNbr (color)*/, 2 /* vertexNbr (always 2 after NAUTY does canonicalization) */, index2);
     EmbedListColor1Embed3.AddVertexEmbed(3, index3);
 
-    CubicLatticeCanonicalizor TestCanonicalizorColor1Embed3(&rooted1, &MyLattice, EmbedListColor1Embed3);
+    CubicLatticeCanonicalizor TestCanonicalizorColor1Embed3(rooted1, &MyLattice, EmbedListColor1Embed3);
 
     auto resultColor1Embed3 = TestCanonicalizorColor1Embed3.GetCanonical();
     std::cout << "RESULT_COLOR1_EMBED3: " << resultColor1Embed3 << "\n";
@@ -209,7 +209,7 @@ int main(int argc, char *argv[])
     EmbedListColor3Embed1.AddFixedVertexEmbed(1 /*fixedNbr (color)*/, 2 /* vertexNbr (always 2 after NAUTY does canonicalization) */, index2);
     EmbedListColor3Embed1.AddVertexEmbed(3, index3);
 
-    CubicLatticeCanonicalizor TestCanonicalizorColor3Embed1(&rooted3, &MyLattice, EmbedListColor3Embed1);
+    CubicLatticeCanonicalizor TestCanonicalizorColor3Embed1(rooted3, &MyLattice, EmbedListColor3Embed1);
 
     auto resultColor3Embed1 = TestCanonicalizorColor3Embed1.GetCanonical();
     std::cout << "RESULT_COLOR3_EMBED1: " << resultColor3Embed1 << "\n";
@@ -221,7 +221,7 @@ int main(int argc, char *argv[])
     EmbedListColor3Embed2.AddFixedVertexEmbed(1 /*fixedNbr (color)*/, 2 /* vertexNbr (always 2 after NAUTY does canonicalization) */, index2);
     EmbedListColor3Embed2.AddVertexEmbed(3, index3);
 
-    CubicLatticeCanonicalizor TestCanonicalizorColor3Embed2(&rooted3, &MyLattice, EmbedListColor3Embed2);
+    CubicLatticeCanonicalizor TestCanonicalizorColor3Embed2(rooted3, &MyLattice, EmbedListColor3Embed2);
 
     auto resultColor3Embed2 = TestCanonicalizorColor3Embed2.GetCanonical();
     std::cout << "RESULT_COLOR3_EMBED2: " << resultColor3Embed2 << "\n";
@@ -238,7 +238,7 @@ int main(int argc, char *argv[])
     EmbedListColor2Embed1.AddFixedVertexEmbed(1 /*fixedNbr (color)*/, 2 /* vertexNbr (always 2 after NAUTY does canonicalization) */, index2);
     EmbedListColor2Embed1.AddVertexEmbed(3, index3);
 
-    CubicLatticeCanonicalizor TestCanonicalizorColor2Embed1(&rooted2, &MyLattice, EmbedListColor2Embed1);
+    CubicLatticeCanonicalizor TestCanonicalizorColor2Embed1(rooted2, &MyLattice, EmbedListColor2Embed1);
 
     auto resultColor2Embed1 = TestCanonicalizorColor2Embed1.GetCanonical();
     std::cout << "RESULT_COLOR2_EMBED1: " << resultColor2Embed1 << "\n";
@@ -250,7 +250,7 @@ int main(int argc, char *argv[])
     EmbedListColor2Embed2.AddFixedVertexEmbed(1 /*fixedNbr (color)*/, 2 /* vertexNbr (always 2 after NAUTY does canonicalization) */, index2);
     EmbedListColor2Embed2.AddVertexEmbed(3, index3);
 
-    CubicLatticeCanonicalizor TestCanonicalizorColor2Embed2(&rooted2, &MyLattice, EmbedListColor2Embed2);
+    CubicLatticeCanonicalizor TestCanonicalizorColor2Embed2(rooted2, &MyLattice, EmbedListColor2Embed2);
 
     auto resultColor2Embed2 = TestCanonicalizorColor2Embed2.GetCanonical();
     std::cout << "RESULT_COLOR2_EMBED2: " << resultColor2Embed2 << "\n";
@@ -267,7 +267,7 @@ int main(int argc, char *argv[])
     EmbedListColor2Embed3.AddFixedVertexEmbed(1 /*fixedNbr (color)*/, 2 /* vertexNbr (always 2 after NAUTY does canonicalization) */, index2);
     EmbedListColor2Embed3.AddVertexEmbed(3, index3);
 
-    CubicLatticeCanonicalizor TestCanonicalizorColor2Embed3(&rooted2, &MyLattice, EmbedListColor2Embed3);
+    CubicLatticeCanonicalizor TestCanonicalizorColor2Embed3(rooted2, &MyLattice, EmbedListColor2Embed3);
 
     auto resultColor2Embed3 = TestCanonicalizorColor2Embed3.GetCanonical();
     std::cout << "RESULT_COLOR2_EMBED3: " << resultColor2Embed3 << "\n";
@@ -279,7 +279,7 @@ int main(int argc, char *argv[])
     EmbedListColor2Embed4.AddFixedVertexEmbed(1 /*fixedNbr (color)*/, 2 /* vertexNbr (always 2 after NAUTY does canonicalization) */, index2);
     EmbedListColor2Embed4.AddVertexEmbed(3, index3);
 
-    CubicLatticeCanonicalizor TestCanonicalizorColor2Embed4(&rooted2, &MyLattice, EmbedListColor2Embed4);
+    CubicLatticeCanonicalizor TestCanonicalizorColor2Embed4(rooted2, &MyLattice, EmbedListColor2Embed4);
 
     auto resultColor2Embed4 = TestCanonicalizorColor2Embed4.GetCanonical();
     std::cout << "RESULT_COLOR2_EMBED4: " << resultColor2Embed4 << "\n";

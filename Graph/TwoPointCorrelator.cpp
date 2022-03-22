@@ -1,5 +1,9 @@
 #include "TwoPointCorrelator.h"
 
+/// constructor for two-point correlator object
+/// @param container: GraphContainer object for cluster
+/// @param embedList: VertexEmbedList corresponding to generalized embedding of graph on CubicLattice (edges of graph DO NOT have to correspond to edges of lattice!)
+/// @param lattice: pointer to CubicLattice object
 TwoPointCorrelator::TwoPointCorrelator(const GraphContainer &container, const VertexEmbedList &embedList, CubicLattice* lattice) :
     ContainerRootedCluster(container),
     EmbedListRootedCluster(embedList),
@@ -51,6 +55,16 @@ TwoPointCorrelator::TwoPointCorrelator(const GraphContainer &container, const Ve
 
 }
 
+/// create GiNaC::ex object (difference of two rational polynomials in \lambda_i's)
+/// CorrTerms[0]/CorrTerms[1] - (CorrTerms[2]/CorrTerms[0])(CorrTerms[3]/CorrTerms[0])
+GiNaC::ex TwoPointCorrelator::GetCorrelatorGiNaC()
+{
+    auto connectedTerm = this->CorrTerms[0].ComputeLambdaPolynomial().GetPolynomial()/this->CorrTerms[1].ComputeLambdaPolynomial().GetPolynomial();
+    auto disconnectedTerm = this->CorrTerms[2].ComputeLambdaPolynomial().GetPolynomial()*this->CorrTerms[3].ComputeLambdaPolynomial().GetPolynomial()/(this->CorrTerms[0].ComputeLambdaPolynomial().GetPolynomial()*this->CorrTerms[0].ComputeLambdaPolynomial().GetPolynomial());
+    return connectedTerm-disconnectedTerm;
+}
+
+/// print out each piece of the two-point correlator (debugging purposes)
 void TwoPointCorrelator::PrintCorrelatorTerms()
 {
     std::cout << "NUMERATOR_CONNECTED:\n";

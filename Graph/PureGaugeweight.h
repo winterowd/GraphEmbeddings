@@ -10,8 +10,6 @@ struct ExternalPolyakovLoop {
     bool Fundamental; /// fundamental (L) or antifundamental (L*)?
 };
 
-/// TODO: add capability to include external vertices (vertex label and whether it is L or L*)
-
 class PureGaugeWeight
 {
 private:

@@ -240,10 +240,6 @@ public:
 
     void Embed(); /// calculates embedding numbers for all graphs of a given order or a single and outputs results
 
-    /// TODO: routine which returns all partitions for a given container
-
-    /// TODO: routine which takes a single partition and container returns all VertexEmbedLists
-
     /// routine which outputs vector of canonical graphs and counts for embeddings (all NN links)
     std::tuple<GraphContainer, std::vector<VertexEmbedList>, std::vector<int> > ComputeCanonicalEmbeddingsAndCountsNN(const GraphContainer& container); /// uses the graph provided as a g6 string by the user (command line arguments sent to constructor)
 

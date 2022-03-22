@@ -8,7 +8,7 @@
 
 int main(int argc, char *argv[])
 {
-    int lMax = 3;
+    int lMax = 4;
     CanonicalGraphManager MyManager(lMax);
 
     CubicLattice MyLattice(100);
@@ -35,6 +35,8 @@ int main(int argc, char *argv[])
                 TwoPointCorrelator tempCorrelator(tempContainer, embedLists[j], &MyLattice);
                 std::cout << "CORRELATOR!\n";
                 tempCorrelator.PrintCorrelatorTerms();
+                std::cout << "GiNaC_CORRELATOR!\n";
+                std::cout << tempCorrelator.GetCorrelatorGiNaC() << "\n";
             }
         }
     }

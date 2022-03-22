@@ -21,6 +21,8 @@ private:
 public:
     TwoPointCorrelator(const GraphContainer& container, const VertexEmbedList& embedList, CubicLattice* lattice);
 
+    GiNaC::ex GetCorrelatorGiNaC();
+
     void PrintCorrelatorTerms(); /// debugging routine
 };
 

@@ -6,6 +6,8 @@
 #include "CubicLattice.h"
 #include "SubDiagramGenerator.h"
 #include "PureGaugeweight.h"
+#include "AuxiliaryRoutinesForGINAC.h"
+#include "MyLambdaPolynomial.h"
 
 class ZClusterPureGaugeArbEmbedding
 {
@@ -20,6 +22,8 @@ private:
     /// length: number of rooted vertices; each entry tells us whether we place L or L* at each rooted vertex
     /// NOTE: this is due to the fact that due to conventions, it could be that a one-rooted subgraph has its rooted vertex corresponding to a L* in the parent graph!
     std::vector<bool> PolyakovLoopAtRooted;
+
+    int MaxManhattanDistance; /// maximum Manhattan distance
 
     /// all permutations of a string of bools of length \sum_i N_i
     std::vector<std::vector<bool>> IntegrandTerms; /// terms in the integrand of Z expressed as strings of booleans
@@ -37,7 +41,7 @@ private:
     std::vector<UndirectedEdge> CubeDiagonal; /// "cube"-diagonal edges (of length \sqrt{3})
 
 public:
-    static const int NbrCouplings = 4; /// NN, NNN, Third-NN, Fourth-NN
+    static const int NbrCouplings = MaxInteractionLength::NbrInteractions; /// NN, NNN, Third-NN, Fourth-NN
 private:
     std::array<int, NbrCouplings> AllTotalBondCountsPlusOne; /// N_i+1, i=1,..,NbrCouplings
 
@@ -68,7 +72,9 @@ private:
     void EvaluateZ();
 
 public:
-    ZClusterPureGaugeArbEmbedding(const GraphContainer& container, const VertexEmbedList& clusterEmbedList, CubicLattice* lattice, const std::vector<bool>& loopAtRooted);
+    ZClusterPureGaugeArbEmbedding(const GraphContainer& container, const VertexEmbedList& clusterEmbedList, CubicLattice* lattice, const std::vector<bool>& loopAtRooted, int maxManhattanDistance=10);
+
+    MyLambdaPolynomial<double> ComputeLambdaPolynomial();
 
     /**** accessors ****/
     int GetNbrSquareDiagonal() const { return this->SquareDiagonal.size(); }

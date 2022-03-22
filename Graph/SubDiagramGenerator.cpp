@@ -160,7 +160,8 @@ void SubDiagramGenerator::GenerateSubDiagrams()
 
 }
 
-/// TODO: add comments here
+/// interface routine for computing the canonical subgraph
+/// @param sortedIndex: index (SORTED) corresponding to the given subgraph
 std::pair<CanonicalSubDiagram, VertexEmbedList> SubDiagramGenerator::ComputeCanonicalSubgraphAndList(int sortedIndex)
 {
     if (this->GetSubDiagram(sortedIndex).IsRooted())
@@ -445,7 +446,6 @@ void SubDiagramGenerator::PrintSubDiagram(int index) const
     std::cout << this->EmbedLists[vertexMapIndex];
     std::cout << "Container:\n";
     std::cout << this->SortedSubDiagramsWithMap[convertedIndex.first][convertedIndex.second].second;
-    /// TODO: print out canonical container and list
     std::cout << "CanonicalContainer:\n";
     std::cout << this->GetCanonicalSubDiagramContainer(index);
     std::cout << "CanonicalEmbedList:\n";

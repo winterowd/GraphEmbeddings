@@ -96,3 +96,26 @@ void XiRecursionRooted::AddXiTerm(const XiExpansionRootedTerm& newTerm)
     else
         it->CombineCoefficients(newTerm.GetCoefficient());
 }
+
+/// TODO: write description
+XiExpansionRootedTerm XiRecursionRooted::GetXiTerm(int index) const
+{
+    if (index<0 || index>=this->XiTerms.size())
+        throw std::invalid_argument("ERROR: XiRecursionRooted::GetXiTerm index should be between 0 and XiTerms.size()-1!\n");
+    return this->XiTerms[index];
+}
+
+/// TODO: write description
+GiNaC::ex XiRecursionRooted::GetXiGiNaC()
+{
+    GiNaC::ex result;
+    for (int i=0; i<this->CorrelatorTerms.size(); ++i)
+    {
+        auto tempCorrelator = this->CorrelatorTerms[i].GetCorrelatorGiNaC();
+        std::cout << "DEBUG_XiRecursionRooted::GetXiGiNaC: " << i << "\n";
+        std::cout << this->XiTerms[i];
+        std::cout << this->XiTerms[i].GetCoefficient() << " " << tempCorrelator << "\n";
+        result += GiNaC::numeric(this->XiTerms[i].GetCoefficient())*tempCorrelator;
+    }
+    return result;
+}

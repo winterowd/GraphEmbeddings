@@ -571,7 +571,6 @@ void GraphEmbedder::ComputeEmbeddingNumbers(const GraphContainer& container, gra
 {
 
     this->GetCombinationsOfBondsFixedNumberOfBonds(container.GetL()); /// generate combos of bonds for fixed bond number
-    /// TODO: how to incorporate the constraint with Manhattan distance? think about this...
 
     container.GetDenseNautyFromGraph(g); /// get dense nauty rep of graph
     char *s = ntog6(g,this->MWords,this->N); /// convert to g6

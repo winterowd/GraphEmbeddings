@@ -4,6 +4,7 @@
 #include "CanonicalGraphManager.h"
 #include "SubDiagramGenerator.h"
 #include "TwoPointCorrelator.h"
+#include "AuxiliaryRoutinesForGINAC.h"
 
 /// auxiliary class for the finite-cluster method
 /// uniquely identifies terms which stand for log Z(g), which is the partition function on a given cluster g
@@ -104,9 +105,12 @@ private:
     void AddXiTerm(const XiExpansionRootedTerm& newTerm); /// add term to list
 
 public:
+    /// TODO: add maxManhattanDistance
     XiRecursionRooted(CanonicalGraphManager* manager, const GraphContainer& container, const VertexEmbedList& embedList, CubicLattice *lattice, int embeddingNumber=1);
 
     /**** public accessors ****/
+
+    GiNaC::ex GetXiGiNaC(); /// TODO: write this function
 
     int GetNbrXiTerms() const { return this->XiTerms.size(); }
 

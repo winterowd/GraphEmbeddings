@@ -1,10 +1,12 @@
 #include "ZClusterPureGaugeArbEmbedding.h"
 
-ZClusterPureGaugeArbEmbedding::ZClusterPureGaugeArbEmbedding(const GraphContainer &container, const VertexEmbedList &clusterEmbedList, CubicLattice* lattice, const std::vector<bool> &loopAtRooted) :
+/// TODO: comments for this
+ZClusterPureGaugeArbEmbedding::ZClusterPureGaugeArbEmbedding(const GraphContainer &container, const VertexEmbedList &clusterEmbedList, CubicLattice* lattice, const std::vector<bool> &loopAtRooted, int maxManhattanDistance) :
     ClusterContainer(container),
     ClusterEmbedList(clusterEmbedList),
     Lattice(lattice),
     PolyakovLoopAtRooted(loopAtRooted),
+    MaxManhattanDistance(maxManhattanDistance),
     LinearIndexMax(1)
 {   
     if (this->ClusterContainer.GetN()!=this->ClusterEmbedList.GetSize())
@@ -56,7 +58,7 @@ std::array<int, ZClusterPureGaugeArbEmbedding::NbrCouplings> ZClusterPureGaugeAr
     if (index < 0 || index >= this->LinearIndexMax)
         throw std::invalid_argument("ERROR: LinearIndexToPowersOfCouplings requires 0<= index < NTotalBondCounts!\n");
 #endif
-    std::array<int, ZClusterPureGaugeArbEmbedding::NbrCouplings> result{0, 0, 0, 0};
+    std::array<int, ZClusterPureGaugeArbEmbedding::NbrCouplings> result;
     int temp = index;
     for (int i=0; i<this->NbrCouplings; ++i)
     {
@@ -304,6 +306,23 @@ void ZClusterPureGaugeArbEmbedding::PrintZ() const
         }
     }
     std::cout << "**** PrintZ ****\n";
+}
+
+/// compute GiNaC polynomial from expression (double)
+/// prepare coefficients for each set of n_i where the order is \prod_i \lambda^{n_i}_i
+MyLambdaPolynomial<double> ZClusterPureGaugeArbEmbedding::ComputeLambdaPolynomial()
+{
+    std::vector<std::pair<double, std::array<int, MaxInteractionLength::NbrInteractions>>> coefficients;
+    for (int i=0; i<this->LinearIndexMax; ++i)
+    {
+        double tempCoefficient = this->ZCoefficients[i];
+        if (tempCoefficient!=0)
+        {
+            auto powersCouplings = this->LinearIndexToPowersOfCouplings(i);
+            coefficients.push_back(std::pair<double, std::array<int, MaxInteractionLength::NbrInteractions>>(tempCoefficient, powersCouplings));
+        }
+    }
+    return MyLambdaPolynomial<double>(coefficients, this->MaxManhattanDistance);
 }
 
 /// print the contributions at a given order in the couplings
