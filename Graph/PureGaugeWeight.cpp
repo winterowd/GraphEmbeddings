@@ -1,18 +1,18 @@
-#include "TestTemplatePureGauge.h"
+#include "PureGaugeweight.h"
 
 /// constructor
 /// @arg container: pointer to GraphContainer object describing the graph we are interested in
 /// @arg externalVertices: list of vertices which are external/rooted (vertex label AND whether we add L or L*)
 template <typename T>
-TestTemplatePureGauge<T>::TestTemplatePureGauge(const GraphContainer &container, const std::vector<ExternalPolyakovLoop> &externalVertices) :
+PureGaugeWeight<T>::PureGaugeWeight(const GraphContainer &container, const std::vector<ExternalPolyakovLoop> &externalVertices) :
     Container(container),
     ExternalVertices(externalVertices)
 {
     if (this->ExternalVertices.size()>2)
-        throw std::invalid_argument("ERROR: TestTemplatePureGauge requires externalVertices to be of size 2 or less!\n");
+        throw std::invalid_argument("ERROR: PureGaugeWeight requires externalVertices to be of size 2 or less!\n");
 
     if (std::find_if(this->ExternalVertices.begin(), this->ExternalVertices.end(), [this](const ExternalPolyakovLoop& x) { return (x.Label>this->Container.GetN() || x.Label<1); })!=this->ExternalVertices.end())
-        throw std::invalid_argument("ERROR: TestTemplatePureGauge requires ExternalVertices to have labels between 1 and N!\n");
+        throw std::invalid_argument("ERROR: PureGaugeWeight requires ExternalVertices to have labels between 1 and N!\n");
 
     for (int i=this->Container.GetNTimesNMinusOneDiv2()-1; i>=0; --i)
         if (this->Container.GetElementAdjacencyMatrix(this->Container.GetRowM(i),this->Container.GetColM(i)))
@@ -23,7 +23,7 @@ TestTemplatePureGauge<T>::TestTemplatePureGauge(const GraphContainer &container,
 /// @arg n: first argument
 /// @arg k: second argument
 template <typename T>
-double TestTemplatePureGauge<T>::BinomialCoefficient(int n, int k)
+double PureGaugeWeight<T>::BinomialCoefficient(int n, int k)
 {
 #ifdef DEBUG
     if (k > n)
@@ -39,7 +39,7 @@ double TestTemplatePureGauge<T>::BinomialCoefficient(int n, int k)
 /// factorial for double (recursive)
 /// @param n: size
 template <typename T>
-double TestTemplatePureGauge<T>::Factorial(int n)
+double PureGaugeWeight<T>::Factorial(int n)
 {
 #ifdef DEBUG
     if (n<0)
@@ -50,9 +50,9 @@ double TestTemplatePureGauge<T>::Factorial(int n)
 
 /// generic template routine...
 template <typename T>
-T TestTemplatePureGauge<T>::SingleSiteIntegral(int n, int m)
+T PureGaugeWeight<T>::SingleSiteIntegral(int n, int m)
 {
-    static_assert(sizeof(T)==0, "Only specializations of TestTemplatePureGauge::SingleSiteIntegral can be used!");
+    static_assert(sizeof(T)==0, "Only specializations of PureGaugeWeight::SingleSiteIntegral can be used!");
 }
 
 /// Single site integral: I_{n,m} = \int dU \chi(U)^n \chi(U^{\dagger})^m (see eq. (A.14) of J. Glesaaen's Thesis)
@@ -63,7 +63,7 @@ T TestTemplatePureGauge<T>::SingleSiteIntegral(int n, int m)
 /// of course if (n-m)%3 \neq 0 we get zero!
 /// double specialization
 template<>
-double TestTemplatePureGauge<double>::SingleSiteIntegral(int n, int m)
+double PureGaugeWeight<double>::SingleSiteIntegral(int n, int m)
 {
     int nMinusM = n-m;
     if (nMinusM%3!=0)
@@ -88,7 +88,7 @@ double TestTemplatePureGauge<double>::SingleSiteIntegral(int n, int m)
 
 /// GiNaC::numeric specialization (see description above)
 template<>
-GiNaC::numeric TestTemplatePureGauge<GiNaC::numeric>::SingleSiteIntegral(int n, int m)
+GiNaC::numeric PureGaugeWeight<GiNaC::numeric>::SingleSiteIntegral(int n, int m)
 {
     GiNaC::numeric nG = n;
     GiNaC::numeric mG = m;
@@ -111,14 +111,14 @@ GiNaC::numeric TestTemplatePureGauge<GiNaC::numeric>::SingleSiteIntegral(int n, 
         result += 2*(nFactorial/denom1)*(mFactorial/denom2)*(bin1*bin2/denom3);
     }
     if (!result.is_rational())
-        throw std::logic_error("TestTemplatePureGauge<GiNaC::numeric>::SingleSiteIntegral should give a rational number!\n");
+        throw std::logic_error("PureGaugeWeight<GiNaC::numeric>::SingleSiteIntegral should give a rational number!\n");
     return result;
 }
 
 /// for a fixed set of directions for the edges of the graph, compute the weight \prod_i W_i, i=1,2,...,N_V where N_V is the number of vertices
 /// @arg directedEdges: vector of length N_B which tells us "direction" of each link
 template <typename T>
-T TestTemplatePureGauge<T>::GetGraphWeightFixedBonds(const std::vector<bool>& directedEdges)
+T PureGaugeWeight<T>::GetGraphWeightFixedBonds(const std::vector<bool>& directedEdges)
 {
     auto siteCounts = this->GetSiteCountsForDirectedEdges(directedEdges);
 
@@ -142,7 +142,7 @@ T TestTemplatePureGauge<T>::GetGraphWeightFixedBonds(const std::vector<bool>& di
 /// returns a vector of SiteCount objects of length N_V
 /// @arg directedEdges: vector of bool variables of size N_B containing the edge direction
 template <typename T>
-inline std::vector<SiteCount> TestTemplatePureGauge<T>::GetSiteCountsForDirectedEdges(const std::vector<bool> &directedEdges)
+inline std::vector<SiteCount> PureGaugeWeight<T>::GetSiteCountsForDirectedEdges(const std::vector<bool> &directedEdges)
 {
     if (directedEdges.size() != this->Edges.size())
         throw std::invalid_argument("PureGaugeWeight::GetSiteInformationGivenDirectedEdges requires directedEdges to be of the same size as Edges!\n");
@@ -196,7 +196,7 @@ inline std::vector<SiteCount> TestTemplatePureGauge<T>::GetSiteCountsForDirected
 /// @arg tmp: vector containing a given combination of bond directions
 /// @arg nbrBondsRemaining: N_B-k, where k is the size of tmp
 template <typename T>
-void TestTemplatePureGauge<T>::GetAllWeights(std::vector<bool>& tmp, int nbrBondsRemaining)
+void PureGaugeWeight<T>::GetAllWeights(std::vector<bool>& tmp, int nbrBondsRemaining)
 {
     if (nbrBondsRemaining==0)
     {
@@ -222,7 +222,7 @@ void TestTemplatePureGauge<T>::GetAllWeights(std::vector<bool>& tmp, int nbrBond
 /// V(G) is the set of vertices, E_G is the set of edges, and \sigma is the edge to endpoint function.
 /// This weight does not depend on the embedding of the graph inside the lattice
 template <typename T>
-inline T TestTemplatePureGauge<T>::Weight()
+T PureGaugeWeight<T>::Weight()
 {
     std::vector<bool> tmp;
     this->TotalWeight = 0; /// set weight
@@ -231,5 +231,5 @@ inline T TestTemplatePureGauge<T>::Weight()
 }
 
 // templated type can only be double or GiNaC::numeric
-template class TestTemplatePureGauge<double>;
-template class TestTemplatePureGauge<GiNaC::numeric>;
+template class PureGaugeWeight<double>;
+template class PureGaugeWeight<GiNaC::numeric>;

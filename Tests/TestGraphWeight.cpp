@@ -2,6 +2,8 @@
 #include <chrono>
 
 #include "nauty.h"
+
+#include "PureGaugeWeightOld.h"
 #include "PureGaugeweight.h"
 
 int main(int argc, char *argv[])
@@ -23,18 +25,33 @@ int main(int argc, char *argv[])
 
     GraphContainer WeightContainer(n, m, g); /// container from densenauty
 
+    std::vector<ExternalPolyakovLoopOld> rootedVerticesOld1{ExternalPolyakovLoopOld{1,true}, ExternalPolyakovLoopOld{2,false}};
+    PureGaugeWeightOld MyWeightObjectOld1(WeightContainer, rootedVerticesOld1);
+    auto resultOld = MyWeightObjectOld1.Weight();
+    std::cout << "TOTAL_WEIGHTOLD1: " << resultOld << "\n";
+
     std::vector<ExternalPolyakovLoop> rootedVertices1{ExternalPolyakovLoop{1,true}, ExternalPolyakovLoop{2,false}};
-    PureGaugeWeight MyWeightObject1(WeightContainer, rootedVertices1);
+    PureGaugeWeight<GiNaC::numeric> MyWeightObject1(WeightContainer, rootedVertices1);
     auto result = MyWeightObject1.Weight();
     std::cout << "TOTAL_WEIGHT1: " << result << "\n";
 
+    std::vector<ExternalPolyakovLoopOld> rootedVerticesOld2{ExternalPolyakovLoopOld{1,true}};
+    PureGaugeWeightOld MyWeightObjectOld2(WeightContainer, rootedVerticesOld2);
+    resultOld = MyWeightObjectOld2.Weight();
+    std::cout << "TOTAL_WEIGHTOLD2: " << resultOld << "\n";
+
     std::vector<ExternalPolyakovLoop> rootedVertices2{ExternalPolyakovLoop{1,true}};
-    PureGaugeWeight MyWeightObject2(WeightContainer, rootedVertices2);
+    PureGaugeWeight<GiNaC::numeric> MyWeightObject2(WeightContainer, rootedVertices2);
     result = MyWeightObject2.Weight();
     std::cout << "TOTAL_WEIGHT2: " << result << "\n";
 
+    std::vector<ExternalPolyakovLoopOld> rootedVerticesOld3{ExternalPolyakovLoopOld{2,false}};
+    PureGaugeWeightOld MyWeightObjectOld3(WeightContainer, rootedVerticesOld3);
+    resultOld = MyWeightObjectOld3.Weight();
+    std::cout << "TOTAL_WEIGHTOLD3: " << resultOld << "\n";
+
     std::vector<ExternalPolyakovLoop> rootedVertices3{ExternalPolyakovLoop{2,false}};
-    PureGaugeWeight MyWeightObject3(WeightContainer, rootedVertices3);
+    PureGaugeWeight<GiNaC::numeric> MyWeightObject3(WeightContainer, rootedVertices3);
     result = MyWeightObject3.Weight();
     std::cout << "TOTAL_WEIGHT3: " << result << "\n";
 

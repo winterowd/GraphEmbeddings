@@ -1,23 +1,23 @@
-#ifndef PUREGAUGEWEIGHT_H
-#define PUREGAUGEWEIGHT_H
+#ifndef PUREGAUGEWEIGHTOLD_H
+#define PUREGAUGEWEIGHTOLD_H
 
 #include "GraphContainer.h"
 #include <math.h>
 #include <iostream>
 
-struct ExternalPolyakovLoop {
+struct ExternalPolyakovLoopOld {
     int Label; /// vertex label
     bool Fundamental; /// fundamental (L) or antifundamental (L*)?
 };
 
-class PureGaugeWeight
+class PureGaugeWeightOld
 {
 private:
     GraphContainer Container; /// pointer to graph container
 
     std::vector<UndirectedEdge> Edges; /// list of (undirected) edges
 
-    std::vector<ExternalPolyakovLoop> ExternalVertices; /// list of vertices where external L or L* is placed
+    std::vector<ExternalPolyakovLoopOld> ExternalVertices; /// list of vertices where external L or L* is placed
 
     double TotalWeight; /// total weight of graph using all possible combinations of directed bonds
 
@@ -34,9 +34,9 @@ private:
     double Factorial(int n);
 
 public:
-    PureGaugeWeight(const GraphContainer& container, const std::vector<ExternalPolyakovLoop>& externalVertices);
+    PureGaugeWeightOld(const GraphContainer& container, const std::vector<ExternalPolyakovLoopOld>& externalVertices);
 
     double Weight(); /// routine called by user (interface)
 };
 
-#endif // PUREGAUGEWEIGHT_H
+#endif // PUREGAUGEWEIGHTOLD_H

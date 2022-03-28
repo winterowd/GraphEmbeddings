@@ -76,7 +76,7 @@ add_executable(TestCubicLatticeCanonicalizor Tests/TestCubicLatticeCanonicalizor
 target_link_libraries(TestCubicLatticeCanonicalizor ${PROJECT_LIBS} ${LIBS} nauty)
 
 add_executable(TestGraphWeight Tests/TestGraphWeight.cpp)
-target_link_libraries(TestGraphWeight ${PROJECT_LIBS} nauty)
+target_link_libraries(TestGraphWeight ${PROJECT_LIBS} ${LIBS} nauty ginac)
 
 add_executable(TestZCluster Tests/TestZCluster.cpp)
 target_link_libraries(TestZCluster ${PROJECT_LIBS} ${LIBS} nauty ginac)

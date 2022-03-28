@@ -1,13 +1,17 @@
-#ifndef TESTTEMPLATEPUREGAUGE_H
-#define TESTTEMPLATEPUREGAUGE_H
+#ifndef PUREGAUGEWEIGHT_H
+#define PUREGAUGEWEIGHT_H
 
 #include <ginac/ginac.h>
 
 #include "GraphContainer.h"
-#include "PureGaugeweight.h"
+
+struct ExternalPolyakovLoop {
+    int Label; /// vertex label
+    bool Fundamental; /// fundamental (L) or antifundamental (L*)?
+};
 
 template <typename T>
-class TestTemplatePureGauge
+class PureGaugeWeight
 {
 private:
     GraphContainer Container; /// pointer to graph container
@@ -32,9 +36,9 @@ private:
 
 
 public:
-    TestTemplatePureGauge(const GraphContainer& container, const std::vector<ExternalPolyakovLoop>& externalVertices);
+    PureGaugeWeight(const GraphContainer& container, const std::vector<ExternalPolyakovLoop>& externalVertices);
 
     T Weight(); /// routine called by user (interface)
 };
 
-#endif // TESTTEMPLATEPUREGAUGE_H
+#endif // PUREGAUGEWEIGHT_H

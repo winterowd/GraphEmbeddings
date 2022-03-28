@@ -1,16 +1,16 @@
-#include "PureGaugeweight.h"
+#include "PureGaugeWeightOld.h"
 
 /// constructor
 /// @arg container: pointer to GraphContainer object describing the graph we are interested in
-PureGaugeWeight::PureGaugeWeight(const GraphContainer &container, const std::vector<ExternalPolyakovLoop>& externalVertices) :
+PureGaugeWeightOld::PureGaugeWeightOld(const GraphContainer &container, const std::vector<ExternalPolyakovLoopOld>& externalVertices) :
     Container(container),
     ExternalVertices(externalVertices)
 {
     if (this->ExternalVertices.size()>2)
-        throw std::invalid_argument("ERROR: PureGaugeWeight requires externalVertices to be of size 2 or less!\n");
+        throw std::invalid_argument("ERROR: PureGaugeWeightOld requires externalVertices to be of size 2 or less!\n");
 
-    if (std::find_if(this->ExternalVertices.begin(), this->ExternalVertices.end(), [this](const ExternalPolyakovLoop& x) { return (x.Label>this->Container.GetN() || x.Label<1); })!=this->ExternalVertices.end())
-        throw std::invalid_argument("ERROR: PureGaugeWeight requires ExternalVertices to have labels between 1 and N!\n");
+    if (std::find_if(this->ExternalVertices.begin(), this->ExternalVertices.end(), [this](const ExternalPolyakovLoopOld& x) { return (x.Label>this->Container.GetN() || x.Label<1); })!=this->ExternalVertices.end())
+        throw std::invalid_argument("ERROR: PureGaugeWeightOld requires ExternalVertices to have labels between 1 and N!\n");
 
     for (int i=this->Container.GetNTimesNMinusOneDiv2()-1; i>=0; --i)
         if (this->Container.GetElementAdjacencyMatrix(this->Container.GetRowM(i),this->Container.GetColM(i)))
@@ -19,7 +19,7 @@ PureGaugeWeight::PureGaugeWeight(const GraphContainer &container, const std::vec
 
 /// for a fixed set of directions for the edges of the graph, compute the weight \prod_i W_i, i=1,2,...,N_V where N_V is the number of vertices
 /// @arg directedEdges: vector of length N_B which tells us "direction" of each link
-double PureGaugeWeight::GetGraphWeightFixedBonds(const std::vector<bool>& directedEdges)
+double PureGaugeWeightOld::GetGraphWeightFixedBonds(const std::vector<bool>& directedEdges)
 {
     auto siteCounts = this->GetSiteCountsForDirectedEdges(directedEdges);
 
@@ -40,7 +40,7 @@ double PureGaugeWeight::GetGraphWeightFixedBonds(const std::vector<bool>& direct
 
 /// factorial (recursive)
 /// @param n: size
-double PureGaugeWeight::Factorial(int n)
+double PureGaugeWeightOld::Factorial(int n)
 {
 #ifdef DEBUG
     if (n<0)
@@ -55,7 +55,7 @@ double PureGaugeWeight::Factorial(int n)
 /// J. Scheunert has come up with a compact expression which does not use this recursion and this is what we implement below
 /// I_{n,m} = \sum^{floor(n/3)}_{j=max{0, (n-m)/3} \frac {2 n! m!}{(n-j-(n-m)/3+1)!(n-j-(n-m)/3+2)!(2j-(n-m)/3)!} Binomial[2j-(n-m)/3,j] Binomial[3(n-j-(n-m)/3+1),n-3j]
 /// of course if (n-m)%3 \neq 0 we get zero!
-double PureGaugeWeight::SingleSiteIntegral(int n, int m)
+double PureGaugeWeightOld::SingleSiteIntegral(int n, int m)
 {
     int nMinusM = n-m;
     if (nMinusM%3!=0)
@@ -79,7 +79,7 @@ double PureGaugeWeight::SingleSiteIntegral(int n, int m)
 }
 
 /// binomial coefficient (recursive)
-double PureGaugeWeight::BinomialCoefficient(int n, int k)
+double PureGaugeWeightOld::BinomialCoefficient(int n, int k)
 {
 #ifdef DEBUG
     if (k > n)
@@ -98,7 +98,7 @@ double PureGaugeWeight::BinomialCoefficient(int n, int k)
 /// "false" means that bond is directed to FirstVertex from SecondVertex
 /// @arg tmp: vector containing a given combination of bond directions
 /// @arg nbrBondsRemaining: N_B-k, where k is the size of tmp
-void PureGaugeWeight::GetAllWeights(std::vector<bool>& tmp, int nbrBondsRemaining)
+void PureGaugeWeightOld::GetAllWeights(std::vector<bool>& tmp, int nbrBondsRemaining)
 {
     if (nbrBondsRemaining==0)
     {
@@ -123,10 +123,10 @@ void PureGaugeWeight::GetAllWeights(std::vector<bool>& tmp, int nbrBondsRemainin
 /// factor in external sites!
 /// returns a vector of SiteCount objects of length N_V
 /// @arg directedEdges: vector of bool variables of size N_B containing the edge direction
-std::vector<SiteCount> PureGaugeWeight::GetSiteCountsForDirectedEdges(const std::vector<bool> &directedEdges)
+std::vector<SiteCount> PureGaugeWeightOld::GetSiteCountsForDirectedEdges(const std::vector<bool> &directedEdges)
 {
     if (directedEdges.size() != this->Edges.size())
-        throw std::invalid_argument("PureGaugeWeight::GetSiteInformationGivenDirectedEdges requires directedEdges to be of the same size as Edges!\n");
+        throw std::invalid_argument("PureGaugeWeightOld::GetSiteInformationGivenDirectedEdges requires directedEdges to be of the same size as Edges!\n");
 
     std::vector<SiteCount> result(this->Container.GetN(), {0,0});
 
@@ -134,7 +134,7 @@ std::vector<SiteCount> PureGaugeWeight::GetSiteCountsForDirectedEdges(const std:
     {
 #ifdef DEBUG
         if (1 > this->Edges[i].FirstVertex || this->Edges[i].FirstVertex > this->Container.GetN() || 1 > this->Edges[i].SecondVertex || this->Edges[i].SecondVertex > this->Container.GetN())
-            throw std::invalid_argument("PureGaugeWeight::GetSiteInformationGivenDirectedEdges requires Edges to connect vertices ranging from 1 to N!\n");
+            throw std::invalid_argument("PureGaugeWeightOld::GetSiteInformationGivenDirectedEdges requires Edges to connect vertices ranging from 1 to N!\n");
 #endif
         if (directedEdges[i])
         {
@@ -174,7 +174,7 @@ std::vector<SiteCount> PureGaugeWeight::GetSiteCountsForDirectedEdges(const std:
 /// \phi(G) \equiv \int \prod_{x \in V(G)} dU(x) \prod_{(x,y) \in \sigma(E_G)} \left( L(x)L^*(y) + L^*(x)L(y) \right)
 /// V(G) is the set of vertices, E_G is the set of edges, and \sigma is the edge to endpoint function.
 /// This weight does not depend on the embedding of the graph inside the lattice
-double PureGaugeWeight::Weight()
+double PureGaugeWeightOld::Weight()
 {
     std::vector<bool> tmp;
     this->TotalWeight = 0; /// set weight
