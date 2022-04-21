@@ -7,6 +7,9 @@
 #include "SquareLattice.h"
 #include "VertexEmbedList.h"
 
+namespace MiscellaneousRoutines {
+
+/* random routines for embedding/generation */
 void PegsInHoles(const unsigned int n, const unsigned int m, bool identicalPegs, bool verbose=false);
 void GenerateAllPermutationsWithRepeats(std::vector<std::vector<int>> &lists, const std::string& s, std::vector<int>& pos, int n, const int& size);
 bool DoesNotDoubleBack(const std::vector<int> &path);
@@ -23,5 +26,10 @@ Site MoveDir(const Site& start, int dir, int L);
 bool IsBridgeValid(const Site& start, const Site& end, const std::vector<int>& bridgeDirs, std::vector<Site>& Bridge, int L, bool verbose=false);
 
 void TestLexicographicalOrderingVertexEmbedList();
+
+/* Boost program option routines */
+void RequiredOptionWhenOtherOptionMissing(const po::variables_map& vm, const char* required, const char* other);
+
+}
 
 #endif // MISCELLANEOUSROUTINES_H

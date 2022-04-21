@@ -1,11 +1,12 @@
 #include "XiRecursionRooted.h"
 
-XiRecursionRooted::XiRecursionRooted(CanonicalGraphManager* manager, const GraphContainer& container, const VertexEmbedList& embedList, CubicLattice *lattice, int embeddingNumber) :
+XiRecursionRooted::XiRecursionRooted(CanonicalGraphManager* manager, const GraphContainer& container, const VertexEmbedList& embedList, CubicLattice *lattice, int embeddingNumber, int maxManhattanDistance) :
     GraphManager(manager),
     XiContainer(container),
     XiEmbedList(embedList),
     Lattice(lattice),
-    EmbeddingNumber(embeddingNumber)
+    EmbeddingNumber(embeddingNumber),
+    MaxManhattanDistance(maxManhattanDistance)
 {
     if (container.GetNbrRooted()!=2)
         throw std::invalid_argument("Error: XiRecursionRooted requires the container to be unrooted!\n");
@@ -22,14 +23,17 @@ XiRecursionRooted::XiRecursionRooted(CanonicalGraphManager* manager, const Graph
     /// clean up elements which have coefficient equal to zero
     this->XiTerms.erase(std::remove_if(this->XiTerms.begin(), this->XiTerms.end(), [](const XiExpansionRootedTerm& x) { return (x.GetCoefficient()==0); }), this->XiTerms.end());
 
+    /// compute and store correlators associated with each term in finite-cluster expression
     for (int i=0; i<this->XiTerms.size(); ++i)
     {
-        std::cout << "FINAL_XI_TERM " << i << "\n";
-        std::cout << this->XiTerms[i];
+        //std::cout << "FINAL_XI_TERM " << i << "\n";
+        //std::cout << this->XiTerms[i];
         auto indices = this->XiTerms[i].GetCanonicalCoordinates();
-        std::cout << this->GraphManager->GetRootedGraph(indices.first, indices.second, 2);
-        auto tempCorrelator = TwoPointCorrelator(this->GraphManager->GetRootedGraph(indices.first, indices.second, 2), this->XiTerms[i].GetFullyCanonicalEmbedList(), this->Lattice);
-        tempCorrelator.PrintCorrelatorTerms();
+        //std::cout << this->GraphManager->GetRootedGraph(indices.first, indices.second, 2);
+        auto tempCorrelator = TwoPointCorrelator(this->GraphManager->GetRootedGraph(indices.first, indices.second, 2), this->XiTerms[i].GetFullyCanonicalEmbedList(), this->Lattice, this->MaxManhattanDistance);
+        //tempCorrelator.PrintCorrelatorTerms();
+        //std::cout << "DEBUG_EXPAND:\n" << tempCorrelator.GetExpandedCorrelatorGiNaC() << "\n";
+        //std::cout << "DEBUG_FULL:\n" << tempCorrelator.GetFullCorrelatorGiNaC() << "\n";
         this->CorrelatorTerms.push_back(tempCorrelator);
     }
 }
@@ -105,17 +109,48 @@ XiExpansionRootedTerm XiRecursionRooted::GetXiTerm(int index) const
     return this->XiTerms[index];
 }
 
-/// TODO: write description
-GiNaC::ex XiRecursionRooted::GetXiGiNaC()
+/// get the full expression for \Xi on the finite-cluster
+GiNaC::ex XiRecursionRooted::GetFullXiGiNaC()
 {
     GiNaC::ex result;
     for (int i=0; i<this->CorrelatorTerms.size(); ++i)
     {
-        auto tempCorrelator = this->CorrelatorTerms[i].GetCorrelatorGiNaC();
-        std::cout << "DEBUG_XiRecursionRooted::GetXiGiNaC: " << i << "\n";
-        std::cout << this->XiTerms[i];
-        std::cout << this->XiTerms[i].GetCoefficient() << " " << tempCorrelator << "\n";
+        auto tempCorrelator = this->CorrelatorTerms[i].GetFullCorrelatorGiNaC();
+        //std::cout << "DEBUG_XiRecursionRooted::GetXiGiNaC: " << i << "\n";
+        //std::cout << this->XiTerms[i];
+        //std::cout << tempCorrelator << "\n";
         result += GiNaC::numeric(this->XiTerms[i].GetCoefficient())*tempCorrelator;
     }
     return result;
+}
+
+/// get the expression for \Xi on the finite-cluster expanded to MaxManhattanDistance
+GiNaC::ex XiRecursionRooted::GetExpandedXiGiNaC()
+{
+    GiNaC::ex result;
+    for (int i=0; i<this->CorrelatorTerms.size(); ++i)
+    {
+        auto tempCorrelator = this->CorrelatorTerms[i].GetExpandedCorrelatorGiNaC();
+        //std::cout << "DEBUG_XiRecursionRooted::GetXiGiNaC: " << i << "\n";
+        //std::cout << this->XiTerms[i];
+        //std::cout << tempCorrelator << "\n";
+        result += GiNaC::numeric(this->XiTerms[i].GetCoefficient())*tempCorrelator;
+    }
+    return result;
+}
+
+///  compute (embedding/SymmFactor) \times FullGinac
+GiNaC::ex XiRecursionRooted::GetFullXiGiNaCWithCoefficient()
+{
+    if (this->XiContainer.GetSymmFactor()==-1)
+        throw std::logic_error("XiRecursionRooted::GetFullXiGiNaCWithCoefficient found XiContainer with unset SymmFactor!\n");
+    return GiNaC::numeric(this->EmbeddingNumber,this->XiContainer.GetSymmFactor())*this->GetFullXiGiNaC();
+}
+
+/// compute (embedding/SymmFactor) \times ExpandedGinac
+GiNaC::ex XiRecursionRooted::GetExpandedXiGiNaCWithCoefficient()
+{
+    if (this->XiContainer.GetSymmFactor()==-1)
+        throw std::logic_error("XiRecursionRooted::GetExpandedXiGiNaCWithCoefficient found XiContainer with unset SymmFactor!\n");
+    return GiNaC::numeric(this->EmbeddingNumber,this->XiContainer.GetSymmFactor())*this->GetExpandedXiGiNaC();
 }

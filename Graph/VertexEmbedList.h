@@ -63,9 +63,6 @@ inline bool operator<(const VertexEmbed& lhs,  const VertexEmbed& rhs)
         return (lhs.Index < rhs.Index);
 }
 
-/// TODO: do we need to keep type of correlator? How best to distinguish rooted and non-rooted embeddings?
-/// TODO: what do we do to distinguish one- and two-rooted graphs? Currently works well with two-rooted but is there an easy fix?
-
 /// class to hold lists for embedding
 /// when including next nearest neighbors and so on need to keep track of number of number of types of links used
 /// getters and setters mostly. What other types of routines? any other data fields?
@@ -142,7 +139,7 @@ public:
 
     int GetNbrSetRootedVertices() const;
 
-    VertexEmbedList GetSublist(const std::vector<int>& vertices) const; /// TODO write this function which takes in a set of vertex labels and returns a subset of VertexEmbed objects
+    VertexEmbedList GetSublist(const std::vector<int>& vertices) const; /// takes in a set of vertex labels and returns a subset of VertexEmbed objects
 
     std::vector<VertexEmbed> GetSortedList() const; /// return sorted list for comparisons
 

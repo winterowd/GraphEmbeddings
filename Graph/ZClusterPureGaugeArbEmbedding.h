@@ -9,6 +9,8 @@
 #include "AuxiliaryRoutinesForGINAC.h"
 #include "MyLambdaPolynomial.h"
 
+/// template either on double or GiNaC::numeric!
+template <typename T>
 class ZClusterPureGaugeArbEmbedding
 {
 private:
@@ -29,7 +31,7 @@ private:
     std::vector<std::vector<bool>> IntegrandTerms; /// terms in the integrand of Z expressed as strings of booleans
 
     /// coefficient of each term  \prod_i \lambda^{n_i}_i (linear index)
-    std::vector<double> ZCoefficients; /// size \prod_i (N_i+1) (where N_i are the number of each type of bond for cluster)
+    std::vector<T> ZCoefficients; /// size \prod_i (N_i+1) (where N_i are the number of each type of bond for cluster)
 
     /// lists of bonds
     std::vector<UndirectedEdge> OneLink; /// one-link edges
@@ -74,7 +76,7 @@ private:
 public:
     ZClusterPureGaugeArbEmbedding(const GraphContainer& container, const VertexEmbedList& clusterEmbedList, CubicLattice* lattice, const std::vector<bool>& loopAtRooted, int maxManhattanDistance=10);
 
-    MyLambdaPolynomial<double> ComputeLambdaPolynomial();
+    MyLambdaPolynomial<T> ComputeLambdaPolynomial();
 
     /**** accessors ****/
     int GetNbrSquareDiagonal() const { return this->SquareDiagonal.size(); }

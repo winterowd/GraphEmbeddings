@@ -1,12 +1,12 @@
 #include "MiscellaneousRoutines.h"
 
-int OppositeDir(const int& dir)
+int MiscellaneousRoutines::OppositeDir(const int& dir)
 {
     return (dir+2)%6+1;
 }
 
 /// save this in miscellaneous cpp file!
-void PegsInHoles(const unsigned int n, const unsigned int m, bool identicalPegs, bool verbose)
+void MiscellaneousRoutines::PegsInHoles(const unsigned int n, const unsigned int m, bool identicalPegs, bool verbose)
 {
     if (m>n)
         throw std::invalid_argument("PegsInHoles: M must be less than or equal to N!");
@@ -77,7 +77,7 @@ void PegsInHoles(const unsigned int n, const unsigned int m, bool identicalPegs,
 
 }
 
-bool DoesNotDoubleBack(const std::vector<int> &path)
+bool MiscellaneousRoutines::DoesNotDoubleBack(const std::vector<int> &path)
 {
     for (auto i=0; i<path.size()-1; ++i)
     {
@@ -87,7 +87,7 @@ bool DoesNotDoubleBack(const std::vector<int> &path)
     return true;
 }
 
-void GenerateAllPermutationsWithRepeats(std::vector<std::vector<int>> &lists, const std::string& s, std::vector<int>& pos, int n, const int& size)
+void MiscellaneousRoutines::GenerateAllPermutationsWithRepeats(std::vector<std::vector<int>> &lists, const std::string& s, std::vector<int>& pos, int n, const int& size)
 {
     if (n == size)
     {
@@ -105,23 +105,23 @@ void GenerateAllPermutationsWithRepeats(std::vector<std::vector<int>> &lists, co
     }
 }
 
-bool operator==(const Site& lhs, const Site& rhs)
+bool MiscellaneousRoutines::operator==(const Site& lhs, const Site& rhs)
 {
     return (lhs.x == rhs.x && lhs.y == rhs.y && lhs.z == rhs.z);
 }
 
-bool operator!=(const Site& lhs, const Site& rhs)
+bool MiscellaneousRoutines::operator!=(const Site& lhs, const Site& rhs)
 {
     return !(lhs == rhs);
 }
 
-std::ostream& operator<< (std::ostream& stream, const Site& site)
+std::ostream& MiscellaneousRoutines::operator<< (std::ostream& stream, const Site& site)
 {
     stream << site.x << " " << site.y << " " << site.z;
     return stream;
 }
 
-Site MoveDir(const Site& start, int dir, int L)
+MiscellaneousRoutines::Site MiscellaneousRoutines::MoveDir(const Site& start, int dir, int L)
 {
     auto result = Site(start);
     switch (dir) {
@@ -151,7 +151,7 @@ Site MoveDir(const Site& start, int dir, int L)
 
 /// save this in miscellaneous cpp file!
 /// is the bridge self-avoiding and does it end on the correct site
-bool IsBridgeValid(const Site& start, const Site& end, const std::vector<int>& bridgeDirs, std::vector<Site>& Bridge, int L, bool verbose)
+bool MiscellaneousRoutines::IsBridgeValid(const Site& start, const Site& end, const std::vector<int>& bridgeDirs, std::vector<Site>& Bridge, int L, bool verbose)
 {
     Bridge.push_back(start);
     for (unsigned int i=0; i<bridgeDirs.size(); ++i)
@@ -179,7 +179,7 @@ bool IsBridgeValid(const Site& start, const Site& end, const std::vector<int>& b
     return true;
 }
 
-void TestLexicographicalOrderingVertexEmbedList()
+void MiscellaneousRoutines::TestLexicographicalOrderingVertexEmbedList()
 {
     std::set<VertexEmbedList> setOfVertexEmbedLists;
 
@@ -275,4 +275,15 @@ void TestLexicographicalOrderingVertexEmbedList()
     for (auto it=setOfVertexEmbedLists.begin(); it!=setOfVertexEmbedLists.end(); ++it)
         std::cout << " " << *it << "\n";
 
+}
+
+/// we require one option if the other is not provided by the user (option either default or not specified)
+/// @param vm: variable map
+/// @param required: name of the required option
+/// @param other: the option which determines whether the first is actually required
+void MiscellaneousRoutines::RequiredOptionWhenOtherOptionMissing(const po::variables_map& vm, const char* required, const char* other)
+{
+    if(vm.count(other)==0 || vm[other].defaulted())
+        if (vm.count(required) == 0 || vm[required].defaulted())
+            throw std::logic_error(std::string("Option ")+required+" required when "+other+" missing!\n");
 }

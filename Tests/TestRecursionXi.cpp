@@ -49,8 +49,10 @@ int main(int argc, char *argv[])
 
     std::cout << "PRINTING_PLAQ_XI\n";
     XiRecursionRooted RecursionObject(&MyManager, TestContainer, EmbedList, &MyLattice);
-    std::cout << "PRINTING_PLAQ_XI_GINAC\n";
-    std::cout << RecursionObject.GetXiGiNaC() << "\n";
+    std::cout << "PRINTING_PLAQ_FULL_XI_GINAC\n";
+    std::cout << RecursionObject.GetFullXiGiNaC() << "\n";
+    std::cout << "PRINTING_PLAQ_EXPANDED_XI_GINAC\n";
+    std::cout << RecursionObject.GetExpandedXiGiNaC() << "\n";
 
     return 0;
 }

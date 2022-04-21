@@ -291,9 +291,7 @@ int AuxiliaryRoutinesForNauty::ExtractSymmFactor(statsblk status)
     /// write out to temporary file and read back in
     std::string tempFilename = "temp_symm"; /// HARD-CODED
     FILE *fpo = fopen(tempFilename.c_str(), "w"); /// open file for writing
-    if (fpo!=NULL)
-        std::cout << "ExtractSymmFactor: Successfully opened " << tempFilename << " for writing!\n";
-    else
+    if (fpo==NULL)
         throw std::invalid_argument("ExtractSymmFactor: Error opening "+tempFilename);
 
     writegroupsize(fpo,status.grpsize1,status.grpsize2); /// write symmetry factor to file
@@ -302,9 +300,7 @@ int AuxiliaryRoutinesForNauty::ExtractSymmFactor(statsblk status)
     fclose(fpo); /// close file
 
     FILE *fpi = fopen(tempFilename.c_str(), "r"); /// open file for reading
-    if (fpi!=NULL)
-        std::cout << "ExtractSymmFactor: Successfully opened " << tempFilename << " for reading!\n";
-    else
+    if (fpi==NULL)
         throw std::invalid_argument("ExtractSymmFactor: Error opening "+tempFilename);
 
     int symmFactor = -1;

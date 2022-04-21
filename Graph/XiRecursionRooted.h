@@ -96,6 +96,8 @@ private:
 
     int EmbeddingNumber; /// embedding number
 
+    int MaxManhattanDistance; /// maximum Manhattan distance
+
     std::vector<XiExpansionRootedTerm> XiTerms; /// list of terms in the expansion for xi
 
     std::vector<TwoPointCorrelator> CorrelatorTerms;
@@ -105,16 +107,25 @@ private:
     void AddXiTerm(const XiExpansionRootedTerm& newTerm); /// add term to list
 
 public:
-    /// TODO: add maxManhattanDistance
-    XiRecursionRooted(CanonicalGraphManager* manager, const GraphContainer& container, const VertexEmbedList& embedList, CubicLattice *lattice, int embeddingNumber=1);
+    XiRecursionRooted(CanonicalGraphManager* manager, const GraphContainer& container, const VertexEmbedList& embedList, CubicLattice *lattice, int embeddingNumber=1, int maxManhattanDistance=10);
 
     /**** public accessors ****/
 
-    GiNaC::ex GetXiGiNaC(); /// TODO: write this function
+    GiNaC::ex GetFullXiGiNaC();
+
+    GiNaC::ex GetExpandedXiGiNaC();
+
+    GiNaC::ex GetFullXiGiNaCWithCoefficient();
+
+    GiNaC::ex GetExpandedXiGiNaCWithCoefficient();
 
     int GetNbrXiTerms() const { return this->XiTerms.size(); }
 
     XiExpansionRootedTerm GetXiTerm(int index) const;
+
+    int GetEmbeddingNumber() const { return this->EmbeddingNumber; }
+
+    int GetMaxManhattanDistance() const { return this->MaxManhattanDistance; }
 };
 
 #endif // XIRECURSIONROOTED_H

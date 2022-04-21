@@ -21,6 +21,8 @@
 #include "VertexEmbedList.h"
 #include "CubicLatticeCanonicalizor.h"
 #include "AuxiliaryRoutinesForNauty.h"
+#include "MiscellaneousRoutines.h"
+#include "AuxiliaryRoutinesForGINAC.h"
 
 /// nauty headers
 #include "gtools.h"
@@ -52,8 +54,6 @@ private:
     bool Correlator; /// flag for embedding correlator
 
     bool JonasFormat; /// output embeddings in Jonas' format
-
-    void RequiredOptionWhenOtherOptionMissing(const po::variables_map& vm, const char* required, const char* dependancy);
 
     bool ProcessCommandLine(int argc, char *argv[]);
 
@@ -166,8 +166,6 @@ private:
 
     std::unordered_set<int> GetRemainingVertices(const VertexEmbedList& listUsedVertices);
 
-    void GetCombinationsOfBondsFixedManhattanDistance(int nbrBonds, int manhattanDistance); /// compute numbers of each type of bonds with a constraint for a given "Manhattan Distance"
-
     void GetCombinationsOfBondsFixedNumberOfBonds(int nbrBonds); /// compute numbers of each type of bonds given the total number of bonds for a graph which is to be embedded
 
     void GenerateCombinations(const std::vector<int>& arr, std::vector<int>& data, int index, std::function<bool(const std::vector<int>&)> isValid);
@@ -240,8 +238,11 @@ public:
 
     void Embed(); /// calculates embedding numbers for all graphs of a given order or a single and outputs results
 
-    /// routine which outputs vector of canonical graphs and counts for embeddings (all NN links)
+    /// routine which returns vector of canonical graphs and counts for embeddings (all NN links)
     std::tuple<GraphContainer, std::vector<VertexEmbedList>, std::vector<int> > ComputeCanonicalEmbeddingsAndCountsNN(const GraphContainer& container); /// uses the graph provided as a g6 string by the user (command line arguments sent to constructor)
+
+    /// routine which returns vector of canonical graphs and counts for embeddings (all bond combos)
+    std::pair<GraphContainer, std::vector<std::tuple<std::vector<VertexEmbedList>, std::vector<int>, std::vector<int>>>> ComputeCanonicalEmbeddingsAndCounts(const GraphContainer& container, int maxManhattanDistance=200); /// uses the graph provided as a g6 string by the user (command line arguments sent to constructor)
 
     std::pair<GraphContainer, VertexEmbedList> ContainerAndSampleCubicEmbeddingFromG6(); /// return a pair consisting of a container and a VertexEmbedList for a given g6 string input by the user (for debugging purposes)
 

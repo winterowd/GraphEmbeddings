@@ -13,9 +13,6 @@ SubDiagramGenerator::SubDiagramGenerator(const GraphContainer& container, const 
     if (OriginalContainer.GetN()!=OriginalList.GetSize())
         throw std::invalid_argument("SubDiagramGenerator requires container and list to be of the same size!\n");
 
-    if (OriginalList.IsRooted()) /// warn that the subdiagram VertexEmbedLists will not carry info about rooted/unrooted vertices (all unrooted)
-        std::cout << "WARNING: SubDiagramGenerator received a two-point funtion! Embeddings of subdiagrams will not contain info about rooted vertices!\n";
-
      /// check if both container and list are rooted/unrooted
      if (this->OriginalContainer.IsRooted()!=this->OriginalList.IsRooted())
          throw std::invalid_argument("SubDiagramGenerator requires container and list to be both rooted or both unrooted!\n");
@@ -219,10 +216,10 @@ std::pair<CanonicalSubDiagram, VertexEmbedList> SubDiagramGenerator::ComputeCano
         vertexMapToCG[tempIndex2] = it->Number;
     }
 
-    for (int i=0; i<vertexMapToCG.size(); ++i)
+    /*for (int i=0; i<vertexMapToCG.size(); ++i)
         std::cout << "DEBUG_CG_TO_ORIGINAL: VERTEX " << i+1 << " maps to " << vertexMapToCG[i] << "\n";
     std::cout << "DEBUG_CANONICAL_RELABEL_EMBED_LIST:\n";
-    std::cout << canonicalList;
+    std::cout << canonicalList;*/
 
     /// canonicalize with respect to cubic symmetries
     CubicLatticeCanonicalizor canonicalizor(canGraphNew, this->MyCubicLattice, canonicalList);
@@ -290,10 +287,10 @@ std::pair<CanonicalSubDiagram, VertexEmbedList> SubDiagramGenerator::ComputeCano
         vertexMapToCG[tempIndex2] = it->Number;
     }
 
-    for (int i=0; i<vertexMapToCG.size(); ++i)
+    /*for (int i=0; i<vertexMapToCG.size(); ++i)
         std::cout << "DEBUG_CG_TO_ORIGINAL: VERTEX " << i+1 << " maps to " << vertexMapToCG[i] << "\n";
     std::cout << "DEBUG_CANONICAL_RELABEL_EMBED_LIST:\n";
-    std::cout << canonicalList;
+    std::cout << canonicalList;*/
 
     /// canonicalize with respect to cubic symmetries
     CubicLatticeCanonicalizor canonicalizor(canGraphNew, this->MyCubicLattice, canonicalList);
@@ -316,14 +313,14 @@ void SubDiagramGenerator::GenerateEmbedListsForSubDiagrams()
     {
         /// get subgraph corresponding to i-th embed list (UNSORTED) to see which vertices are rooted
         auto subGraphContainer = this->GetSubDiagram(this->GetSortedIndexFromUnsortedIndex(i));
-        std::cout << "CREATING_EMBEDLIST_FOR_SUBDIAGRAM " << i << "\n";
+        //std::cout << "CREATING_EMBEDLIST_FOR_SUBDIAGRAM " << i << "\n";
         if (subGraphContainer.IsRooted())
         {
             VertexEmbedList tempList(this->OriginalList.GetMaxLength(), this->OriginalList.GetCorrelatorDistance());
             /// add rooted vertices
             for (int j=0; j<subGraphContainer.GetNbrRooted(); j++)
             {
-                std::cout << "ROOTED_" << j << ": vertex labeled " << subGraphContainer.GetRootedVertex(j)+1 << " which maps to original vertex labeled " << this->VerticesMap[i][subGraphContainer.GetRootedVertex(j)] << "\n";
+                //std::cout << "ROOTED_" << j << ": vertex labeled " << subGraphContainer.GetRootedVertex(j)+1 << " which maps to original vertex labeled " << this->VerticesMap[i][subGraphContainer.GetRootedVertex(j)] << "\n";
                 tempList.AddFixedVertexEmbed(j, this->VerticesMap[i][subGraphContainer.GetRootedVertex(j)], this->GetVertexSiteIndex(this->VerticesMap[i][subGraphContainer.GetRootedVertex(j)]));
             }
             /// add unrooted
@@ -340,8 +337,8 @@ void SubDiagramGenerator::GenerateEmbedListsForSubDiagrams()
                 tempList.AddVertexEmbed(this->VerticesMap[i][j], this->GetVertexSiteIndex(this->VerticesMap[i][j]));
             this->EmbedLists.push_back(tempList);
         }
-        std::cout << "ADDED_EMBED_LIST: " << i << "\n";
-        std::cout << this->EmbedLists[i];
+        //std::cout << "ADDED_EMBED_LIST: " << i << "\n";
+        //std::cout << this->EmbedLists[i];
     }
 }
 

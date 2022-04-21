@@ -64,7 +64,7 @@ set(PROJECT_LIBS ${PROJECT_LIBS} Graph)
 
 # Embed
 add_executable(Embed Programs/Embed.cpp)
-target_link_libraries(Embed ${PROJECT_LIBS} ${LIBS} nauty)
+target_link_libraries(Embed ${PROJECT_LIBS} ${LIBS} nauty ginac)
 
 # GenerateNauty
 add_executable(GenerateNauty ${NAUTY_OBJS} Programs/GenerateNauty.cpp)
@@ -73,7 +73,7 @@ target_link_libraries(GenerateNauty ${PROJECT_LIBS} ${LIBS} nauty)
 ###### all tests ######
 
 add_executable(TestCubicLatticeCanonicalizor Tests/TestCubicLatticeCanonicalizor.cpp)
-target_link_libraries(TestCubicLatticeCanonicalizor ${PROJECT_LIBS} ${LIBS} nauty)
+target_link_libraries(TestCubicLatticeCanonicalizor ${PROJECT_LIBS} ${LIBS} nauty ginac)
 
 add_executable(TestGraphWeight Tests/TestGraphWeight.cpp)
 target_link_libraries(TestGraphWeight ${PROJECT_LIBS} ${LIBS} nauty ginac)
@@ -92,3 +92,6 @@ target_link_libraries(TestRecursionXi ${PROJECT_LIBS} ${LIBS} nauty ginac)
 
 add_executable(TestGinacPolynomial Tests/TestGinacPolynomial.cpp)
 target_link_libraries(TestGinacPolynomial ${PROJECT_LIBS} ${LIBS} nauty ginac)
+
+add_executable(TestCorrelator Tests/TestCorrelator.cpp)
+target_link_libraries(TestCorrelator ${PROJECT_LIBS} ${LIBS} nauty ginac)

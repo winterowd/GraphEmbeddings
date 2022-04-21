@@ -13,6 +13,7 @@ GraphEmbedder::GraphEmbedder(int argc, char *argv[]) :
     GetNeighborFunctionPointerArray{&GraphEmbedder::GetNearestNeighbor,&GraphEmbedder::GetNextNearestNeighbor,&GraphEmbedder::GetThirdNearestNeighbor,&GraphEmbedder::GetFourthNearestNeighbor}, /// initialize lists with largest "neighbor" level available
     AreNeighborsFunctionPointerArray{&GraphEmbedder::AreNN,&GraphEmbedder::AreNNN,&GraphEmbedder::AreThirdNN,&GraphEmbedder::AreFourthNN}
 {
+
     switch(this->ResolveLatticeType(this->Parameters.GetLatticeType()))
     {
     case Square:
@@ -633,6 +634,8 @@ std::pair<std::vector<VertexEmbedList>, std::vector<int>> GraphEmbedder::Compute
 #endif
 
     auto countAndOneEmbedding = this->ComputeEmbeddingNumberCombo(container, bondCombo); /// do the embeddings
+    /*if (countAndOneEmbedding.first==0)
+        std::cout << "ComputeCanonicalGraphsAndEmbeddingNumbers FOUND ZERO! EmbedLists: " << this->EmbedLists.size() << "\n";*/
 
     /// now in EmbedLists we have the data that we need to get the list of canonical graphs and their counts
     for (auto it=this->EmbedLists.begin(); it!=this->EmbedLists.end(); ++it)
@@ -705,6 +708,8 @@ std::pair<int, VertexEmbedList> GraphEmbedder::ComputeEmbeddingNumberCombo(const
 #ifdef DEBUG
         std::cout << "COULD NOT EMBED ROOTED GRAPH! (ROOTED VERTICES CONNECTED BY A BOND BUT BOND NOT POSSIBLE)\n";
 #endif
+        //std::cout << "COULD NOT EMBED ROOTED GRAPH! (ROOTED VERTICES CONNECTED BY A BOND BUT BOND NOT POSSIBLE)\n";
+        this->EmbedLists.clear();
         return std::pair<int, VertexEmbedList>(0, VertexEmbedList(this->Parameters.GetMaxEmbeddingLength(), static_cast<MaxInteractionLength>(this->Parameters.GetCorrelatorLength()))); /// no embedding is possible
     }
 
@@ -1084,33 +1089,6 @@ int GraphEmbedder::GetNbrNeighbors(int degree)
     return this->NbrNeighbors[degree];
 }
 
-void GraphEmbedder::GetCombinationsOfBondsFixedManhattanDistance(int nbrBonds, int manhattanDistance)
-{
-    if (manhattanDistance<=0)
-        throw std::invalid_argument("GetCombinationsOfBondsFixedManhattanDistance requires a positive value for argument manhattanDistance!\n");
-
-    std::vector<int> bondCounts(this->MaxDegreeNeighbor,-1);
-    std::vector<int> List(nbrBonds+1);
-    for (int i = 0; i<List.size(); ++i)
-        List[i] = i;
-
-    std::vector<int> bondWeightsManhattan(this->MaxDegreeNeighbor,-1);
-    for (int i=0; i<bondWeightsManhattan.size(); ++i)
-        bondWeightsManhattan[i] = this->Lattice->GetManhattanDistance(i+1);
-
-    auto correctManhattan = [bondWeightsManhattan,manhattanDistance](const std::vector<int>& partition) /// lambda function
-    {
-        if (bondWeightsManhattan.size()!=partition.size())
-            throw std::invalid_argument("Bond weights in capture should be the same size as partition!\n");
-        return (std::inner_product(bondWeightsManhattan.begin(),bondWeightsManhattan.end(),partition.begin(),0.0)==manhattanDistance);
-    };
-
-    this->BondCombinations.clear(); /// clear list of bonds
-
-    this->GenerateCombinations(List, bondCounts, 0, correctManhattan); /// generate combinations
-
-}
-
 /// get all combinations of counts for bond types {N_i, i=0(NN),1(NNN),etc. } where \sum_i N_i = nbrBonds
 /// nbrBonds: total number of bonds for a particular graph
 void GraphEmbedder::GetCombinationsOfBondsFixedNumberOfBonds(int nbrBonds)
@@ -1206,6 +1184,13 @@ std::set<VertexEmbedList> GraphEmbedder::CreateInitialVertexEmbedListsRootedFixe
             tempList.IncrementBondCount(d);
         result.insert(tempList);
     }
+    /*std::cout << "DEBUG_BOND_COMBO: ";
+    for (int i=0; i<bondCombo.size(); ++i)
+        std::cout << bondCombo[i] << " ";
+    std::cout << "\n";
+    std::cout << "INITIAL_LIST:\n";
+    for (auto it=result.begin(); it!=result.end(); ++it)
+        std::cout << " " << *it << "\n";*/
 #ifdef DEBUG
     std::cout << "INITIAL_LIST:\n";
     for (auto it=result.begin(); it!=result.end(); ++it)
@@ -1286,6 +1271,49 @@ std::tuple<GraphContainer, std::vector<VertexEmbedList>, std::vector<int>> Graph
     /// combine container with graphs and counts
     return std::tuple<GraphContainer, std::vector<VertexEmbedList>, std::vector<int>>(container, canonicalListAndCounts.first, canonicalListAndCounts.second);
 
+}
+
+/// from g6 string in command line arguments, compute the canonical embeddings (arbitrary distance between vertices connected by a bond) on the cubic lattice
+/// for each bond combination, we have a list of representatives (canonical wrt cubic symmetries) and their embedding number folowed by the specific bond combination
+/// container: graph container consistent with g6 string given to parameters (this should come from CanonicalGraphManager!!!!!)
+std::pair<GraphContainer, std::vector<std::tuple<std::vector<VertexEmbedList>, std::vector<int>, std::vector<int>>>> GraphEmbedder::ComputeCanonicalEmbeddingsAndCounts(const GraphContainer& container, int maxManhattanDistance)
+{
+    if (this->Parameters.GetG6().empty())
+        throw std::invalid_argument("GraphEmbedder::ComputeCanonicalEmbeddingsAndCounts requires the user to input a g6 string!\n");
+
+    if (this->ResolveLatticeType(this->Parameters.GetLatticeType())!=GraphEmbedder::LatticeType::Cubic)
+        throw std::invalid_argument("GraphEmbedder::ComputeCanonicalEmbeddingsAndCounts requires the cubic lattice!\n");
+
+    if (container.GetG6String()!=this->Parameters.GetG6()) /// make sure things are consistent
+        throw std::invalid_argument("GraphEmbedder::ComputeCanonicalEmbeddingsAndCounts requires container to be consistent with g6 string!\n");
+
+    if (this->Parameters.EmbedCorrelator() && container.GetNbrRooted()!=2) /// check consistency
+        throw std::invalid_argument("GraphEmbedder::ComputeCanonicalEmbeddingsAndCounts requires container to be two-rooted if embedding a correlators!\n");
+
+    if (!this->Parameters.EmbedCorrelator() && container.GetNbrRooted()!=0) /// check consistency
+        throw std::invalid_argument("GraphEmbedder::ComputeCanonicalEmbeddingsAndCounts requires container to be unrooted if not embedding a correlator!\n");
+
+    /// generate all combos of bonds
+    this->GetCombinationsOfBondsFixedNumberOfBonds(container.GetL());
+
+    std::vector<std::tuple<std::vector<VertexEmbedList>, std::vector<int>, std::vector<int>>> embeddingResults;
+
+    for (int i=0; i<this->BondCombinations.size(); ++i) /// loop over bond combinations
+    {
+        /// get canonical graphs and counts
+        auto canonicalListAndCounts = this->ComputeCanonicalGraphsAndEmbeddingNumbers(container, this->BondCombinations[i]);
+#ifdef DEBUG
+        std::cout << "SIZES_DEBUG: " << canonicalListAndCounts.first.size() << " " << canonicalListAndCounts.second.size() << "\n";
+        for (int j=0; j<canonicalListAndCounts.first.size(); ++j)
+        {
+            std::cout << "embedding " << j << " with counts " << canonicalListAndCounts.second[j] << "\n";
+            std::cout << canonicalListAndCounts.first[j] << "\n";
+        }
+#endif
+        std::tuple<std::vector<VertexEmbedList>, std::vector<int>, std::vector<int>> tempAdd(canonicalListAndCounts.first, canonicalListAndCounts.second, this->BondCombinations[i]);
+        embeddingResults.push_back(tempAdd); /// add to results
+    }
+    return std::pair<GraphContainer, std::vector<std::tuple<std::vector<VertexEmbedList>, std::vector<int>, std::vector<int>>>>(container, embeddingResults);
 }
 
 /// do not use with rooted graphs! each simple connected graph generates some number of rooted graphs and they are written to file
@@ -1389,17 +1417,6 @@ int GraphEmbedder::GetSymmFactor(graph *g)
     return symmFactor;
 }
 
-/// we require one option if the other is not provided by the user (option either default or not specified)
-/// @param vm: variable map
-/// @param required: name of the required option
-/// @param other: the option which determines whether the first is actually required
-void GraphEmbedderParametersNauty::RequiredOptionWhenOtherOptionMissing(const po::variables_map& vm, const char* required, const char* other)
-{
-    if(vm.count(other)==0 || vm[other].defaulted())
-        if (vm.count(required) == 0 || vm[required].defaulted())
-            throw std::logic_error(std::string("Option ")+required+" required when "+other+" missing!\n");
-}
-
 /// process user's command-line arguments
 bool GraphEmbedderParametersNauty::ProcessCommandLine(int argc, char *argv[])
 {
@@ -1428,8 +1445,8 @@ bool GraphEmbedderParametersNauty::ProcessCommandLine(int argc, char *argv[])
             return false;
         }
 
-        this->RequiredOptionWhenOtherOptionMissing(vm, "input", "g6");
-        this->RequiredOptionWhenOtherOptionMissing(vm, "output", "g6");
+        MiscellaneousRoutines::RequiredOptionWhenOtherOptionMissing(vm, "input", "g6");
+        MiscellaneousRoutines::RequiredOptionWhenOtherOptionMissing(vm, "output", "g6");
 
         po::notify(vm);
     }

@@ -664,5 +664,7 @@ std::ostream& operator<< (std::ostream& stream, const GraphContainer& can)
             stream << "(" << i << "," << can.GetRootedVertex(i)+1 << ") ";
         stream << "\n";
     }
+    if (can.GetSymmFactor()!=-1)
+        std::cout << "SYMM_FACTOR: " << can.GetSymmFactor() << "\n";
     return stream;
 }

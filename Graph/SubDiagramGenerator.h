@@ -150,9 +150,9 @@ class SubDiagramGenerator
 {
 private:
     /***** private variables *****/
-    GraphContainer OriginalContainer; /// pointer to original graph container TODO: change this so that it has a copy
+    GraphContainer OriginalContainer; /// pointer to original graph container
 
-    VertexEmbedList OriginalList; /// pointer to original vertex embed list TODO: changes this so that it has a copy
+    VertexEmbedList OriginalList; /// pointer to original vertex embed list
 
     CubicLattice *MyCubicLattice; /// pointer to cubic lattice object
 
