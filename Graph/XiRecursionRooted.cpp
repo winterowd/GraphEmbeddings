@@ -101,7 +101,8 @@ void XiRecursionRooted::AddXiTerm(const XiExpansionRootedTerm& newTerm)
         it->CombineCoefficients(newTerm.GetCoefficient());
 }
 
-/// TODO: write description
+/// accessor for terms in Xi recursion relation
+/// @param index: index of term
 XiExpansionRootedTerm XiRecursionRooted::GetXiTerm(int index) const
 {
     if (index<0 || index>=this->XiTerms.size())

@@ -5,6 +5,7 @@
 #include "ZClusterPureGaugeArbEmbedding.h"
 #include "TwoPointCorrelator.h"
 #include "XiRecursionRooted.h"
+#include "StaticQuarkWeight.h"
 
 int main()
 {
@@ -25,8 +26,8 @@ int main()
     coefficients2.push_back(std::pair<GiNaC::numeric,std::array<int, MaxInteractionLength::NbrInteractions>>{GiNaC::numeric(1), tempOrder4});
     //coefficients2.push_back(std::pair<GiNaC::numeric,std::array<int, MaxInteractionLength::NbrInteractions>>{GiNaC::numeric(1,6), tempOrder3});
 
-    auto result1 = AuxiliaryRoutinesForGinac::PolynomialFromCoefficients<double>(coefficients1, /*false,*/ 6);
-    auto result2 = AuxiliaryRoutinesForGinac::PolynomialFromCoefficients<GiNaC::numeric>(coefficients2, /*false,*/ 6);
+    auto result1 = AuxiliaryRoutinesForGinac::PureGaugePolynomialFromCoefficients<double>(coefficients1, 6);
+    auto result2 = AuxiliaryRoutinesForGinac::PureGaugePolynomialFromCoefficients<GiNaC::numeric>(coefficients2, 6);
 
     //std::cout << "RESULT1: " << result1 << "\n";
     //std::cout << "RESULT2: " << result2 << "\n";
@@ -41,10 +42,10 @@ int main()
     //coefficients3.push_back(std::pair<GiNaC::numeric,std::array<int, MaxInteractionLength::NbrInteractions>>{GiNaC::numeric(1), tempOrder5});
     //coefficients3.push_back(std::pair<GiNaC::numeric,std::array<int, MaxInteractionLength::NbrInteractions>>{GiNaC::numeric(1), tempOrder6});
 
-    auto expandedTest = AuxiliaryRoutinesForGinac::GetExpandedRationalFunction(coefficients3, coefficients2, 8);
+    auto expandedTest = AuxiliaryRoutinesForGinac::GetExpandedPureGaugeRationalFunction(coefficients3, coefficients2, 8);
     std::cout << "EXPANDED_TEST: " << expandedTest << "\n";
 
-    return 0;
+    //return 0;
 
     /*** SOME_TESTS_FOR_GINAC::NUMERIC ***/
     int n = 4;
@@ -72,6 +73,8 @@ int main()
     PureGaugeWeight<double> someTest(WeightContainer, rootedVertices);
     PureGaugeWeight<GiNaC::numeric> anotherTest(WeightContainer, rootedVertices);
     PureGaugeWeightOld yetAnotherTest(WeightContainer, rootedVerticesOld);
+
+    return 0;
 
     std::cout << someTest.Weight() << " " << anotherTest.Weight() << " " << yetAnotherTest.Weight() << "\n";
 

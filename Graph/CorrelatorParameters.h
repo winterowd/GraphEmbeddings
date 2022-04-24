@@ -13,7 +13,7 @@ private:
 
     MaxInteractionLength CorrelatorLength; /// correlator length
 
-    double Kappa; /// hopping parameter TODO: static determinant
+    bool StaticQuarks; /// include static quarks?
 
     bool ProcessCommandLine(int argc, char *argv[]);
 
@@ -27,7 +27,7 @@ public:
 
     MaxInteractionLength GetCorrelatorLength() const { return this->CorrelatorLength; }
 
-    double GetKappa() const { return this->Kappa; }
+    bool IncludeStaticQuarks() const { return this->StaticQuarks; }
 
 };
 
@@ -42,7 +42,7 @@ inline bool CorrelatorParameters::ProcessCommandLine(int argc, char *argv[])
                 ("order,n", po::value<int>(&this->MaxManhattanDistance)->required(), "Maximum Manhattan distance")
                 (",d", po::value<MaxInteractionLength>(&this->MaxEmbeddingLength)->default_value(MaxInteractionLength::NearestNeighbor), "MaxEmbeddingLength: NN NNN 3N or 4N (longer distances not yet supported!)")
                 (",m", po::value<MaxInteractionLength>(&this->CorrelatorLength)->default_value(MaxInteractionLength::NearestNeighbor), "CorrelatorLength: NN NNN 3N or 4N (longer distances not yet supported!)")
-                (",k", po::value<double>(&this->Kappa)->default_value(0), "Hopping parameter kappa") /// TODO: static determinant
+                (",s", po::value<bool>(&this->StaticQuarks)->default_value(false), "Static quarks?")
                 ;
 
         po::variables_map vm;
