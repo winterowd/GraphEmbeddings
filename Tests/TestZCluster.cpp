@@ -41,7 +41,7 @@ int main(int argc, char *argv[])
 
                     std::cout << "NONZERO_EMBEDDING: " << k << " with counts " << currentCanonCounts[k] << "\n";
                     std::cout << currentCanonReps[k];
-                    TwoPointCorrelator tempCorrelator(tempContainer, currentCanonReps[k], &MyLattice);
+                    TwoPointCorrelator<ZClusterPureGaugeArbEmbedding> tempCorrelator(tempContainer, currentCanonReps[k], &MyLattice);
                     std::cout << "CORRELATOR!\n";
                     tempCorrelator.PrintCorrelatorTerms();
                     std::cout << "GiNaC_FULLCORRELATOR!\n";

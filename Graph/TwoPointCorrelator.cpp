@@ -4,11 +4,14 @@
 /// @param container: GraphContainer object for cluster
 /// @param embedList: VertexEmbedList corresponding to generalized embedding of graph on CubicLattice (edges of graph DO NOT have to correspond to edges of lattice!)
 /// @param lattice: pointer to CubicLattice object
-TwoPointCorrelator::TwoPointCorrelator(const GraphContainer &container, const VertexEmbedList &embedList, CubicLattice* lattice, int maxManhattanDistance) :
+template <typename T>
+TwoPointCorrelator<T>::TwoPointCorrelator(const GraphContainer &container, const VertexEmbedList &embedList, CubicLattice* lattice, int maxManhattanDistance, int maxOrderH1, int maxOrderHBar1) :
     ContainerRootedCluster(container),
     EmbedListRootedCluster(embedList),
     Lattice(lattice),
-    MaxManhattanDistance(maxManhattanDistance)
+    MaxManhattanDistance(maxManhattanDistance),
+    MaxOrderH1(maxOrderH1),
+    MaxOrderHBar1(maxOrderHBar1)
 {
     /// check number of embedded vertices and check that labels are the same
     if (this->ContainerRootedCluster.GetNbrRooted()!=2)
@@ -24,15 +27,15 @@ TwoPointCorrelator::TwoPointCorrelator(const GraphContainer &container, const Ve
     }
 
     /// numerator of connected term at CorrTerms[0]
-    this->CorrTerms.push_back(ZClusterPureGaugeArbEmbedding<GiNaC::numeric>(this->ContainerRootedCluster, this->EmbedListRootedCluster, this->Lattice, std::vector<bool>{true, false}));
+    this->CorrTerms.push_back(T(this->ContainerRootedCluster, this->EmbedListRootedCluster, this->Lattice, std::vector<bool>{true, false}));
 
     /// create subgraphs with no rooted graphs and one root (containers and lists)
     GraphContainer containerDenominator(this->ContainerRootedCluster.GetN(), 1, this->ContainerRootedCluster.GetG6String());
     VertexEmbedList embedListDenominator(this->EmbedListRootedCluster.GetMaxLength());
-    for (auto it=this->EmbedListRootedCluster.begin();it!=this->EmbedListRootedCluster.end(); ++it)
+    for (auto it=this->EmbedListRootedCluster.begin(); it!=this->EmbedListRootedCluster.end(); ++it)
         embedListDenominator.AddVertexEmbed(*it);
     /// denominator at CorrTerms[1]
-    this->CorrTerms.push_back(ZClusterPureGaugeArbEmbedding<GiNaC::numeric>(containerDenominator, embedListDenominator, this->Lattice, std::vector<bool>(0)));
+    this->CorrTerms.push_back(T(containerDenominator, embedListDenominator, this->Lattice, std::vector<bool>(0)));
 
     /// disconnected factor with L at first rooted vertex
     GraphContainer containerDisconnectedL(this->ContainerRootedCluster.GetN(), 1, this->ContainerRootedCluster.GetG6String(), 1);
@@ -42,7 +45,7 @@ TwoPointCorrelator::TwoPointCorrelator(const GraphContainer &container, const Ve
     for (auto it=this->EmbedListRootedCluster.begin();it!=this->EmbedListRootedCluster.end(); ++it)
         embedListDisconnectedL.AddVertexEmbed(*it);
     /// numerator with L at first rooted vertex at CorrTerms[2]
-    this->CorrTerms.push_back(ZClusterPureGaugeArbEmbedding<GiNaC::numeric>(containerDisconnectedL, embedListDisconnectedL, this->Lattice, std::vector<bool>{true}));
+    this->CorrTerms.push_back(T(containerDisconnectedL, embedListDisconnectedL, this->Lattice, std::vector<bool>{true}));
 
     /// disconnected factor with L* at second rooted vertex
     GraphContainer containerDisconnectedLStar(this->ContainerRootedCluster.GetN(), 1, this->ContainerRootedCluster.GetG6String(), 1);
@@ -52,30 +55,45 @@ TwoPointCorrelator::TwoPointCorrelator(const GraphContainer &container, const Ve
     for (auto it=this->EmbedListRootedCluster.begin();it!=this->EmbedListRootedCluster.end(); ++it)
         embedListDisconnectedLStar.AddVertexEmbed(*it);
     /// numerator with L* at second rooted vertex at CorrTerms[3]
-    this->CorrTerms.push_back(ZClusterPureGaugeArbEmbedding<GiNaC::numeric>(containerDisconnectedLStar, embedListDisconnectedLStar, this->Lattice, std::vector<bool>{false}));
+    this->CorrTerms.push_back(T(containerDisconnectedLStar, embedListDisconnectedLStar, this->Lattice, std::vector<bool>{false}));
 
 }
 
 /// create GiNaC::ex object (difference of two rational polynomials in \lambda_i's)
 /// CorrTerms[0]/CorrTerms[1] - (CorrTerms[2]/CorrTerms[0])(CorrTerms[3]/CorrTerms[0])
-GiNaC::ex TwoPointCorrelator::GetFullCorrelatorGiNaC()
+template <typename T>
+GiNaC::ex TwoPointCorrelator<T>::GetFullCorrelatorGiNaC()
 {
     auto connectedTerm = this->CorrTerms[0].ComputeLambdaPolynomial().GetPolynomial()/this->CorrTerms[1].ComputeLambdaPolynomial().GetPolynomial();
     auto disconnectedTerm = this->CorrTerms[2].ComputeLambdaPolynomial().GetPolynomial()*this->CorrTerms[3].ComputeLambdaPolynomial().GetPolynomial()/(this->CorrTerms[0].ComputeLambdaPolynomial().GetPolynomial()*this->CorrTerms[0].ComputeLambdaPolynomial().GetPolynomial());
     return connectedTerm-disconnectedTerm;
 }
 
+/// template specialization for pure gauge
 /// create GiNaC::ex object which is the expanded expression for the correlator up to MaxManhattanDistance
-GiNaC::ex TwoPointCorrelator::GetExpandedCorrelatorGiNaC()
+template<>
+GiNaC::ex TwoPointCorrelator<ZClusterPureGaugeArbEmbedding>::GetExpandedCorrelatorGiNaC()
 {
     auto denom = this->CorrTerms[1].ComputeLambdaPolynomial().GetPolynomial();
-    auto connectedTerm = AuxiliaryRoutinesForGinac::GetExpandedRationalFunction(this->CorrTerms[0].ComputeLambdaPolynomial().GetPolynomial(), denom, this->MaxManhattanDistance);
-    auto disconnectedTerm = AuxiliaryRoutinesForGinac::GetExpandedRationalFunction(this->CorrTerms[2].ComputeLambdaPolynomial().GetPolynomial()*this->CorrTerms[3].ComputeLambdaPolynomial().GetPolynomial(), denom*denom, this->MaxManhattanDistance);
+    auto connectedTerm = AuxiliaryRoutinesForGinac::GetLambdaExpandedRationalFunction(this->CorrTerms[0].ComputeLambdaPolynomial().GetPolynomial(), denom, this->MaxManhattanDistance);
+    auto disconnectedTerm = AuxiliaryRoutinesForGinac::GetLambdaExpandedRationalFunction(this->CorrTerms[2].ComputeLambdaPolynomial().GetPolynomial()*this->CorrTerms[3].ComputeLambdaPolynomial().GetPolynomial(), denom*denom, this->MaxManhattanDistance);
+    return connectedTerm-disconnectedTerm;
+}
+
+/// template specialization for single flavor static quarks
+/// create GiNaC::ex object which is the expanded expression for the correlator up to MaxManhattanDistance
+template<>
+GiNaC::ex TwoPointCorrelator<ZClusterStaticQuarkArbEmbedding>::GetExpandedCorrelatorGiNaC()
+{
+    auto denom = this->CorrTerms[1].ComputeLambdaPolynomial().GetPolynomial();
+    auto connectedTerm = AuxiliaryRoutinesForGinac::GetFullyExpandedSingleFlavorRationalFunction(this->CorrTerms[0].ComputeLambdaPolynomial().GetPolynomial(), denom, this->MaxManhattanDistance, this->MaxOrderH1, this->MaxOrderHBar1);
+    auto disconnectedTerm = AuxiliaryRoutinesForGinac::GetFullyExpandedSingleFlavorRationalFunction(this->CorrTerms[2].ComputeLambdaPolynomial().GetPolynomial()*this->CorrTerms[3].ComputeLambdaPolynomial().GetPolynomial(), denom*denom, this->MaxManhattanDistance, this->MaxOrderH1, this->MaxOrderHBar1);
     return connectedTerm-disconnectedTerm;
 }
 
 /// print out each piece of the two-point correlator (debugging purposes)
-void TwoPointCorrelator::PrintCorrelatorTerms()
+template <typename T>
+void TwoPointCorrelator<T>::PrintCorrelatorTerms()
 {
     std::cout << "NUMERATOR_CONNECTED:\n";
     this->CorrTerms[0].PrintZ();
@@ -86,3 +104,7 @@ void TwoPointCorrelator::PrintCorrelatorTerms()
     std::cout << "NUMERATOR_DISCONNECTEDLStar:\n";
     this->CorrTerms[3].PrintZ();
 }
+
+/// enumerate valid template parameters (constructors should have same signature and should have member functions PrintZ and ComputeLambdaPolynomial!)
+template class TwoPointCorrelator<ZClusterPureGaugeArbEmbedding>;
+template class TwoPointCorrelator<ZClusterStaticQuarkArbEmbedding>;

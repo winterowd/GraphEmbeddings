@@ -4,11 +4,7 @@
 #include <ginac/ginac.h>
 
 #include "GraphContainer.h"
-
-struct ExternalPolyakovLoop {
-    int Label; /// vertex label
-    bool Fundamental; /// fundamental (L) or antifundamental (L*)?
-};
+#include "ExternalPolyakovLoop.h"
 
 template <typename T>
 class PureGaugeWeight
@@ -33,7 +29,6 @@ private:
     double Factorial(int n);
 
     T SingleSiteIntegral(int n, int m);
-
 
 public:
     PureGaugeWeight(const GraphContainer& container, const std::vector<ExternalPolyakovLoop>& externalVertices);

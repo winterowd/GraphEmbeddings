@@ -4,7 +4,8 @@
 template<typename T>
 MyLambdaPolynomial<T>::MyLambdaPolynomial(const std::vector<std::pair<T, std::array<int, MaxInteractionLength::NbrInteractions>>>& coefficients, int maxManhattanDistance) :
     Polynomial(AuxiliaryRoutinesForGinac::PureGaugePolynomialFromCoefficients(coefficients, maxManhattanDistance)),
-    MaxManhattanDistance(maxManhattanDistance)
+    MaxManhattanDistance(maxManhattanDistance),
+    PureGauge(true)
 {
 
 }
@@ -13,7 +14,8 @@ MyLambdaPolynomial<T>::MyLambdaPolynomial(const std::vector<std::pair<T, std::ar
 template<typename T>
 MyLambdaPolynomial<T>::MyLambdaPolynomial(const std::vector<std::pair<T, std::array<int, MaxInteractionLength::NbrInteractions+2>>>& coefficients, int maxManhattanDistance) :
     Polynomial(AuxiliaryRoutinesForGinac::SingleFlavorPolynomialFromCoefficients(coefficients, maxManhattanDistance)),
-    MaxManhattanDistance(maxManhattanDistance)
+    MaxManhattanDistance(maxManhattanDistance),
+    PureGauge(false)
 {
 
 }

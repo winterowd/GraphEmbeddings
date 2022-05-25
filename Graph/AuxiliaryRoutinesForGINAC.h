@@ -11,9 +11,12 @@ const GiNaC::symbol& GetSymbol(int l, bool lambda=true);
 std::pair<std::string, std::string> MaxInteractionLengthToSymbolName(int l);
 std::pair<std::string, std::string> GetFermionCoupling(int index);
 int ComputeManhattanDistance(const std::array<int, MaxInteractionLength::NbrInteractions>& coefficients);
-GiNaC::ex GetExpandedPureGaugeRationalFunction(const std::vector<std::pair<GiNaC::numeric, std::array<int, MaxInteractionLength::NbrInteractions>>>& coefficientsNum, const std::vector<std::pair<GiNaC::numeric, std::array<int, MaxInteractionLength::NbrInteractions>>>& coefficientsDenom, int maxManhattanDistance);
-GiNaC::ex GetExpandedSingleFlavorRationalFunction(const std::vector<std::pair<GiNaC::numeric, std::array<int, MaxInteractionLength::NbrInteractions+2>>>& coefficientsNum, const std::vector<std::pair<GiNaC::numeric, std::array<int, MaxInteractionLength::NbrInteractions+2>>>& coefficientsDenom, int maxManhattanDistance);
-GiNaC::ex GetExpandedRationalFunction(GiNaC::ex num, GiNaC::ex denom, int maxManhattanDistance);
+GiNaC::ex GetLambdaExpandedPureGaugeRationalFunction(const std::vector<std::pair<GiNaC::numeric, std::array<int, MaxInteractionLength::NbrInteractions>>>& coefficientsNum, const std::vector<std::pair<GiNaC::numeric, std::array<int, MaxInteractionLength::NbrInteractions>>>& coefficientsDenom, int maxManhattanDistance);
+GiNaC::ex GetLambdaExpandedSingleFlavorRationalFunction(const std::vector<std::pair<GiNaC::numeric, std::array<int, MaxInteractionLength::NbrInteractions+2>>>& coefficientsNum, const std::vector<std::pair<GiNaC::numeric, std::array<int, MaxInteractionLength::NbrInteractions+2>>>& coefficientsDenom, int maxManhattanDistance);
+GiNaC::ex GetLambdaExpandedRationalFunction(GiNaC::ex num, GiNaC::ex denom, int maxManhattanDistance);
+GiNaC::ex GetSingleFlavorH1AndHBar1ExpandedFunction(GiNaC::ex ex, int maxOrderH1, int maxOrderHBar1);
+GiNaC::ex GetFullyExpandedSingleFlavorRationalFunction(const std::vector<std::pair<GiNaC::numeric, std::array<int, MaxInteractionLength::NbrInteractions+2>>>& coefficientsNum, const std::vector<std::pair<GiNaC::numeric, std::array<int, MaxInteractionLength::NbrInteractions+2>>>& coefficientsDenom, int maxManhattanDistance, int maxOrderH1, int maxOrderHBar1);
+GiNaC::ex GetFullyExpandedSingleFlavorRationalFunction(GiNaC::ex num, GiNaC::ex denom, int maxManhattanDistance, int maxOrderH1, int maxOrderHBar1);
 template<typename T>
 T CreateRationalPolynomialCoefficient(int num, int denom);
 
@@ -64,6 +67,7 @@ inline GiNaC::ex SingleFlavorPolynomialFromCoefficients(const std::vector<std::p
             lambdaCoefficients[j] = coefficients[i].second[j];
         tempTerm *= GiNaC::pow(AuxiliaryRoutinesForGinac::GetSymbol(MaxInteractionLength::NbrInteractions), AuxiliaryRoutinesForGinac::ComputeManhattanDistance(lambdaCoefficients));
         /// powers of h_1, \bar{h}_1
+        /// TODO: multiple flavors
         tempTerm *= GiNaC::pow(AuxiliaryRoutinesForGinac::GetSymbol(0, false), coefficients[i].second[MaxInteractionLength::NbrInteractions]);
         tempTerm *= GiNaC::pow(AuxiliaryRoutinesForGinac::GetSymbol(1, false), coefficients[i].second[MaxInteractionLength::NbrInteractions+1]);
         result += tempTerm;

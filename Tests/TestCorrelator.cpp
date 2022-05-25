@@ -9,8 +9,8 @@ int main(int argc, char *argv[])
 {
     CorrelatorParameters MyParameters(argc, argv);
 
-    int maxBonds = MyParameters.GetMaxManhattanDistance();
-    int maxManhattanDistance = maxBonds;
+    int maxManhattanDistance = MyParameters.GetMaxManhattanDistance();
+    int maxBonds = maxManhattanDistance;
     CanonicalGraphManager MyManager(maxBonds);
 
     CubicLattice MyLattice(100);
@@ -45,8 +45,16 @@ int main(int argc, char *argv[])
                     /*std::cout << "EMBED_CANON_" << k << ":\n";
                     std::cout << currentCanonReps[k];
                     std::cout << "EMBEDDING: " << currentCanonCounts[k] << "\n";*/
-                    XiRecursionRooted tempXi(&MyManager, tempContainer, currentCanonReps[k], &MyLattice, currentCanonCounts[k], maxManhattanDistance);
-                    resultExpanded += tempXi.GetExpandedXiGiNaCWithCoefficient();
+                    if (MyParameters.IncludeStaticQuarks()) /// TODO: multiple flavors
+                    {
+                        XiRecursionRooted<ZClusterStaticQuarkArbEmbedding> tempXi(&MyManager, tempContainer, currentCanonReps[k], &MyLattice, currentCanonCounts[k], maxManhattanDistance, MyParameters.GetMaxOrderH1(), MyParameters.GetMaxOrderHBar1());
+                        resultExpanded += tempXi.GetExpandedXiGiNaCWithCoefficient();
+                    }
+                    else
+                    {
+                        XiRecursionRooted<ZClusterPureGaugeArbEmbedding> tempXi(&MyManager, tempContainer, currentCanonReps[k], &MyLattice, currentCanonCounts[k], maxManhattanDistance);
+                        resultExpanded += tempXi.GetExpandedXiGiNaCWithCoefficient();
+                    }
                     //std::cout << "DEBUG_EXPANDED: " << resultExpanded << "\n";
                     //resultFull += tempXi.GetFullXiGiNaCWithCoefficient();
                 }

@@ -4,8 +4,10 @@
 #include "GraphContainer.h"
 #include "VertexEmbedList.h"
 #include "ZClusterPureGaugeArbEmbedding.h"
+#include "ZClusterStaticQuarkArbEmbedding.h"
 #include "CubicLattice.h"
 
+template<typename T>
 class TwoPointCorrelator
 {
 private:
@@ -17,15 +19,23 @@ private:
 
     int MaxManhattanDistance; /// maximum Manhattan distance
 
-    /// pointers to cluster objects (dynamically allocate as they do not have default constructor)
-    std::vector<ZClusterPureGaugeArbEmbedding<GiNaC::numeric>> CorrTerms;
+    int MaxOrderH1; /// maximum order in h_1
+
+    int MaxOrderHBar1; /// maximum order in \bar{h}_1
+
+    /// vector of cluster objects (dynamically allocate as they do not have default constructor)
+    std::vector<T> CorrTerms;
 
 public:
-    TwoPointCorrelator(const GraphContainer& container, const VertexEmbedList& embedList, CubicLattice* lattice, int maxManhattanDistance=10);
+    TwoPointCorrelator(const GraphContainer& container, const VertexEmbedList& embedList, CubicLattice* lattice, int maxManhattanDistance=10, int maxOrderH1=0, int maxOrderHBar1=0);
 
     GiNaC::ex GetFullCorrelatorGiNaC();
 
     GiNaC::ex GetExpandedCorrelatorGiNaC();
+
+    int GetMaxOrderH1() const { return this->MaxOrderH1; }
+
+    int GetMaxOrderHBar1() const { return this->MaxOrderHBar1; }
 
     void PrintCorrelatorTerms(); /// debugging routine
 };

@@ -287,3 +287,14 @@ void MiscellaneousRoutines::RequiredOptionWhenOtherOptionMissing(const po::varia
         if (vm.count(required) == 0 || vm[required].defaulted())
             throw std::logic_error(std::string("Option ")+required+" required when "+other+" missing!\n");
 }
+
+/// we require one option if the other is not provided by the user (option either default or not specified)
+/// @param vm: variable map
+/// @param required: name of the required option
+/// @param other: the option which determines whether the first is actually required
+void MiscellaneousRoutines::RequiredOptionWhenOtherOptionExists(const po::variables_map& vm, const char* required, const char* other)
+{
+    if(vm.count(other)==1)
+        if (vm.count(required) == 0 || vm[required].defaulted())
+            throw std::logic_error(std::string("Option ")+required+" required when "+other+" missing!\n");
+}

@@ -48,7 +48,7 @@ int main(int argc, char *argv[])
     EmbedList.AddVertexEmbed(4, index4);
 
     std::cout << "PRINTING_PLAQ_XI\n";
-    XiRecursionRooted RecursionObject(&MyManager, TestContainer, EmbedList, &MyLattice);
+    XiRecursionRooted<ZClusterPureGaugeArbEmbedding> RecursionObject(&MyManager, TestContainer, EmbedList, &MyLattice);
     std::cout << "PRINTING_PLAQ_FULL_XI_GINAC\n";
     std::cout << RecursionObject.GetFullXiGiNaC() << "\n";
     std::cout << "PRINTING_PLAQ_EXPANDED_XI_GINAC\n";

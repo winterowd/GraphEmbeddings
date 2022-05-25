@@ -1,12 +1,16 @@
 #include "XiRecursionRooted.h"
 
-XiRecursionRooted::XiRecursionRooted(CanonicalGraphManager* manager, const GraphContainer& container, const VertexEmbedList& embedList, CubicLattice *lattice, int embeddingNumber, int maxManhattanDistance) :
+/// constructor
+template<typename T>
+XiRecursionRooted<T>::XiRecursionRooted(CanonicalGraphManager* manager, const GraphContainer& container, const VertexEmbedList& embedList, CubicLattice *lattice, int embeddingNumber, int maxManhattanDistance, int maxOrderH1, int maxOrderHBar1) :
     GraphManager(manager),
     XiContainer(container),
     XiEmbedList(embedList),
     Lattice(lattice),
     EmbeddingNumber(embeddingNumber),
-    MaxManhattanDistance(maxManhattanDistance)
+    MaxManhattanDistance(maxManhattanDistance),
+    MaxOrderH1(maxOrderH1),
+    MaxOrderHBar1(maxOrderHBar1)
 {
     if (container.GetNbrRooted()!=2)
         throw std::invalid_argument("Error: XiRecursionRooted requires the container to be unrooted!\n");
@@ -30,7 +34,7 @@ XiRecursionRooted::XiRecursionRooted(CanonicalGraphManager* manager, const Graph
         //std::cout << this->XiTerms[i];
         auto indices = this->XiTerms[i].GetCanonicalCoordinates();
         //std::cout << this->GraphManager->GetRootedGraph(indices.first, indices.second, 2);
-        auto tempCorrelator = TwoPointCorrelator(this->GraphManager->GetRootedGraph(indices.first, indices.second, 2), this->XiTerms[i].GetFullyCanonicalEmbedList(), this->Lattice, this->MaxManhattanDistance);
+        auto tempCorrelator = TwoPointCorrelator<T>(this->GraphManager->GetRootedGraph(indices.first, indices.second, 2), this->XiTerms[i].GetFullyCanonicalEmbedList(), this->Lattice, this->MaxManhattanDistance, this->MaxOrderH1, this->MaxOrderHBar1);
         //tempCorrelator.PrintCorrelatorTerms();
         //std::cout << "DEBUG_EXPAND:\n" << tempCorrelator.GetExpandedCorrelatorGiNaC() << "\n";
         //std::cout << "DEBUG_FULL:\n" << tempCorrelator.GetFullCorrelatorGiNaC() << "\n";
@@ -44,7 +48,8 @@ XiRecursionRooted::XiRecursionRooted(CanonicalGraphManager* manager, const Graph
 /// @param container: graph container
 /// @param embedList: embed list for graph
 /// @param sign: sign (+/-) which gets distributed in in recursive expression
-void XiRecursionRooted::ComputeXiTerms(GraphContainer container, VertexEmbedList embedList, int sign)
+template<typename T>
+void XiRecursionRooted<T>::ComputeXiTerms(GraphContainer container, VertexEmbedList embedList, int sign)
 {
     if (container.GetNbrRooted()!=embedList.GetNbrSetRootedVertices())
         throw std::logic_error("Error: ComputeXiTerms requires container and embedList to have the same number of rooted vertices!\n");
@@ -92,7 +97,8 @@ void XiRecursionRooted::ComputeXiTerms(GraphContainer container, VertexEmbedList
 
 /// either add term if we do not already have it or if we do, combine coefficients
 /// @param newTerm: new term (log Z(g)) to be added
-void XiRecursionRooted::AddXiTerm(const XiExpansionRootedTerm& newTerm)
+template<typename T>
+void XiRecursionRooted<T>::AddXiTerm(const XiExpansionRootedTerm& newTerm)
 {
     auto it = std::find(this->XiTerms.begin(), this->XiTerms.end(), newTerm);
     if (it==this->XiTerms.end())
@@ -103,7 +109,8 @@ void XiRecursionRooted::AddXiTerm(const XiExpansionRootedTerm& newTerm)
 
 /// accessor for terms in Xi recursion relation
 /// @param index: index of term
-XiExpansionRootedTerm XiRecursionRooted::GetXiTerm(int index) const
+template<typename T>
+XiExpansionRootedTerm XiRecursionRooted<T>::GetXiTerm(int index) const
 {
     if (index<0 || index>=this->XiTerms.size())
         throw std::invalid_argument("ERROR: XiRecursionRooted::GetXiTerm index should be between 0 and XiTerms.size()-1!\n");
@@ -111,7 +118,8 @@ XiExpansionRootedTerm XiRecursionRooted::GetXiTerm(int index) const
 }
 
 /// get the full expression for \Xi on the finite-cluster
-GiNaC::ex XiRecursionRooted::GetFullXiGiNaC()
+template<typename T>
+GiNaC::ex XiRecursionRooted<T>::GetFullXiGiNaC()
 {
     GiNaC::ex result;
     for (int i=0; i<this->CorrelatorTerms.size(); ++i)
@@ -126,7 +134,8 @@ GiNaC::ex XiRecursionRooted::GetFullXiGiNaC()
 }
 
 /// get the expression for \Xi on the finite-cluster expanded to MaxManhattanDistance
-GiNaC::ex XiRecursionRooted::GetExpandedXiGiNaC()
+template<typename T>
+GiNaC::ex XiRecursionRooted<T>::GetExpandedXiGiNaC()
 {
     GiNaC::ex result;
     for (int i=0; i<this->CorrelatorTerms.size(); ++i)
@@ -141,7 +150,8 @@ GiNaC::ex XiRecursionRooted::GetExpandedXiGiNaC()
 }
 
 ///  compute (embedding/SymmFactor) \times FullGinac
-GiNaC::ex XiRecursionRooted::GetFullXiGiNaCWithCoefficient()
+template<typename T>
+GiNaC::ex XiRecursionRooted<T>::GetFullXiGiNaCWithCoefficient()
 {
     if (this->XiContainer.GetSymmFactor()==-1)
         throw std::logic_error("XiRecursionRooted::GetFullXiGiNaCWithCoefficient found XiContainer with unset SymmFactor!\n");
@@ -149,9 +159,14 @@ GiNaC::ex XiRecursionRooted::GetFullXiGiNaCWithCoefficient()
 }
 
 /// compute (embedding/SymmFactor) \times ExpandedGinac
-GiNaC::ex XiRecursionRooted::GetExpandedXiGiNaCWithCoefficient()
+template<typename T>
+GiNaC::ex XiRecursionRooted<T>::GetExpandedXiGiNaCWithCoefficient()
 {
     if (this->XiContainer.GetSymmFactor()==-1)
         throw std::logic_error("XiRecursionRooted::GetExpandedXiGiNaCWithCoefficient found XiContainer with unset SymmFactor!\n");
     return GiNaC::numeric(this->EmbeddingNumber,this->XiContainer.GetSymmFactor())*this->GetExpandedXiGiNaC();
 }
+
+/// enumerate valid template parameters (template parameter passed down to TwoPointCorrelator)
+template class XiRecursionRooted<ZClusterPureGaugeArbEmbedding>;
+template class XiRecursionRooted<ZClusterStaticQuarkArbEmbedding>;

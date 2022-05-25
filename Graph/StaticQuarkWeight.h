@@ -21,15 +21,13 @@ private:
 
     GiNaC::ex TotalWeight; /// total weight of graph using all possible combinations of directed bonds
 
+    static bool StaticDeterminantPrecomputed; /// flag
+
     void GetAllWeights(std::vector<bool>& tmp, int nbrBondsRemaining);
 
     GiNaC::ex GetGraphWeightFixedBonds(const std::vector<bool> &directedEdges);
 
     std::vector<SiteCount> GetSiteCountsForDirectedEdges(const std::vector<bool> &directedEdges);
-
-    double BinomialCoefficient(int n, int k);
-
-    double Factorial(int n);
 
     GiNaC::ex ComputeSiteContribution(int nbrIn, int nbrOut);
 

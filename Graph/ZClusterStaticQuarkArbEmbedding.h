@@ -8,8 +8,10 @@
 #include "StaticQuarkWeight.h"
 #include "AuxiliaryRoutinesForGINAC.h"
 #include "MyLambdaPolynomial.h"
+#include "AbstractZCluster.h"
 
-class ZClusterStaticQuarkArbEmbedding
+/// TODO: multiple flavors
+class ZClusterStaticQuarkArbEmbedding : public AbstractZCluster
 {
 private:
     /**** private variables ****/
@@ -69,12 +71,12 @@ private:
     std::vector<ExternalPolyakovLoop> PrepareRootedVerticesIntegrandTerm(const std::vector<UndirectedEdge>& edges, const std::vector<int>& vertexMap);
 
     /// evalute the partition function
-    void EvaluateZ();
+    void EvaluateZ() override;
 
 public:
     ZClusterStaticQuarkArbEmbedding(const GraphContainer& container, const VertexEmbedList& clusterEmbedList, CubicLattice* lattice, const std::vector<bool>& loopAtRooted, int maxManhattanDistance=10);
 
-    MyLambdaPolynomial<GiNaC::numeric> ComputeLambdaPolynomial();
+    MyLambdaPolynomial<GiNaC::numeric> ComputeLambdaPolynomial() override;
 
     /**** accessors ****/
     int GetNbrSquareDiagonal() const { return this->SquareDiagonal.size(); }
@@ -86,7 +88,7 @@ public:
     int GetNbrCubeDiagonal() const { return this->CubeDiagonal.size(); }
 
     /**** debugging routines ****/
-    void PrintZ() const;
+    void PrintZ() const override;
 
     void PrintContributionZFixedOrder(const std::array<int, NbrCouplings>& powers);
 };

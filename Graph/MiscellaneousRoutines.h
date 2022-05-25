@@ -29,6 +29,7 @@ void TestLexicographicalOrderingVertexEmbedList();
 
 /* Boost program option routines */
 void RequiredOptionWhenOtherOptionMissing(const po::variables_map& vm, const char* required, const char* other);
+void RequiredOptionWhenOtherOptionExists(const po::variables_map& vm, const char* required, const char* other);
 
 }
 

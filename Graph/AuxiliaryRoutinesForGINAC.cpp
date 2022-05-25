@@ -8,6 +8,7 @@ int AuxiliaryRoutinesForGinac::ComputeManhattanDistance(const std::array<int, Ma
     return coefficients[0]+2*(coefficients[1]+coefficients[2])+3*coefficients[3];
 }
 
+/// TODO: multiple flavors
 /// factory for the GiNaC symbol objects \lambda_i and {h_1, \bar{h}_1}
 /// this is so perturbative expressions can be combined (see GiNaC manual)
 /// @param l: length (0, 1, ..., NbrInteractions-1)
@@ -55,6 +56,7 @@ std::pair<std::string, std::string> AuxiliaryRoutinesForGinac::MaxInteractionLen
     return result;
 }
 
+/// TODO: multiple flavors
 /// get the appropriate fermion variable (single flavor)
 /// @param index for fermion coupling
 std::pair<std::string, std::string> AuxiliaryRoutinesForGinac::GetFermionCoupling(int index)
@@ -74,9 +76,9 @@ std::pair<std::string, std::string> AuxiliaryRoutinesForGinac::GetFermionCouplin
 /// @param coefficientsNum: coefficients for the numerator
 /// @param coefficientsDenom: coefficients for the denominator
 /// @param maxManhattanDistance: maximum Manhattan distance
-GiNaC::ex AuxiliaryRoutinesForGinac::GetExpandedPureGaugeRationalFunction(const std::vector<std::pair<GiNaC::numeric, std::array<int, MaxInteractionLength::NbrInteractions>>>& coefficientsNum, const std::vector<std::pair<GiNaC::numeric, std::array<int, MaxInteractionLength::NbrInteractions>>>& coefficientsDenom, int maxManhattanDistance)
+GiNaC::ex AuxiliaryRoutinesForGinac::GetLambdaExpandedPureGaugeRationalFunction(const std::vector<std::pair<GiNaC::numeric, std::array<int, MaxInteractionLength::NbrInteractions>>>& coefficientsNum, const std::vector<std::pair<GiNaC::numeric, std::array<int, MaxInteractionLength::NbrInteractions>>>& coefficientsDenom, int maxManhattanDistance)
 {
-    return AuxiliaryRoutinesForGinac::GetExpandedRationalFunction(AuxiliaryRoutinesForGinac::PureGaugePolynomialFromCoefficients(coefficientsNum, /*true,*/ maxManhattanDistance), AuxiliaryRoutinesForGinac::PureGaugePolynomialFromCoefficients(coefficientsDenom, /*true,*/ maxManhattanDistance), maxManhattanDistance);
+    return AuxiliaryRoutinesForGinac::GetLambdaExpandedRationalFunction(AuxiliaryRoutinesForGinac::PureGaugePolynomialFromCoefficients(coefficientsNum, /*true,*/ maxManhattanDistance), AuxiliaryRoutinesForGinac::PureGaugePolynomialFromCoefficients(coefficientsDenom, /*true,*/ maxManhattanDistance), maxManhattanDistance);
 }
 
 /// function which takes the ratio of two polynomials in variables {\lambda_i, i=0,1,..} and t and expands to a given Manhattan distance (given by power of t)
@@ -84,7 +86,7 @@ GiNaC::ex AuxiliaryRoutinesForGinac::GetExpandedPureGaugeRationalFunction(const 
 /// @param num: polynomial in the numerator
 /// @param denom: polynomial in the denominator
 /// @param maxManhattanDistance: maximum Manhattan distance
-GiNaC::ex AuxiliaryRoutinesForGinac::GetExpandedRationalFunction(GiNaC::ex num, GiNaC::ex denom, int maxManhattanDistance)
+GiNaC::ex AuxiliaryRoutinesForGinac::GetLambdaExpandedRationalFunction(GiNaC::ex num, GiNaC::ex denom, int maxManhattanDistance)
 {
     return (num/denom).series(AuxiliaryRoutinesForGinac::GetSymbol(MaxInteractionLength::NbrInteractions)==0, maxManhattanDistance+1).subs(AuxiliaryRoutinesForGinac::GetSymbol(MaxInteractionLength::NbrInteractions) == 1).expand();
 }
@@ -94,9 +96,43 @@ GiNaC::ex AuxiliaryRoutinesForGinac::GetExpandedRationalFunction(GiNaC::ex num, 
 /// @param coefficientsNum: coefficients for the numerator
 /// @param coefficientsDenom: coefficients for the denominator
 /// @param maxManhattanDistance: maximum Manhattan distance
-GiNaC::ex AuxiliaryRoutinesForGinac::GetExpandedSingleFlavorRationalFunction(const std::vector<std::pair<GiNaC::numeric, std::array<int, MaxInteractionLength::NbrInteractions+2>>>& coefficientsNum, const std::vector<std::pair<GiNaC::numeric, std::array<int, MaxInteractionLength::NbrInteractions+2>>>& coefficientsDenom, int maxManhattanDistance)
+GiNaC::ex AuxiliaryRoutinesForGinac::GetLambdaExpandedSingleFlavorRationalFunction(const std::vector<std::pair<GiNaC::numeric, std::array<int, MaxInteractionLength::NbrInteractions+2>>>& coefficientsNum, const std::vector<std::pair<GiNaC::numeric, std::array<int, MaxInteractionLength::NbrInteractions+2>>>& coefficientsDenom, int maxManhattanDistance)
 {
-    return AuxiliaryRoutinesForGinac::GetExpandedRationalFunction(AuxiliaryRoutinesForGinac::SingleFlavorPolynomialFromCoefficients(coefficientsNum, maxManhattanDistance), AuxiliaryRoutinesForGinac::SingleFlavorPolynomialFromCoefficients(coefficientsDenom, maxManhattanDistance), maxManhattanDistance);
+    return AuxiliaryRoutinesForGinac::GetLambdaExpandedRationalFunction(AuxiliaryRoutinesForGinac::SingleFlavorPolynomialFromCoefficients(coefficientsNum, maxManhattanDistance), AuxiliaryRoutinesForGinac::SingleFlavorPolynomialFromCoefficients(coefficientsDenom, maxManhattanDistance), maxManhattanDistance);
+}
+
+/// takes a polynomial and performs an expansion in both h_1 and \hbar{h}_1
+/// @param ex: GiNaC expression which should be a polynomial in \{ \lambda_i \} and { h_1, \hbar{h}_1 \}
+/// @param maxOrderH1: maximum expansion order for h_1
+/// @param maxOrderHBar1: maximum expansion order for \hbar{h}_1
+GiNaC::ex AuxiliaryRoutinesForGinac::GetSingleFlavorH1AndHBar1ExpandedFunction(GiNaC::ex ex, int maxOrderH1, int maxOrderHBar1)
+{
+    auto expandInH1 = GiNaC::series_to_poly(ex.series(AuxiliaryRoutinesForGinac::GetSymbol(0, false)==0, maxOrderH1+1));
+    return expandInH1.series(AuxiliaryRoutinesForGinac::GetSymbol(1, false)==0, maxOrderHBar1+1);
+}
+
+/// perform a full expansion in  \{ \lambda_i \} h_1, and \hbar{h}_1 (single flavor)
+/// @param num: numerator
+/// @param denom: denominator
+/// @param maxManhattanDistance: maximum Manhattan distance for expansion in \lambda_i
+/// @param maxOrderH1: maximum order in h_1
+/// @param maxOrderHBar1: maximum order in \hbar{h}_1
+GiNaC::ex AuxiliaryRoutinesForGinac::GetFullyExpandedSingleFlavorRationalFunction(GiNaC::ex num, GiNaC::ex denom, int maxManhattanDistance, int maxOrderH1, int maxOrderHBar1)
+{
+    auto temp = AuxiliaryRoutinesForGinac::GetLambdaExpandedRationalFunction(num, denom, maxManhattanDistance);
+    return AuxiliaryRoutinesForGinac::GetSingleFlavorH1AndHBar1ExpandedFunction(temp, maxOrderH1, maxOrderHBar1);
+}
+
+/// peform a full expansion in \{ \lambda_i \} h_1, and \hbar{h}_1 (single flavor)
+/// @param coefficientsNum: coefficients for the numerator
+/// @param coefficientsDenom: coefficients for the denominator
+/// @param maxManhattanDistance: maximum Manhattan distance for expansion in \lambda_i
+/// @param maxOrderH1: maximum order in h_1
+/// @param maxOrderHBar1: maximum order in \hbar{h}_1
+GiNaC::ex AuxiliaryRoutinesForGinac::GetFullyExpandedSingleFlavorRationalFunction(const std::vector<std::pair<GiNaC::numeric, std::array<int, MaxInteractionLength::NbrInteractions+2>>>& coefficientsNum, const std::vector<std::pair<GiNaC::numeric, std::array<int, MaxInteractionLength::NbrInteractions+2>>>& coefficientsDenom, int maxManhattanDistance, int maxOrderH1, int maxOrderHBar1)
+{
+    auto temp = AuxiliaryRoutinesForGinac::GetLambdaExpandedSingleFlavorRationalFunction(coefficientsNum, coefficientsDenom, maxManhattanDistance);
+    return AuxiliaryRoutinesForGinac::GetSingleFlavorH1AndHBar1ExpandedFunction(temp, maxOrderH1, maxOrderHBar1);
 }
 
 template<>

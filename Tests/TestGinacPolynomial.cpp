@@ -3,6 +3,7 @@
 #include "PureGaugeweight.h"
 #include "PureGaugeWeightOld.h"
 #include "ZClusterPureGaugeArbEmbedding.h"
+#include "StaticQuarkWeight.h"
 #include "TwoPointCorrelator.h"
 #include "XiRecursionRooted.h"
 #include "StaticQuarkWeight.h"
@@ -42,8 +43,38 @@ int main()
     //coefficients3.push_back(std::pair<GiNaC::numeric,std::array<int, MaxInteractionLength::NbrInteractions>>{GiNaC::numeric(1), tempOrder5});
     //coefficients3.push_back(std::pair<GiNaC::numeric,std::array<int, MaxInteractionLength::NbrInteractions>>{GiNaC::numeric(1), tempOrder6});
 
-    auto expandedTest = AuxiliaryRoutinesForGinac::GetExpandedPureGaugeRationalFunction(coefficients3, coefficients2, 8);
-    std::cout << "EXPANDED_TEST: " << expandedTest << "\n";
+    auto expandedTest = AuxiliaryRoutinesForGinac::GetLambdaExpandedPureGaugeRationalFunction(coefficients3, coefficients2, 8);
+    std::cout << "EXPANDED_TEST: " << expandedTest << " " << GiNaC::is_a<GiNaC::pseries>(expandedTest) << " " << GiNaC::is_a<GiNaC::ex>(expandedTest) << "\n";
+
+    std::array<int, MaxInteractionLength::NbrInteractions+2> tempOrder7{0,0,0,0,0,0};
+    std::array<int, MaxInteractionLength::NbrInteractions+2> tempOrder8{0,0,0,0,1,0};
+    std::array<int, MaxInteractionLength::NbrInteractions+2> tempOrder9{0,0,0,0,0,1};
+
+    std::vector<std::pair<GiNaC::numeric, std::array<int, MaxInteractionLength::NbrInteractions+2>>> coefficients4;
+    coefficients4.push_back(std::pair<GiNaC::numeric,std::array<int, MaxInteractionLength::NbrInteractions+2>>{GiNaC::numeric(1), tempOrder7});
+    coefficients4.push_back(std::pair<GiNaC::numeric,std::array<int, MaxInteractionLength::NbrInteractions+2>>{GiNaC::numeric(2), tempOrder8});
+    coefficients4.push_back(std::pair<GiNaC::numeric,std::array<int, MaxInteractionLength::NbrInteractions+2>>{GiNaC::numeric(3), tempOrder9});
+    auto someTempSingleFlavor = GiNaC::numeric(1)/AuxiliaryRoutinesForGinac::SingleFlavorPolynomialFromCoefficients(coefficients4, 8);
+
+    std::cout << "Test_someTempSingleFlavor: " << someTempSingleFlavor << "\n";
+
+    auto someResult = AuxiliaryRoutinesForGinac::GetSingleFlavorH1AndHBar1ExpandedFunction(someTempSingleFlavor, 2, 2);
+
+    std::cout << "Test_someResult: " << someResult << "\n";
+
+    std::array<int, MaxInteractionLength::NbrInteractions+2> tempOrder10{0,0,0,0,0,0};
+    std::array<int, MaxInteractionLength::NbrInteractions+2> tempOrder11{1,0,0,0,1,0};
+    std::array<int, MaxInteractionLength::NbrInteractions+2> tempOrder12{1,1,0,0,0,1};
+
+    std::vector<std::pair<GiNaC::numeric, std::array<int, MaxInteractionLength::NbrInteractions+2>>> coefficients5;
+    coefficients5.push_back(std::pair<GiNaC::numeric,std::array<int, MaxInteractionLength::NbrInteractions+2>>{GiNaC::numeric(1), tempOrder10});
+    coefficients5.push_back(std::pair<GiNaC::numeric,std::array<int, MaxInteractionLength::NbrInteractions+2>>{GiNaC::numeric(2), tempOrder11});
+    coefficients5.push_back(std::pair<GiNaC::numeric,std::array<int, MaxInteractionLength::NbrInteractions+2>>{GiNaC::numeric(3), tempOrder12});
+    std::vector<std::pair<GiNaC::numeric, std::array<int, MaxInteractionLength::NbrInteractions+2>>> coefficients6;
+    coefficients6.push_back(std::pair<GiNaC::numeric,std::array<int, MaxInteractionLength::NbrInteractions+2>>{GiNaC::numeric(1), tempOrder10});
+    auto resultFullExpansion = AuxiliaryRoutinesForGinac::GetFullyExpandedSingleFlavorRationalFunction(coefficients6, coefficients5, 4, 2, 2);
+
+    std::cout << "Test_resultFullExpansion: " << resultFullExpansion << "\n";
 
     //return 0;
 
@@ -73,6 +104,28 @@ int main()
     PureGaugeWeight<double> someTest(WeightContainer, rootedVertices);
     PureGaugeWeight<GiNaC::numeric> anotherTest(WeightContainer, rootedVertices);
     PureGaugeWeightOld yetAnotherTest(WeightContainer, rootedVerticesOld);
+    //StaticQuarkWeight staticQuarkTest(WeightContainer, WeightContainer, rootedVertices);
+
+    //std::cout << staticQuarkTest.Weight() << "\n";
+
+    g6String = "A_"; /// one-link graph
+    tempg6 = new char[g6String.length()+1];
+
+    std::strcpy(tempg6, g6String.c_str());
+    stringtograph(tempg6, g, m); /// g6 string to densenauty
+
+    delete[] tempg6;
+
+    GraphContainer OneLinkContainer(2, m, g); /// container from densenauty
+    /// vertices 1 and 2 are rooted
+    //WeightContainer.SetRootedVertex(0,0);
+    //WeightContainer.SetRootedVertex(1,1);
+    std::cout << OneLinkContainer;
+
+    StaticQuarkWeight staticQuarkOneLink(OneLinkContainer, OneLinkContainer, std::vector<ExternalPolyakovLoop>());
+
+    auto tempWeight = staticQuarkOneLink.Weight();
+    //std::cout << tempWeight << "\n";
 
     return 0;
 
@@ -91,17 +144,17 @@ int main()
     myEmbedList.AddVertexEmbed(3, index3);
     myEmbedList.AddVertexEmbed(4, index4);
 
-    ZClusterPureGaugeArbEmbedding<GiNaC::numeric> myZ(WeightContainer, myEmbedList, &MyLattice, std::vector<bool>{true,false});
+    ZClusterPureGaugeArbEmbedding myZ(WeightContainer, myEmbedList, &MyLattice, std::vector<bool>{true,false});
 
     std::cout << "TESTZCLUSTER: " << myZ.ComputeLambdaPolynomial().GetPolynomial() << "\n";
 
-    TwoPointCorrelator myCorr(WeightContainer, myEmbedList, &MyLattice);
+    TwoPointCorrelator<ZClusterPureGaugeArbEmbedding> myCorr(WeightContainer, myEmbedList, &MyLattice);
     std::cout << "TESTFULLCORR:" << myCorr.GetFullCorrelatorGiNaC() << "\n";
     std::cout << "TESTEXPANDEDCORR:" << myCorr.GetExpandedCorrelatorGiNaC() << "\n";
 
     CanonicalGraphManager MyManager(5);
 
-    XiRecursionRooted myRootedRecursion(&MyManager, WeightContainer, myEmbedList, &MyLattice);
+    XiRecursionRooted<ZClusterPureGaugeArbEmbedding> myRootedRecursion(&MyManager, WeightContainer, myEmbedList, &MyLattice);
 
     auto fullXi = myRootedRecursion.GetFullXiGiNaC();
     std::cout << "FULL_XI: " << fullXi << "\n";

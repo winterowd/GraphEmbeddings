@@ -5,6 +5,7 @@
 /// @param clusterEmbedList: VertexEmbedList object showing where vertices are embedded on the large CubicLattice
 /// @param lattice: pointer to CubicLattice object
 ZClusterStaticQuarkArbEmbedding::ZClusterStaticQuarkArbEmbedding(const GraphContainer &container, const VertexEmbedList &clusterEmbedList, CubicLattice* lattice, const std::vector<bool> &loopAtRooted, int maxManhattanDistance) :
+    AbstractZCluster("StaticQuark"),
     ClusterContainer(container),
     ClusterEmbedList(clusterEmbedList),
     Lattice(lattice),

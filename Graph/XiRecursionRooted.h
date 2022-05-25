@@ -83,6 +83,8 @@ inline bool operator!=(const XiExpansionRootedTerm& lhs, const XiExpansionRooted
     return !(lhs==rhs);
 }
 
+/// template on ZCluster! (partition function calculated on a cluster of sites)
+template<typename T>
 class XiRecursionRooted
 {
 private:
@@ -98,16 +100,20 @@ private:
 
     int MaxManhattanDistance; /// maximum Manhattan distance
 
+    int MaxOrderH1; /// maximum order in h_1
+
+    int MaxOrderHBar1; /// maximum order in \bar{h}_1
+
     std::vector<XiExpansionRootedTerm> XiTerms; /// list of terms in the expansion for xi
 
-    std::vector<TwoPointCorrelator> CorrelatorTerms;
+    std::vector<TwoPointCorrelator<T>> CorrelatorTerms;
 
     void ComputeXiTerms(GraphContainer container, VertexEmbedList embedList, int sign); /// recursive method for computing xi
 
     void AddXiTerm(const XiExpansionRootedTerm& newTerm); /// add term to list
 
 public:
-    XiRecursionRooted(CanonicalGraphManager* manager, const GraphContainer& container, const VertexEmbedList& embedList, CubicLattice *lattice, int embeddingNumber=1, int maxManhattanDistance=10);
+    XiRecursionRooted(CanonicalGraphManager* manager, const GraphContainer& container, const VertexEmbedList& embedList, CubicLattice *lattice, int embeddingNumber=1, int maxManhattanDistance=10, int maxOrderH1=0, int maxOrderHBar1=0);
 
     /**** public accessors ****/
 
@@ -126,6 +132,10 @@ public:
     int GetEmbeddingNumber() const { return this->EmbeddingNumber; }
 
     int GetMaxManhattanDistance() const { return this->MaxManhattanDistance; }
+
+    int GetMaxOrderH1() const { return this->MaxOrderH1; }
+
+    int GetMaxOrderHBar1() const { return this->MaxOrderHBar1; }
 };
 
 #endif // XIRECURSIONROOTED_H

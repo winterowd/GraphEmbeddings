@@ -1,5 +1,8 @@
 #include "StaticQuarkWeight.h"
 
+/// define static member variable
+bool StaticQuarkWeight::StaticDeterminantPrecomputed;
+
 /// constructor
 /// @arg container: pointer to GraphContainer object describing the graph we are interested in
 /// @arg externalVertices: list of vertices which are external/rooted (vertex label AND whether we add L or L*)
@@ -7,6 +10,7 @@ StaticQuarkWeight::StaticQuarkWeight(const GraphContainer &subgraphG, const Grap
     Container(subgraphG),
     ExternalVertices(externalVertices)
 {
+    std::cout << "DEBUG_EXTERNALVERTICES: " << this->ExternalVertices.size() << "\n";
     if (this->ExternalVertices.size()>2)
         throw std::invalid_argument("ERROR: StaticQuarkWeight requires externalVertices to be of size 2 or less!\n");
 
@@ -18,33 +22,6 @@ StaticQuarkWeight::StaticQuarkWeight(const GraphContainer &subgraphG, const Grap
     for (int i=this->Container.GetNTimesNMinusOneDiv2()-1; i>=0; --i)
         if (this->Container.GetElementAdjacencyMatrix(this->Container.GetRowM(i),this->Container.GetColM(i)))
             this->Edges.push_back(UndirectedEdge(this->Container.GetRowM(i),this->Container.GetColM(i)));
-}
-
-/// binomial coefficient for doubles (recursive)
-/// @arg n: first argument
-/// @arg k: second argument
-double StaticQuarkWeight::BinomialCoefficient(int n, int k)
-{
-#ifdef DEBUG
-    if (k > n)
-        throw std::invalid_argument("BinomialCoefficient requires k <= n!\n");
-    if (k < 0 || n <0)
-        throw std::invalid_argument("BinomialCoefficient requires both n and k to be greater than zero!\n");
-#endif
-    if (k==0 || k==n)
-        return 1;
-    return (this->BinomialCoefficient(n-1, k-1) + this->BinomialCoefficient(n-1, k));
-}
-
-/// factorial for double (recursive)
-/// @param n: size
-double StaticQuarkWeight::Factorial(int n)
-{
-#ifdef DEBUG
-    if (n<0)
-        throw std::invalid_argument("Factorial requires a non-negative argument!\n");
-#endif
-    return (n==0) || (n==1) ? 1 : n*this->Factorial(n-1);
 }
 
 /// Single site integral: I_{n,m} = \int dU \chi(U)^n \chi(U^{\dagger})^m (see eq. (A.14) of J. Glesaaen's Thesis)
@@ -89,10 +66,12 @@ GiNaC::ex StaticQuarkWeight::GetGraphWeightFixedBonds(const std::vector<bool>& d
     GiNaC::ex result = 1;
     for (int i=0; i<siteCounts.size(); ++i)
     {
+        std::cout << "Vertex " << i+1 << " has " << siteCounts[i].NbrIn << " counts in and " << siteCounts[i].NbrOut << " out\n";
         auto siteContribution = this->ComputeSiteContribution(siteCounts[i].NbrIn, siteCounts[i].NbrOut);
 #ifdef DEBUG
         std::cout << "Vertex " << i+1 << " has contribution " << siteContribution << "\n";
 #endif
+        std::cout << "Vertex " << i+1 << " has contribution " << siteContribution << "\n";
         result *= siteContribution;
     }
 #ifdef DEBUG
@@ -106,7 +85,7 @@ GiNaC::ex StaticQuarkWeight::GetGraphWeightFixedBonds(const std::vector<bool>& d
 /// @param nbrOut: number of "outoing" lines (powers of L^*)
 GiNaC::ex StaticQuarkWeight::ComputeSiteContribution(int nbrIn, int nbrOut)
 {
-    GiNaC::ex result;
+    GiNaC::ex result = GiNaC::numeric(0);
     for (int i=0; i<StaticQuarkWeight::StaticDeterminant.size(); ++i)
         result += StaticQuarkWeight::StaticDeterminant[i].first*this->SingleSiteIntegral(nbrIn+StaticQuarkWeight::StaticDeterminant[i].second.NbrIn, nbrOut+StaticQuarkWeight::StaticDeterminant[i].second.NbrOut);
     return result;
@@ -197,13 +176,13 @@ void StaticQuarkWeight::GetAllWeights(std::vector<bool>& tmp, int nbrBondsRemain
 /// This weight does not depend on the embedding of the graph inside the lattice
 GiNaC::ex StaticQuarkWeight::Weight()
 {
-     /// check if static determinant has been computed
-    if (StaticQuarkWeight::StaticDeterminant.size()==0)
+     /// check if integrated and unintegrated static determinant has been computed
+    if (!StaticQuarkWeight::StaticDeterminantPrecomputed)
+    {
         StaticQuarkWeight::StaticDeterminant = ComputeStaticDeterminant();
-
-    /// check if integrated single-site static determinant has been computed
-    if (!StaticQuarkWeight::SingleSiteIntegratedStaticDeterminant.is_polynomial(GiNaC::lst{AuxiliaryRoutinesForGinac::GetSymbol(0,false),AuxiliaryRoutinesForGinac::GetSymbol(1,false)}))
         SingleSiteIntegratedStaticDeterminant = ComputeSingleSiteIntegratedStaticDeterminant();
+        StaticQuarkWeight::StaticDeterminantPrecomputed = true;
+    }
 
     std::vector<bool> tmp;
     this->TotalWeight = GiNaC::numeric(0); /// initialize weight

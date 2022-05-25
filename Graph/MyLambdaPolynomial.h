@@ -15,6 +15,8 @@ private:
 
     int MaxManhattanDistance; /// maximum Manhattan distance
 
+    bool PureGauge; /// pure gauge?
+
 public:
     /// first constructor (pure gauge)
     MyLambdaPolynomial(const std::vector<std::pair<T, std::array<int, MaxInteractionLength::NbrInteractions>>>& coefficients, int maxManhattanDistance);
@@ -28,6 +30,8 @@ public:
     GiNaC::ex GetPolynomial() const { return this->Polynomial; } /// accessor
 
     int GetMaxManhattanDistance() const { return this->MaxManhattanDistance; } /// accessor
+
+    bool IsPureGauge() const { return this->PureGauge; }
 
     /// overloaded operator
     MyLambdaPolynomial<T>& operator+=(const MyLambdaPolynomial<T>& rhs);

@@ -15,6 +15,10 @@ private:
 
     bool StaticQuarks; /// include static quarks?
 
+    int MaxOrderH1; // maximum order for h_1
+
+    int MaxOrderHBar1; // maximum order for \bar{h}_1
+
     bool ProcessCommandLine(int argc, char *argv[]);
 
 public:
@@ -29,6 +33,10 @@ public:
 
     bool IncludeStaticQuarks() const { return this->StaticQuarks; }
 
+    int GetMaxOrderH1() const { return this->MaxOrderH1; }
+
+    int GetMaxOrderHBar1() const { return this->MaxOrderHBar1; }
+
 };
 
 /// process user's command-line arguments
@@ -40,9 +48,11 @@ inline bool CorrelatorParameters::ProcessCommandLine(int argc, char *argv[])
         desc.add_options()
                 ("help,h", "Produce help message")
                 ("order,n", po::value<int>(&this->MaxManhattanDistance)->required(), "Maximum Manhattan distance")
-                (",d", po::value<MaxInteractionLength>(&this->MaxEmbeddingLength)->default_value(MaxInteractionLength::NearestNeighbor), "MaxEmbeddingLength: NN NNN 3N or 4N (longer distances not yet supported!)")
-                (",m", po::value<MaxInteractionLength>(&this->CorrelatorLength)->default_value(MaxInteractionLength::NearestNeighbor), "CorrelatorLength: NN NNN 3N or 4N (longer distances not yet supported!)")
-                (",s", po::value<bool>(&this->StaticQuarks)->default_value(false), "Static quarks?")
+                ("h1_max", po::value<int>(&this->MaxOrderH1), "Maximum order in h_1")
+                ("hb1_max", po::value<int>(&this->MaxOrderHBar1), "Maximum order in \bar{h}_1")
+                ("max_embed_length,d", po::value<MaxInteractionLength>(&this->MaxEmbeddingLength)->default_value(MaxInteractionLength::NearestNeighbor), "MaxEmbeddingLength: NN NNN 3N or 4N (longer distances not yet supported!)")
+                ("max_corr_length,m", po::value<MaxInteractionLength>(&this->CorrelatorLength)->default_value(MaxInteractionLength::NearestNeighbor), "CorrelatorLength: NN NNN 3N or 4N (longer distances not yet supported!)")
+                ("static,s", po::value<bool>(&this->StaticQuarks)->default_value(false), "Static quarks?")
                 ;
 
         po::variables_map vm;
@@ -53,6 +63,9 @@ inline bool CorrelatorParameters::ProcessCommandLine(int argc, char *argv[])
             std::cout << desc << "\n";
             return false;
         }
+
+        MiscellaneousRoutines::RequiredOptionWhenOtherOptionExists(vm, "h1_max", "static");
+        MiscellaneousRoutines::RequiredOptionWhenOtherOptionExists(vm, "hb1_max", "static");
 
         po::notify(vm);
     }

@@ -4,8 +4,8 @@
 /// @param container: GraphContainer object specifying the connectivity of the cluster
 /// @param clusterEmbedList: VertexEmbedList object showing where vertices are embedded on the large CubicLattice
 /// @param lattice: pointer to CubicLattice object
-template <typename T>
-ZClusterPureGaugeArbEmbedding<T>::ZClusterPureGaugeArbEmbedding(const GraphContainer &container, const VertexEmbedList &clusterEmbedList, CubicLattice* lattice, const std::vector<bool> &loopAtRooted, int maxManhattanDistance) :
+ZClusterPureGaugeArbEmbedding::ZClusterPureGaugeArbEmbedding(const GraphContainer &container, const VertexEmbedList &clusterEmbedList, CubicLattice* lattice, const std::vector<bool> &loopAtRooted, int maxManhattanDistance) :
+    AbstractZCluster("PureGauge"),
     ClusterContainer(container),
     ClusterEmbedList(clusterEmbedList),
     Lattice(lattice),
@@ -56,14 +56,13 @@ ZClusterPureGaugeArbEmbedding<T>::ZClusterPureGaugeArbEmbedding(const GraphConta
 
 /// convert linear index to a tuple corresponding to the powers of each coupling \lambda_i
 /// @param index: linear index
-template <typename T>
-std::array<int, ZClusterPureGaugeArbEmbedding<T>::NbrCouplings> ZClusterPureGaugeArbEmbedding<T>::LinearIndexToPowersOfCouplings(int index) const
+std::array<int, ZClusterPureGaugeArbEmbedding::NbrCouplings> ZClusterPureGaugeArbEmbedding::LinearIndexToPowersOfCouplings(int index) const
 {
 #ifdef DEBUG
     if (index < 0 || index >= this->LinearIndexMax)
         throw std::invalid_argument("ERROR: LinearIndexToPowersOfCouplings requires 0<= index < NTotalBondCounts!\n");
 #endif
-    std::array<int, ZClusterPureGaugeArbEmbedding<T>::NbrCouplings> result;
+    std::array<int, ZClusterPureGaugeArbEmbedding::NbrCouplings> result;
     int temp = index;
     for (int i=0; i<this->NbrCouplings; ++i)
     {
@@ -78,8 +77,7 @@ std::array<int, ZClusterPureGaugeArbEmbedding<T>::NbrCouplings> ZClusterPureGaug
 
 /// check if a given tuple corresponding to powers of couplings is valid
 /// @param powers: array containing powers of the couplings
-template <typename T>
-bool ZClusterPureGaugeArbEmbedding<T>::ValidPowersOfCouplings(const std::array<int, ZClusterPureGaugeArbEmbedding<T>::NbrCouplings>& powers) const
+bool ZClusterPureGaugeArbEmbedding::ValidPowersOfCouplings(const std::array<int, ZClusterPureGaugeArbEmbedding::NbrCouplings>& powers) const
 {
     for (int i=0; i<ZClusterPureGaugeArbEmbedding::NbrCouplings; ++i)
         if (powers[i] < 0 || powers[i] >= this->AllTotalBondCountsPlusOne[i])
@@ -89,8 +87,7 @@ bool ZClusterPureGaugeArbEmbedding<T>::ValidPowersOfCouplings(const std::array<i
 
 /// convert from a tuple corresponding to powers of couplings to a linear index
 /// @param powers: powers of the couplings \lambda_i
-template <typename T>
-int ZClusterPureGaugeArbEmbedding<T>::PowersOfCouplingsToLinearIndex(const std::array<int, ZClusterPureGaugeArbEmbedding<T>::NbrCouplings>& powers) const
+int ZClusterPureGaugeArbEmbedding::PowersOfCouplingsToLinearIndex(const std::array<int, ZClusterPureGaugeArbEmbedding::NbrCouplings>& powers) const
 {
     if (!this->ValidPowersOfCouplings(powers))
         throw std::invalid_argument("ERROR: PowersOfCouplingsToLinearIndex requires powers to contain integers in the appropriate range!\n");
@@ -106,8 +103,7 @@ int ZClusterPureGaugeArbEmbedding<T>::PowersOfCouplingsToLinearIndex(const std::
 }
 
 /// fill the vector with certain type of edges (defined by isEdgeValid)
-template <typename T>
-void ZClusterPureGaugeArbEmbedding<T>::FillBondType(std::vector<UndirectedEdge>& result, std::function<bool(unsigned int, unsigned int)> isEdgeValid, std::string bondType)
+void ZClusterPureGaugeArbEmbedding::FillBondType(std::vector<UndirectedEdge>& result, std::function<bool(unsigned int, unsigned int)> isEdgeValid, std::string bondType)
 {
     for (int i=0; i<this->ClusterContainer.GetL(); ++i)
     {
@@ -138,8 +134,7 @@ void ZClusterPureGaugeArbEmbedding<T>::FillBondType(std::vector<UndirectedEdge>&
 /// recursively generate all combinations of boolean string
 /// @param tmp: current string
 /// @param nbrBondsRemaining: number of bonds/booleans to add to current string
-template <typename T>
-void ZClusterPureGaugeArbEmbedding<T>::GenerateTermsIntegrand(std::vector<bool>& tmp, int nbrBondsRemaining)
+void ZClusterPureGaugeArbEmbedding::GenerateTermsIntegrand(std::vector<bool>& tmp, int nbrBondsRemaining)
 {
     if (nbrBondsRemaining==0)
     {
@@ -167,8 +162,7 @@ void ZClusterPureGaugeArbEmbedding<T>::GenerateTermsIntegrand(std::vector<bool>&
 /// prepare the list of ExternalPolyakovLoop objects for the pure gauge weight object given a set of edges and the vertex map which tells us how the vertices are relabeled in the new container
 /// @param edges: list of undirected edges (ORIGINAL LABELS!)
 /// @param vertexMap: vertexMap[j] contains ORIGINAL label of RELABELED vertex j+1 (j starts at ZERO!)
-template <typename T>
-std::vector<ExternalPolyakovLoop> ZClusterPureGaugeArbEmbedding<T>::PrepareRootedVerticesIntegrandTerm(const std::vector<UndirectedEdge>& edges, const std::vector<int>& vertexMap)
+std::vector<ExternalPolyakovLoop> ZClusterPureGaugeArbEmbedding::PrepareRootedVerticesIntegrandTerm(const std::vector<UndirectedEdge>& edges, const std::vector<int>& vertexMap)
 {
     std::vector<ExternalPolyakovLoop> result;
 
@@ -200,8 +194,7 @@ std::vector<ExternalPolyakovLoop> ZClusterPureGaugeArbEmbedding<T>::PrepareRoote
 
 /// evaluate all of the terms in the partition function
 /// store results in ZCoefficients
-template <typename T>
-void ZClusterPureGaugeArbEmbedding<T>::EvaluateZ()
+void ZClusterPureGaugeArbEmbedding::EvaluateZ()
 {
     std::vector<bool> tmp;
     this->GenerateTermsIntegrand(tmp, this->TotalBondCounts);
@@ -212,9 +205,9 @@ void ZClusterPureGaugeArbEmbedding<T>::EvaluateZ()
         if (edgesAndBondCount.first.size()==0) /// no edges! (ONE TERM)
         {
             if (this->ClusterContainer.GetNbrRooted()==0) // normalized measure!
-                this->ZCoefficients[this->PowersOfCouplingsToLinearIndex(edgesAndBondCount.second)] = AuxiliaryRoutinesForGinac::CreateRationalPolynomialCoefficient<T>(1,1); /// 1
+                this->ZCoefficients[this->PowersOfCouplingsToLinearIndex(edgesAndBondCount.second)] = AuxiliaryRoutinesForGinac::CreateRationalPolynomialCoefficient<GiNaC::numeric>(1,1); /// 1
             else // single L or L* at each rooted vertex
-                this->ZCoefficients[this->PowersOfCouplingsToLinearIndex(edgesAndBondCount.second)] = AuxiliaryRoutinesForGinac::CreateRationalPolynomialCoefficient<T>(0,1); /// 0
+                this->ZCoefficients[this->PowersOfCouplingsToLinearIndex(edgesAndBondCount.second)] = AuxiliaryRoutinesForGinac::CreateRationalPolynomialCoefficient<GiNaC::numeric>(0,1); /// 0
         }
         else
         {
@@ -225,8 +218,8 @@ void ZClusterPureGaugeArbEmbedding<T>::EvaluateZ()
             if (rootedVertices.size()==this->ClusterContainer.GetNbrRooted()) /// all rooted vertices have to appear in bonds!
             {
                 GraphContainer tempContainer(relabeledEdgesAndVertexMap.second.size(), 1, relabeledEdgesAndVertexMap.first); /// graph container
-                PureGaugeWeight<T> tempWeightObject(tempContainer, rootedVertices);
-                T weight = tempWeightObject.Weight(); /// calculate weight of graph
+                PureGaugeWeight<GiNaC::numeric> tempWeightObject(tempContainer, rootedVertices);
+                GiNaC::numeric weight = tempWeightObject.Weight(); /// calculate weight of graph
 #ifdef DEBUG
                 //// print out i, bond counts, Container, VertexMap
                 std::cout << "**** DEBUG_EVALUATEZ ****\n";
@@ -248,14 +241,13 @@ void ZClusterPureGaugeArbEmbedding<T>::EvaluateZ()
 
 /// convert the boolean string to undirected edges and counts for each bond type
 /// @param permutation: boolean string of length \sum_i N_i
-template <typename T>
-std::pair<std::vector<UndirectedEdge>, std::array<int, ZClusterPureGaugeArbEmbedding<T>::NbrCouplings>> ZClusterPureGaugeArbEmbedding<T>::ZIntegrandToUndirectedEdgesAndBondCounts(const std::vector<bool>& permutation)
+std::pair<std::vector<UndirectedEdge>, std::array<int, ZClusterPureGaugeArbEmbedding::NbrCouplings>> ZClusterPureGaugeArbEmbedding::ZIntegrandToUndirectedEdgesAndBondCounts(const std::vector<bool>& permutation)
 {
 #ifdef DEBUG
     if (this->TotalBondCounts!=permutation.size())
         throw std::invalid_argument("ERROR: ZIntegrandToUndirectedEdges requires permutation to be of size TotalBondCounts!\n");
 #endif
-    std::array<int, ZClusterPureGaugeArbEmbedding<T>::NbrCouplings> bondCounts{};
+    std::array<int, ZClusterPureGaugeArbEmbedding::NbrCouplings> bondCounts{};
     std::vector<UndirectedEdge> result;
     for (int i=0; i<this->OneLink.size(); ++i) /// translate one-link to edges
     {
@@ -297,17 +289,16 @@ std::pair<std::vector<UndirectedEdge>, std::array<int, ZClusterPureGaugeArbEmbed
         if (bondCounts[i]>this->AllTotalBondCountsPlusOne[i])
             throw std::invalid_argument("ERROR: ZIntegrandToUndirectedEdges requires bondCounts to be less than corresponding element of AllTotalBondCountsPlusOne!\n");
 #endif
-    return std::pair<std::vector<UndirectedEdge>, std::array<int, ZClusterPureGaugeArbEmbedding<T>::NbrCouplings>>(result, bondCounts);
+    return std::pair<std::vector<UndirectedEdge>, std::array<int, ZClusterPureGaugeArbEmbedding::NbrCouplings>>(result, bondCounts);
 }
 
 /// print out all non-zero coefficients of Z
-template <typename T>
-void ZClusterPureGaugeArbEmbedding<T>::PrintZ() const
+void ZClusterPureGaugeArbEmbedding::PrintZ() const
 {
     std::cout << "**** PrintZ ****\n";
     for (int i=0; i<this->LinearIndexMax; ++i)
     {
-        T tempCoefficient = this->ZCoefficients[i];
+        GiNaC::numeric tempCoefficient = this->ZCoefficients[i];
         if (tempCoefficient!=0)
         {
             auto powersCouplings = this->LinearIndexToPowersOfCouplings(i);
@@ -322,26 +313,24 @@ void ZClusterPureGaugeArbEmbedding<T>::PrintZ() const
 
 /// compute GiNaC polynomial from expression
 /// prepare coefficients for each set of n_i where the order is \prod_i \lambda^{n_i}_i
-template <typename T>
-MyLambdaPolynomial<T> ZClusterPureGaugeArbEmbedding<T>::ComputeLambdaPolynomial()
+MyLambdaPolynomial<GiNaC::numeric> ZClusterPureGaugeArbEmbedding::ComputeLambdaPolynomial()
 {
-    std::vector<std::pair<T, std::array<int, MaxInteractionLength::NbrInteractions>>> coefficients;
+    std::vector<std::pair<GiNaC::numeric, std::array<int, MaxInteractionLength::NbrInteractions>>> coefficients;
     for (int i=0; i<this->LinearIndexMax; ++i)
     {
-        T tempCoefficient = this->ZCoefficients[i];
+        GiNaC::numeric tempCoefficient = this->ZCoefficients[i];
         if (tempCoefficient!=0)
         {
             auto powersCouplings = this->LinearIndexToPowersOfCouplings(i);
-            coefficients.push_back(std::pair<T, std::array<int, MaxInteractionLength::NbrInteractions>>(tempCoefficient, powersCouplings));
+            coefficients.push_back(std::pair<GiNaC::numeric, std::array<int, MaxInteractionLength::NbrInteractions>>(tempCoefficient, powersCouplings));
         }
     }
-    return MyLambdaPolynomial<T>(coefficients, this->MaxManhattanDistance);
+    return MyLambdaPolynomial<GiNaC::numeric>(coefficients, this->MaxManhattanDistance);
 }
 
 /// print the contributions at a given order in the couplings
 /// @param powers: requested powers of each coupling \lambda_i
-template <typename T>
-void ZClusterPureGaugeArbEmbedding<T>::PrintContributionZFixedOrder(const std::array<int, ZClusterPureGaugeArbEmbedding<T>::NbrCouplings>& powers)
+void ZClusterPureGaugeArbEmbedding::PrintContributionZFixedOrder(const std::array<int, ZClusterPureGaugeArbEmbedding::NbrCouplings>& powers)
 {
     if (!this->ValidPowersOfCouplings(powers))
         throw std::invalid_argument("ERROR: PrintContributionZFixedOrder requires powers to contain integers in the appropriate range!\n");
@@ -377,7 +366,3 @@ void ZClusterPureGaugeArbEmbedding<T>::PrintContributionZFixedOrder(const std::a
     }
     std::cout << "**** PrintContributionZFixedOrder ****\n";
 }
-
-// templated type can only be double or GiNaC::numeric
-template class ZClusterPureGaugeArbEmbedding<double>;
-template class ZClusterPureGaugeArbEmbedding<GiNaC::numeric>;
