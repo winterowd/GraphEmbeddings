@@ -104,9 +104,9 @@ int main()
     PureGaugeWeight<double> someTest(WeightContainer, rootedVertices);
     PureGaugeWeight<GiNaC::numeric> anotherTest(WeightContainer, rootedVertices);
     PureGaugeWeightOld yetAnotherTest(WeightContainer, rootedVerticesOld);
-    //StaticQuarkWeight staticQuarkTest(WeightContainer, WeightContainer, rootedVertices);
+    StaticQuarkWeight staticQuarkTest(WeightContainer, rootedVertices);
 
-    //std::cout << staticQuarkTest.Weight() << "\n";
+    std::cout << staticQuarkTest.Weight() << "\n";
 
     g6String = "A_"; /// one-link graph
     tempg6 = new char[g6String.length()+1];
@@ -122,7 +122,7 @@ int main()
     //WeightContainer.SetRootedVertex(1,1);
     std::cout << OneLinkContainer;
 
-    StaticQuarkWeight staticQuarkOneLink(OneLinkContainer, OneLinkContainer, std::vector<ExternalPolyakovLoop>());
+    StaticQuarkWeight staticQuarkOneLink(OneLinkContainer, std::vector<ExternalPolyakovLoop>());
 
     auto tempWeight = staticQuarkOneLink.Weight();
     //std::cout << tempWeight << "\n";

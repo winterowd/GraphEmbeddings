@@ -17,8 +17,6 @@ private:
 
     std::vector<ExternalPolyakovLoop> ExternalVertices; /// list of vertices where external L or L* is placed
 
-    int DeltaNumberVertices; /// |V(G)| - |V(g)|, where g is a subgraph of G
-
     GiNaC::ex TotalWeight; /// total weight of graph using all possible combinations of directed bonds
 
     static bool StaticDeterminantPrecomputed; /// flag
@@ -34,7 +32,7 @@ private:
     GiNaC::numeric SingleSiteIntegral(int n, int m);
 
 public:
-    StaticQuarkWeight(const GraphContainer& subgraphG, const GraphContainer& fullG, const std::vector<ExternalPolyakovLoop>& externalVertices);
+    StaticQuarkWeight(const GraphContainer& container, const std::vector<ExternalPolyakovLoop>& externalVertices);
 
     GiNaC::ex Weight(); /// routine called by user (interface)
 

@@ -54,5 +54,34 @@ int main(int argc, char *argv[])
     std::cout << "PRINTING_PLAQ_EXPANDED_XI_GINAC\n";
     std::cout << RecursionObject.GetExpandedXiGiNaC() << "\n";
 
+    g6String = "A_"; /// graph
+    tempg6 = new char[g6String.length()+1];
+
+    std::strcpy(tempg6, g6String.c_str());
+    stringtograph(tempg6, g, m); /// g6 string to densenauty
+
+    delete[] tempg6;
+
+    GraphContainer OneLinkContainer(2, m, g, 2); /// container from densenauty
+    TestContainer.SetRootedVertex(0, 0);
+    TestContainer.SetRootedVertex(1, 1);
+    std::cout << OneLinkContainer;
+
+    /// check that this is canonical!
+    auto onelinkTempContainer = AuxiliaryRoutinesForNauty::GetCanonicalColoredGraphNauty(n, g6String, std::vector<int>{0, 1});
+    if (onelinkTempContainer!=OneLinkContainer)
+        throw std::logic_error("ERROR: two colored canonical graphs not matching up!\n");
+
+    VertexEmbedList OneLinkEmbedList(MaxInteractionLength::NearestNeighbor, MaxInteractionLength::NearestNeighbor);
+    OneLinkEmbedList.AddFixedVertexEmbed(0, 1, index1);
+    OneLinkEmbedList.AddFixedVertexEmbed(1, 2, index2);
+
+    std::cout << "PRINTING_ONELINK_XI\n";
+    XiRecursionRooted<ZClusterPureGaugeArbEmbedding> OneLinkRecursionObject(&MyManager, OneLinkContainer, OneLinkEmbedList, &MyLattice);
+    std::cout << "PRINTING_ONELINK_FULL_XI_GINAC\n";
+    std::cout << OneLinkRecursionObject.GetFullXiGiNaC() << "\n";
+    std::cout << "PRINTING_ONELINK_EXPANDED_XI_GINAC\n";
+    std::cout << OneLinkRecursionObject.GetExpandedXiGiNaC() << "\n";
+
     return 0;
 }

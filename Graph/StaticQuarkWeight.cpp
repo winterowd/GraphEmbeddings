@@ -6,8 +6,8 @@ bool StaticQuarkWeight::StaticDeterminantPrecomputed;
 /// constructor
 /// @arg container: pointer to GraphContainer object describing the graph we are interested in
 /// @arg externalVertices: list of vertices which are external/rooted (vertex label AND whether we add L or L*)
-StaticQuarkWeight::StaticQuarkWeight(const GraphContainer &subgraphG, const GraphContainer &fullG, const std::vector<ExternalPolyakovLoop> &externalVertices) :
-    Container(subgraphG),
+StaticQuarkWeight::StaticQuarkWeight(const GraphContainer &container, const std::vector<ExternalPolyakovLoop> &externalVertices) :
+    Container(container),
     ExternalVertices(externalVertices)
 {
     std::cout << "DEBUG_EXTERNALVERTICES: " << this->ExternalVertices.size() << "\n";
@@ -16,8 +16,6 @@ StaticQuarkWeight::StaticQuarkWeight(const GraphContainer &subgraphG, const Grap
 
     if (std::find_if(this->ExternalVertices.begin(), this->ExternalVertices.end(), [this](const ExternalPolyakovLoop& x) { return (x.Label>this->Container.GetN() || x.Label<1); })!=this->ExternalVertices.end())
         throw std::invalid_argument("ERROR: StaticQuarkWeight requires ExternalVertices to have labels between 1 and N!\n");
-
-    this->DeltaNumberVertices = fullG.GetN()-this->Container.GetN();
 
     for (int i=this->Container.GetNTimesNMinusOneDiv2()-1; i>=0; --i)
         if (this->Container.GetElementAdjacencyMatrix(this->Container.GetRowM(i),this->Container.GetColM(i)))
@@ -186,8 +184,8 @@ GiNaC::ex StaticQuarkWeight::Weight()
 
     std::vector<bool> tmp;
     this->TotalWeight = GiNaC::numeric(0); /// initialize weight
-    this->GetAllWeights(tmp, this->Edges.size()); /// \tilde{\phi}(g)
-    this->TotalWeight *= GiNaC::pow(StaticQuarkWeight::SingleSiteIntegratedStaticDeterminant, this->DeltaNumberVertices); /// z^{|V(G)|-|V(g)|}_0
+    this->GetAllWeights(tmp, this->Edges.size()); /// numerator of \tilde{\phi}(g)
+    this->TotalWeight /= GiNaC::pow(StaticQuarkWeight::SingleSiteIntegratedStaticDeterminant, this->Container.GetN()); /// divide by z^{|V(g)|}_0
     return this->TotalWeight;
 }
 

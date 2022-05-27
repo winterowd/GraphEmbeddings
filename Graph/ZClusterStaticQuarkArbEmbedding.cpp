@@ -218,7 +218,7 @@ void ZClusterStaticQuarkArbEmbedding::EvaluateZ()
             if (rootedVertices.size()==this->ClusterContainer.GetNbrRooted()) /// all rooted vertices have to appear in bonds!
             {
                 GraphContainer tempContainer(relabeledEdgesAndVertexMap.second.size(), 1, relabeledEdgesAndVertexMap.first); /// graph container
-                StaticQuarkWeight tempWeightObject(tempContainer, this->ClusterContainer, rootedVertices); /// weight object associated with this subgraph g
+                StaticQuarkWeight tempWeightObject(tempContainer, rootedVertices); /// weight object associated with this subgraph g
                 GiNaC::ex weight = tempWeightObject.Weight(); /// calculate weight of graph
 #ifdef DEBUG
                 //// print out i, bond counts, Container, VertexMap
@@ -355,7 +355,7 @@ void ZClusterStaticQuarkArbEmbedding::PrintContributionZFixedOrder(const std::ar
             auto relabeledEdgesAndVertexMap = SubDiagramGenerator::GetRelabeledEdgesAndVertexMap(edgesAndBondCount.first); /// relabeled edges and vertex map
             GraphContainer tempContainer(relabeledEdgesAndVertexMap.second.size(), 1, relabeledEdgesAndVertexMap.first); /// graph container
             auto rootedVertices = this->PrepareRootedVerticesIntegrandTerm(edgesAndBondCount.first, relabeledEdgesAndVertexMap.second);
-            StaticQuarkWeight tempWeightObject(tempContainer, this->ClusterContainer, rootedVertices); /// weight object associated with this subgraph g
+            StaticQuarkWeight tempWeightObject(tempContainer, rootedVertices); /// weight object associated with this subgraph g
             GiNaC::ex weight = tempWeightObject.Weight(); /// calculate weight of graph
             std::cout << "term " << i << " with bond_count:";
             for (int j=0; j<ZClusterStaticQuarkArbEmbedding::NbrCouplings; ++j)
